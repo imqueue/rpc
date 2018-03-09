@@ -13,12 +13,7 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import decorators = Handlebars.decorators;
-
-export * from './IMQRPCError';
-export * from './IMQRPCRequest';
-export * from './IMQRPCResponse';
-export * from './IMQService';
-export * from './IMQClient';
-export * from './IMQLock';
-export * from './decorators';
+export * from './expose';
+export * from './remote';
+export * from './lock';
+export * from './cache';

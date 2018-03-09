@@ -1,4 +1,6 @@
 /*!
+ * IMQ-RPC Command Line Interface
+ *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -13,12 +15,3 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import decorators = Handlebars.decorators;
-
-export * from './IMQRPCError';
-export * from './IMQRPCRequest';
-export * from './IMQRPCResponse';
-export * from './IMQService';
-export * from './IMQClient';
-export * from './IMQLock';
-export * from './decorators';

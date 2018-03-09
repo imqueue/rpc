@@ -15,11 +15,15 @@
     "clean": "npm run clean-tests && npm run clean-typedefs && npm run clean-maps && npm run clean-js && npm run clean-doc && npm run clean-benchmark",
     "doc": "rm -rf docs && typedoc  --excludePrivate --excludeExternals --hideGenerator --exclude \"**/+(test|node_modules|docs|coverage|benchmark|.nyc_output)/**/*\" --mode file --out ./docs . && /usr/bin/env node -e \"require('opn')('file://`pwd`/docs/index.html');process.exit(0)\""
   },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com/Mikhus/imq-rpc.git"
+  },
   "author": "Mykhailo Stadnyk <mikhus@gmail.com> (https://github.com/Mikhus)",
   "license": "ISC",
   "dependencies": {
     "@types/node": "^9.4.6",
-    "imq": "^1.0.0-dev",
+    "imq": "^1.0.1",
     "reflect-metadata": "^0.1.12",
     "source-map-support": "^0.5.3",
     "ts-node": "^5.0.1",
@@ -46,6 +50,9 @@
   "main": "index.js",
   "typescript": {
     "definitions": "index.d.ts"
+  },
+  "bin": {
+    "imq-rpc": "./cli.js"
   },
   "nyc": {
     "extension": [

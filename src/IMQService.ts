@@ -15,6 +15,50 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-export class IMQService {
+import IMQ, { IMQOptions, IMessageQueue, profile } from 'imq';
+import { IMQRPCError, IMQRPCRequest, IMQRPCResponse } from '.';
+
+export abstract class IMQService {
+
+    protected mq: IMessageQueue;
+
+    public name: string;
+
+    constructor(name?: string, options?: IMQOptions) {
+        this.name = name || this.constructor.name;
+
+        if (this.name === 'IMQService') {
+            throw new TypeError('IMQService class is abstract and can ' +
+                'not be instantiated directly!');
+        }
+
+        this.mq = IMQ.create(this.name, options);
+        this.handleRequest = this.handleRequest.bind(this);
+        this.mq.on('message', this.handleRequest);
+    }
+
+    private async handleRequest(msg: IMQRPCRequest, id: string, from: string) {
+
+    }
+
+    @profile()
+    public async start() {
+        await this.mq.start();
+    }
+
+    @profile()
+    public async stop() {
+        await this.mq.stop();
+    }
+
+    @profile()
+    public async destroy() {
+        await this.mq.destroy();
+    }
+
+    @profile()
+    public async describe() {
+
+    }
 
 }

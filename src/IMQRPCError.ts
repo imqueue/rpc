@@ -1,4 +1,6 @@
 /*!
+ * IMQ-RPC Interfaces: IMQRPCError
+ *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -13,12 +15,16 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import decorators = Handlebars.decorators;
+import { IJson } from 'imq';
 
-export * from './IMQRPCError';
-export * from './IMQRPCRequest';
-export * from './IMQRPCResponse';
-export * from './IMQService';
-export * from './IMQClient';
-export * from './IMQLock';
-export * from './decorators';
+/**
+ * Response error data structure, which service returns if error
+ * occurred during service method execution.
+ */
+export interface IMQRPCError extends IJson {
+    code: string;
+    message: string;
+    stack: string;
+    method: string;
+    args: string;
+}
