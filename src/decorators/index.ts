@@ -17,3 +17,4 @@ export * from './expose';
 export * from './remote';
 export * from './lock';
 export * from './cache';
+export * from './property';

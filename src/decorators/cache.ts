@@ -15,6 +15,30 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-export function cache() {
+import { ICache, RedisCache, ICacheConstructor } from '..';
 
+export interface CacheDecoratorOptions {
+    adapter?: string | ICache | ICacheConstructor;
+    ttl?: number;
+    onExpire?: Function;
+    side?: 'client' | 'service' | 'both'
 }
+
+export interface CacheDecorator {
+    (options?: CacheDecoratorOptions): Function;
+    globalOptions?: CacheDecoratorOptions;
+}
+
+export const cache: CacheDecorator = function(options?: CacheDecoratorOptions) {
+    return function(
+        target: any,
+        methodName: string | symbol,
+        descriptor: TypedPropertyDescriptor<Function>
+    ) {
+
+    }
+}
+
+cache.globalOptions = {
+    adapter: RedisCache
+};

@@ -14,5 +14,4 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 export * from './ICache';
-export * from './JsCache';
 export * from './RedisCache';

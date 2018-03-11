@@ -1,5 +1,5 @@
 /*!
- * JsCache adapter implementation
+ * IMQRPCAuth factory implementation
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -15,9 +15,6 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { ICache } from '.';
+export class IMQRPCAuth {
 
-export class JsCache implements ICache {
-    public name: string;
-    public async init() {}
 }

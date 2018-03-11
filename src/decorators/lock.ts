@@ -15,11 +15,6 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-/*!
- * PhilzService decorators: @locked()
- *
- * @author Mykhailo Stadnyk <mstadnyk@lohika.com>
- */
 import { IMQLock, AcquiredLock, signature } from '..';
 
 /**

@@ -22,7 +22,9 @@
   "author": "Mykhailo Stadnyk <mikhus@gmail.com> (https://github.com/Mikhus)",
   "license": "ISC",
   "dependencies": {
+    "@types/acorn": "^4.0.3",
     "@types/node": "^9.4.6",
+    "acorn": "^5.5.3",
     "imq": "^1.0.2",
     "murmurhash-native": "^3.2.2",
     "reflect-metadata": "^0.1.12",

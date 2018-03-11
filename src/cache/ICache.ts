@@ -16,12 +16,16 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 export interface ICacheConstructor {
-    (name?: string): ICache;
+    new (name?: string): ICache;
 }
 
 export interface ICache {
 
     name: string;
     init(): void;
+
+    get(key: string): Promise<any>;
+    set(key: string, value: any, ttl?: number): Promise<boolean>;
+    del(key: string): Promise<boolean>;
 
 }

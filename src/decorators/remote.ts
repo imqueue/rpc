@@ -15,6 +15,27 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-export function remote() {
+/**
+ * Implements '@remote' decorator factory
+ *
+ * @return {(
+ *    target: any,
+ *    methodName: (string|symbol),
+ *    descriptor: TypedPropertyDescriptor<Function>
+ * ) => void}
+ */
+export function remote(...args: any[]) {
+    return function(
+        target: any,
+        methodName: string | symbol,
+        descriptor: TypedPropertyDescriptor<Function>
+    ) {
+        let original = descriptor.value || (() => {});
 
+        descriptor.value = function(...args: any[]) {
+            args.push(methodName);
+
+            return original.apply(this, args);
+        };
+    }
 }
