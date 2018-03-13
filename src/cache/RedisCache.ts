@@ -19,22 +19,25 @@ import { ICache } from '.';
 
 export class RedisCache implements ICache {
     public name: string;
-    public async init() {}
+
+    public async init() {
+
+    }
 
     constructor(name?: string) {
 
     }
 
-    get(key: string): Promise<any> {
-
+    public async get(key: string): Promise<any> {
+        return '';
     }
 
-    set(key: string, value: any, ttl?: number): Promise<boolean> {
-
+    public async set(key: string, value: any, ttl?: number): Promise<boolean> {
+        return true;
     }
 
-    del(key: string): Promise<boolean> {
-
+    public async del(key: string): Promise<boolean> {
+        return true;
     }
 
 }

@@ -16,7 +16,24 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 import IMQ, { IMQOptions, IMessageQueue, profile } from 'imq';
-import { IMQRPCError, IMQRPCRequest, IMQRPCResponse } from '.';
+import {
+    TypesDescription,
+    ServiceDescription,
+    IMQRPCDescription,
+    IMQRPCError,
+    IMQRPCRequest,
+    IMQRPCResponse,
+    expose,
+    property
+} from '.';
+
+export class Description {
+    @property('ServiceDescription')
+    service: ServiceDescription;
+
+    @property('TypesDescription')
+    types: TypesDescription;
+}
 
 export abstract class IMQService {
 
@@ -56,9 +73,18 @@ export abstract class IMQService {
         await this.mq.destroy();
     }
 
+    /**
+     * Returns service description metadata
+     *
+     * @returns {Description} - service description metadata
+     */
     @profile()
-    public async describe() {
-
+    @expose()
+    public async describe(): Promise<Description> {
+        return {
+            service: IMQRPCDescription.serviceDescription,
+            types: IMQRPCDescription.typesDescription
+        };
     }
 
 }
