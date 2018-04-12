@@ -16,28 +16,119 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 import { ICache } from '.';
+import {
+    ILogger,
+    DEFAULT_IMQ_OPTIONS,
+    redis,
+    IRedisClient,
+    IMQOptions
+} from 'imq';
+import * as os from 'os';
+
+export interface IRedisCacheOptions extends Partial<IMQOptions> {
+    conn?: IRedisClient
+}
+
+export const DEFAULT_REDIS_CACHE_OPTIONS = Object.assign(
+    {}, DEFAULT_IMQ_OPTIONS, {
+        prefix: 'imq-cache'
+    });
 
 export class RedisCache implements ICache {
-    public name: string;
+    private static redis: IRedisClient;
+    private logger: ILogger;
+    public options: IRedisCacheOptions;
 
-    public async init() {
+    public async init(options?: IRedisCacheOptions) {
+        if (RedisCache.redis) {
+            return this;
+        }
 
+        if (options) {
+            this.options = Object.assign(
+                {}, DEFAULT_REDIS_CACHE_OPTIONS, options);
+        }
+
+        this.logger = this.options.logger || console;
+
+        if (this.options.conn) {
+            this.logger.info('Re-using given connection for cache.');
+            RedisCache.redis = this.options.conn;
+            return this;
+        }
+
+        return new Promise((resolve, reject) => {
+            RedisCache.redis = <IRedisClient>redis.createClient(
+                Number(this.options.port),
+                String(this.options.host)
+            );
+
+            RedisCache.redis.on('ready', async () => {
+                this.logger.info(
+                    '%s: redis cache connected, pid %s',
+                    this.name, process.pid
+                );
+
+                await RedisCache.redis.client(
+                    'setname',
+                    `${this.options.prefix}:${this.name
+                    }:pid:${process.pid}:host:${os.hostname()}`
+                );
+
+                resolve(this);
+            });
+
+            RedisCache.redis.on('error', (err: Error) => {
+                this.logger.error(
+                    `${this.name}: error connecting redis, pid ${process.pid}:`,
+                    err
+                );
+
+                reject(err);
+            });
+        });
     }
 
-    constructor(name?: string) {
-
+    private key(key: string) {
+        return `${this.options.prefix}:${this.name}:${key}`;
     }
+
+    constructor(public name: string) {}
 
     public async get(key: string): Promise<any> {
-        return '';
+        const data = <any>await RedisCache.redis.get(this.key(key));
+
+        if (data) {
+            return JSON.parse(data);
+        }
+
+        return undefined;
     }
 
-    public async set(key: string, value: any, ttl?: number): Promise<boolean> {
-        return true;
+    public async set(
+        key: string,
+        value: any,
+        ttl?: number,
+        nx: boolean = false
+    ): Promise<boolean> {
+        const args: any[] = [
+            this.key(key),
+            JSON.stringify(value)
+        ];
+
+        if (ttl && ttl > 0) {
+            args.push('PX', ttl);
+        }
+
+        if (nx) {
+            args.push('NX');
+        }
+
+        return await RedisCache.redis.set.apply(RedisCache.redis, args);
     }
 
     public async del(key: string): Promise<boolean> {
-        return true;
+        return await RedisCache.redis.del(this.key(key));
     }
 
 }

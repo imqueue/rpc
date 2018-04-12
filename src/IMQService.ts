@@ -25,7 +25,8 @@ import {
     IMQRPCResponse,
     IMQServiceOptions,
     expose,
-    property
+    property,
+    ICache
 } from '.';
 import * as cluster from 'cluster';
 import * as os from 'os';
@@ -152,8 +153,9 @@ const DEFAULT_SERVICE_OPTIONS: Partial<IMQServiceOptions> = {
  */
 export abstract class IMQService {
 
-    protected mq: IMessageQueue;
+    protected imq: IMessageQueue;
     protected logger: ILogger;
+    protected cache: ICache;
 
     public name: string;
     public options: IMQServiceOptions;
@@ -168,11 +170,11 @@ export abstract class IMQService {
 
         options = Object.assign({}, DEFAULT_SERVICE_OPTIONS, options || {});
 
-        this.mq = IMQ.create(this.name, options);
-        this.options = (<any>this.mq).options;
+        this.imq = IMQ.create(this.name, options);
+        this.options = (<any>this.imq).options;
         this.logger = this.options.logger || console;
         this.handleRequest = this.handleRequest.bind(this);
-        this.mq.on('message', this.handleRequest);
+        this.imq.on('message', this.handleRequest);
     }
 
     private async handleRequest(msg: IMQRPCRequest, id: string, from: string) {
@@ -190,7 +192,7 @@ export abstract class IMQService {
                 this.name, process.pid
             );
 
-            return this.mq.start();
+            return this.imq.start();
         }
 
         if (cluster.isMaster) {
@@ -217,18 +219,18 @@ export abstract class IMQService {
                 process.pid
             );
 
-            return this.mq.start();
+            return this.imq.start();
         }
     }
 
     @profile()
     public async stop() {
-        await this.mq.stop();
+        await this.imq.stop();
     }
 
     @profile()
     public async destroy() {
-        await this.mq.destroy();
+        await this.imq.destroy();
     }
 
     /**

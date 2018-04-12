@@ -15,13 +15,12 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { ICache, RedisCache, ICacheConstructor } from '..';
+import { ICache, RedisCache, ICacheConstructor, signature } from '..';
 
 export interface CacheDecoratorOptions {
     adapter?: string | ICache | ICacheConstructor;
-    ttl?: number;
-    onExpire?: Function;
-    side?: 'client' | 'service' | 'both'
+    ttl?: number; // milliseconds
+    nx?: boolean; // rewrite only if not exists in cache
 }
 
 export interface CacheDecorator {
@@ -30,12 +29,54 @@ export interface CacheDecorator {
 }
 
 export const cache: CacheDecorator = function(options?: CacheDecoratorOptions) {
+    const cacheOptions: CacheDecoratorOptions =
+        Object.assign({}, cache.globalOptions, options || {});
+    let Adapter: any = cacheOptions.adapter ||
+        RedisCache;
+
+    if (typeof Adapter === 'string') {
+        Adapter = require(`./cache/${Adapter}.js`);
+    }
+
     return function(
         target: any,
         methodName: string | symbol,
         descriptor: TypedPropertyDescriptor<Function>
     ) {
+        const original = descriptor.value || (() => {});
 
+        descriptor.value = async function(...args: any[]) {
+            const context: any = this;
+            const className = this.constructor.name;
+
+            if (!context.cache) {
+                let opts: any = undefined;
+
+                if (context.imq) {
+                    opts = { conn: (<any>context.imq).writer };
+                }
+
+                context.cache = new Adapter(className);
+                await context.cache.init(opts);
+            }
+
+            const key = signature(className, methodName, args);
+
+            let result = await context.cache.get(key);
+
+            if (result === undefined) {
+                result = original.apply(this, args);
+
+                await context.cache.set(
+                    key,
+                    result,
+                    cacheOptions.ttl,
+                    !!cacheOptions.nx
+                );
+            }
+
+            return result;
+        };
     }
 }
 

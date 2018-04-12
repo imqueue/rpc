@@ -30,7 +30,7 @@ export function remote(...args: any[]) {
         methodName: string | symbol,
         descriptor: TypedPropertyDescriptor<Function>
     ) {
-        let original = descriptor.value || (() => {});
+        const original = descriptor.value || (() => {});
 
         descriptor.value = function(...args: any[]) {
             args.push(methodName);
