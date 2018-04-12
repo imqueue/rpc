@@ -1,4 +1,6 @@
 /*!
+ * IMQ-RPC Validators: numeric
+ *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -13,9 +15,38 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-export * from './IMQValidatorInterface';
-export * from './numeric';
-export * from './string';
-export * from './number';
-export * from './email';
-export * from './date';
+import { IMQValidatorInterface } from '.';
+
+/**
+ * Checks if a given value numeric (can be converted to a proper number)
+ *
+ * @param {any} value - value to validate
+ * @returns {boolean} - check result
+ */
+export const numeric: IMQValidatorInterface = function numeric(
+    value: any
+): boolean {
+    try {
+        return !isNaN(value) && isFinite(+value);
+    }
+
+    catch (err) {
+        return false;
+    }
+}
+
+/**
+ * Checks if a given value numeric integer
+ *
+ * @param {any} value- value to validate
+ * @returns {boolean} - check result
+ */
+numeric.int = function(value: any): boolean {
+    try {
+        return numeric(value) && Number.isInteger(+value);
+    }
+
+    catch (err) {
+        return false;
+    }
+}
