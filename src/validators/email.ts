@@ -39,4 +39,4 @@ export const email: IMQValidatorInterface = function email(value: any) {
     );
 
     return typeof value === 'string' && rx.test(value);
-}
+};

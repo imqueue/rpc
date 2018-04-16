@@ -25,7 +25,7 @@ import { IMQValidatorInterface } from '.';
  */
 export const string: IMQValidatorInterface = function string(value: any) {
     return typeof value === 'string';
-}
+};
 
 /**
  * Checks if a given value an empty string. By default all space characters
@@ -39,7 +39,7 @@ string.empty = function(trimSpace: boolean = true) {
     return (value: any) => string(value) && (trimSpace
         ? value.trim() === ""
         : value === "");
-}
+};
 
 /**
  * Checks if a given value is not empty string. By default all space characters
@@ -53,7 +53,7 @@ string.notEmpty = function(trimSpace: boolean = true) {
     return (value: any) => string(value) && (trimSpace
         ? value.trim() !== ""
         : value !== "");
-}
+};
 
 /**
  * Returns validation function which checks if a given value a string of a
@@ -64,7 +64,7 @@ string.notEmpty = function(trimSpace: boolean = true) {
  */
 string.len = function(len: number) {
     return (value: any) => string(value) && value.length === len;
-}
+};
 
 /**
  * Returns validation function which checks if a given value a string of
@@ -75,7 +75,7 @@ string.len = function(len: number) {
  */
 string.maxLen = function(maxLen: number) {
     return (value: any) => string(value) && value.length <= maxLen;
-}
+};
 
 /**
  * Returns validation function which checks if a given value a string of
@@ -86,7 +86,7 @@ string.maxLen = function(maxLen: number) {
  */
 string.minLen = function(minLen: number) {
     return (value: any) => string(value) && value.length >= minLen;
-}
+};
 
 /**
  * Returns validation function which checks if a given value a string
@@ -97,7 +97,7 @@ string.minLen = function(minLen: number) {
  */
 string.equal = function(val: string) {
     return (value: any) => string(value) && value === val;
-}
+};
 
 /**
  * Returns validation function which checks if a given value a string matching
@@ -108,4 +108,4 @@ string.equal = function(val: string) {
  */
 string.match = function(pattern: RegExp) {
     return (value: any) => string(value) && pattern.test(value);
-}
+};

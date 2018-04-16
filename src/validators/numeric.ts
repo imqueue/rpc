@@ -33,7 +33,7 @@ export const numeric: IMQValidatorInterface = function numeric(
     catch (err) {
         return false;
     }
-}
+};
 
 /**
  * Checks if a given value numeric integer
@@ -49,4 +49,4 @@ numeric.int = function(value: any): boolean {
     catch (err) {
         return false;
     }
-}
+};

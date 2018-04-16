@@ -25,7 +25,7 @@ import { IMQValidatorInterface } from '.';
  */
 export const number: IMQValidatorInterface = function number(value: any) {
     return typeof value === 'number';
-}
+};
 
 /**
  * Checks if a given number a valid integer type
@@ -35,7 +35,7 @@ export const number: IMQValidatorInterface = function number(value: any) {
  */
 number.int = function(value: any) {
     return number(value) && Number.isInteger(value);
-}
+};
 
 /**
  * Returns validate function to check if a given number value greater than
@@ -46,7 +46,7 @@ number.int = function(value: any) {
  */
 number.gt = function(val: number) {
     return (value: any) => number(value) && value > val;
-}
+};
 
 /**
  * Returns validate function to check if a given number value greater than
@@ -57,7 +57,7 @@ number.gt = function(val: number) {
  */
 number.gte = function(val: number) {
     return (value: any) => number(value) && value >= val;
-}
+};
 
 /**
  * Returns validate function to check if a given number value less than
@@ -68,7 +68,7 @@ number.gte = function(val: number) {
  */
 number.lt = function(val: number) {
     return (value: any) => number(value) && value < val;
-}
+};
 
 /**
  * Returns validate function to check if a given number value less than
@@ -79,7 +79,7 @@ number.lt = function(val: number) {
  */
 number.lte = function(val: number) {
     return (value: any) => number(value) && value <= val;
-}
+};
 
 /**
  * Returns validate function to check if a given number value equals given
@@ -90,7 +90,7 @@ number.lte = function(val: number) {
  */
 number.eq = function(val: number) {
     return (value: any) => number(value) && value === val;
-}
+};
 
 /**
  * Returns validate function to check if a given number is in between
@@ -102,4 +102,4 @@ number.eq = function(val: number) {
  */
 number.between = function(min: number, max: number) {
     return (value: any) => number(value) && (value >= min && value <= max);
-}
+};
