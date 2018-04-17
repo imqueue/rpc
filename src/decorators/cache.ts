@@ -15,8 +15,7 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { ICache, RedisCache, ICacheConstructor, signature } from '..';
-import { IMQCache } from "../IMQCache";
+import { IMQCache, ICache, RedisCache, ICacheConstructor, signature } from '..';
 
 export interface CacheDecoratorOptions {
     adapter?: string | ICache | ICacheConstructor;
@@ -34,8 +33,6 @@ export const cache: CacheDecorator = function(options?: CacheDecoratorOptions) {
         Object.assign({}, cache.globalOptions, options || {});
     let Adapter: any = cacheOptions.adapter || RedisCache;
 
-    IMQCache.register(Adapter);
-
     return function(
         target: any,
         methodName: string | symbol,
@@ -48,20 +45,29 @@ export const cache: CacheDecorator = function(options?: CacheDecoratorOptions) {
             const className = this.constructor.name;
 
             if (!context.cache) {
-                let opts: any = undefined;
+                let cache = IMQCache.get(Adapter);
 
-                if (context.imq && context.imq.writer) {
-                    opts = { conn: (<any>context.imq).writer };
+                if (cache && cache.ready) {
+                    context.cache = cache;
                 }
 
-                if (context.imq && context.imq.logger) {
-                    opts = Object.assign(opts || {}, {
-                        logger: context.imq.logger
-                    });
-                }
+                else {
+                    let opts: any = undefined;
 
-                context.cache = IMQCache.get(Adapter);
-                await context.cache.init(opts);
+                    if (context.imq && context.imq.writer) {
+                        opts = { conn: (<any>context.imq).writer };
+                    }
+
+                    if (context.imq && context.imq.logger) {
+                        opts = Object.assign(opts || {}, {
+                            logger: context.imq.logger
+                        });
+                    }
+
+                    await IMQCache.register(Adapter, opts).init();
+
+                    context.cache = IMQCache.get(Adapter);
+                }
             }
 
             const key = signature(className, methodName, args);

@@ -39,6 +39,7 @@ export class RedisCache implements ICache {
     private logger: ILogger;
     public options: IRedisCacheOptions;
     public name: string = RedisCache.name;
+    public ready: boolean = false;
 
     public async init(options?: IRedisCacheOptions) {
         if (RedisCache.redis) {
@@ -65,8 +66,11 @@ export class RedisCache implements ICache {
 
             RedisCache.redis.on('ready', async () => {
                 this.logger.info(
-                    '%s: redis cache connected, pid %s',
-                    this.name, process.pid
+                    '%s: redis cache connected, host %s:%s, pid %s',
+                    this.name,
+                    this.options.host,
+                    this.options.port,
+                    process.pid
                 );
 
                 await RedisCache.redis.client(
@@ -74,6 +78,8 @@ export class RedisCache implements ICache {
                     `${this.options.prefix}:${this.name
                     }:pid:${process.pid}:host:${os.hostname()}`
                 );
+
+                this.ready = true;
 
                 resolve(this);
             });

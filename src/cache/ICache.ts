@@ -22,8 +22,9 @@ export interface ICacheConstructor {
 export interface ICache {
 
     name: string;
-    init(options?: any): void;
+    ready: boolean;
 
+    init(options?: any): void;
     get(key: string): Promise<any>;
     set(key: string, value: any, ttl?: number): Promise<boolean>;
     del(key: string): Promise<boolean>;

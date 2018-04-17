@@ -17,30 +17,102 @@
  */
 import { ICache } from '.';
 
+/**
+ * Generic cache registry
+ */
 export class IMQCache {
 
+    private static options: { [name: string]: any } = {};
     public static adapters: { [name: string]: ICache } = {};
 
-    public static register(adapter: ICache | string) {
+    /**
+     * Registers given cache adapter
+     *
+     * @param { ICache | string} adapter - adapter name or class or instance
+     * @param {any} options - adapter specific options
+     * @returns {IMQCache}
+     */
+    public static register(adapter: ICache | string, options?: any) {
         const self = IMQCache;
 
         if (typeof adapter === 'string') {
-            adapter = <ICache>new (require(
-                `${__dirname}/cache/${adapter}.js`
-            )[adapter])();
-        }
-
-        if (!self.adapters[adapter.name]) {
-            if (typeof adapter === 'function') {
-                self.adapters[(<any>adapter).name] = new (<any>adapter)();
-            }
-
-            else {
-                self.adapters[adapter.name] = adapter;
+            if (!self.adapters[adapter]) {
+                self.adapters[adapter] = <ICache>new (require(
+                    `${__dirname}/cache/${adapter}.js`
+                )[adapter])();
             }
         }
+
+        else {
+            if (!self.adapters[adapter.name]) {
+                if (typeof adapter === 'function') {
+                    self.adapters[(<any>adapter).name] = new (<any>adapter)();
+                }
+
+                else {
+                    self.adapters[adapter.name] = adapter;
+                }
+            }
+        }
+
+        self.apply(adapter, options);
+
+        return self;
     }
 
+    /**
+     * Overrides existing adapter options with the given
+     *
+     * @param { ICache | string} adapter - adapter to apply options to
+     * @param {any} options - adapter specific options
+     * @returns {IMQCache}
+     */
+    public static apply(adapter: ICache | string, options: any) {
+        const self = IMQCache;
+
+        if (!options) {
+            return self;
+        }
+
+        const name = typeof adapter === 'string' ? adapter : adapter.name;
+
+        let opts = self.options[name] || {};
+
+        self.options[name] = Object.assign(opts, options);
+
+        return self;
+    }
+
+    /**
+     * Initializes all registered cache adapters
+     *
+     * @returns {Promise<any>}
+     */
+    public static async init() {
+        const self: any = IMQCache;
+        const promises = [];
+
+        for (let adapter of Object.keys(self.adapters)) {
+            if (!self.adapters[adapter].ready) {
+                promises.push(
+                    self.adapters[adapter].init(
+                        self.options[adapter]
+                    )
+                );
+            }
+        }
+
+        await Promise.all(promises);
+
+        return self;
+    }
+
+    /**
+     * Returns registered cache adapter by its given name or class
+     *
+     * @param { ICache | string} adapter - adapter name or class
+     * @returns {ICache} - adapter instance
+     */
     public static get(adapter: ICache | string): ICache {
         return IMQCache.adapters[
             typeof adapter === 'string' ? adapter : adapter.name
