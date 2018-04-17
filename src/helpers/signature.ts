@@ -17,6 +17,15 @@
  */
 const hash = require('murmurhash-native');
 
+/**
+ * Constructs and returns hash string for a given set of className, methodName
+ * and arguments.
+ *
+ * @param {string} className
+ * @param {string | symbol} methodName
+ * @param {any[]} args
+ * @returns {string}
+ */
 export function signature(
     className: string,
     methodName: string | symbol,

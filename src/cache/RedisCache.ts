@@ -34,6 +34,9 @@ export const DEFAULT_REDIS_CACHE_OPTIONS = Object.assign(
         prefix: 'imq-cache'
     });
 
+/**
+ * Class RedisCache. Implements cache engine over redis.
+ */
 export class RedisCache implements ICache {
     private static redis: IRedisClient;
     private logger: ILogger;
@@ -41,7 +44,13 @@ export class RedisCache implements ICache {
     public name: string = RedisCache.name;
     public ready: boolean = false;
 
-    public async init(options?: IRedisCacheOptions) {
+    /**
+     * Initializes cache instance
+     *
+     * @param {IRedisCacheOptions} options
+     * @returns {Promise<RedisCache>}
+     */
+    public async init(options?: IRedisCacheOptions): Promise<RedisCache> {
         if (RedisCache.redis) {
             return this;
         }
@@ -58,7 +67,7 @@ export class RedisCache implements ICache {
             return this;
         }
 
-        return new Promise((resolve, reject) => {
+        return new Promise<RedisCache>((resolve, reject) => {
             RedisCache.redis = <IRedisClient>redis.createClient(
                 Number(this.options.port),
                 String(this.options.host)
@@ -95,10 +104,23 @@ export class RedisCache implements ICache {
         });
     }
 
+    /**
+     * Returns fully qualified key name for a given generic key
+     *
+     * @access private
+     * @param {string} key
+     * @returns {string}
+     */
     private key(key: string) {
         return `${this.options.prefix}:${this.name}:${key}`;
     }
 
+    /**
+     * Returns value stored in cache by a given key
+     *
+     * @param {string} key
+     * @returns {Promise<any>}
+     */
     public async get(key: string): Promise<any> {
         const data = <any>await RedisCache.redis.get(this.key(key));
 
@@ -109,6 +131,19 @@ export class RedisCache implements ICache {
         return undefined;
     }
 
+    /**
+     * Stores in cache given value under given key. If TTL is specified,
+     * cached value will expire in a given number of milliseconds. If NX
+     * argument set to true will create key:value in cache only if it does
+     * not exists yet. Given value could be any JSON-compatible object and
+     * will be serialized automatically.
+     *
+     * @param {string} key
+     * @param {any} value
+     * @param {number} ttl
+     * @param {boolean} nx
+     * @returns {Promise<boolean>}
+     */
     public async set(
         key: string,
         value: any,
@@ -131,6 +166,12 @@ export class RedisCache implements ICache {
         return await RedisCache.redis.set.apply(RedisCache.redis, args);
     }
 
+    /**
+     * Removes stored in cache value under given key
+     *
+     * @param {string} key
+     * @returns {Promise<boolean>}
+     */
     public async del(key: string): Promise<boolean> {
         return await RedisCache.redis.del(this.key(key));
     }
