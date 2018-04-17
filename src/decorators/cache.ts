@@ -16,6 +16,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 import { ICache, RedisCache, ICacheConstructor, signature } from '..';
+import { IMQCache } from "../IMQCache";
 
 export interface CacheDecoratorOptions {
     adapter?: string | ICache | ICacheConstructor;
@@ -31,12 +32,9 @@ export interface CacheDecorator {
 export const cache: CacheDecorator = function(options?: CacheDecoratorOptions) {
     const cacheOptions: CacheDecoratorOptions =
         Object.assign({}, cache.globalOptions, options || {});
-    let Adapter: any = cacheOptions.adapter ||
-        RedisCache;
+    let Adapter: any = cacheOptions.adapter || RedisCache;
 
-    if (typeof Adapter === 'string') {
-        Adapter = require(`./cache/${Adapter}.js`);
-    }
+    IMQCache.register(Adapter);
 
     return function(
         target: any,
@@ -52,11 +50,17 @@ export const cache: CacheDecorator = function(options?: CacheDecoratorOptions) {
             if (!context.cache) {
                 let opts: any = undefined;
 
-                if (context.imq) {
+                if (context.imq && context.imq.writer) {
                     opts = { conn: (<any>context.imq).writer };
                 }
 
-                context.cache = new Adapter(className);
+                if (context.imq && context.imq.logger) {
+                    opts = Object.assign(opts || {}, {
+                        logger: context.imq.logger
+                    });
+                }
+
+                context.cache = IMQCache.get(Adapter);
                 await context.cache.init(opts);
             }
 

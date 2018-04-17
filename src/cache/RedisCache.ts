@@ -38,16 +38,16 @@ export class RedisCache implements ICache {
     private static redis: IRedisClient;
     private logger: ILogger;
     public options: IRedisCacheOptions;
+    public name: string = RedisCache.name;
 
     public async init(options?: IRedisCacheOptions) {
         if (RedisCache.redis) {
             return this;
         }
 
-        if (options) {
-            this.options = Object.assign(
-                {}, DEFAULT_REDIS_CACHE_OPTIONS, options);
-        }
+        this.options = Object.assign(
+            {}, DEFAULT_REDIS_CACHE_OPTIONS, options || {}
+        );
 
         this.logger = this.options.logger || console;
 
@@ -92,8 +92,6 @@ export class RedisCache implements ICache {
     private key(key: string) {
         return `${this.options.prefix}:${this.name}:${key}`;
     }
-
-    constructor(public name: string) {}
 
     public async get(key: string): Promise<any> {
         const data = <any>await RedisCache.redis.get(this.key(key));

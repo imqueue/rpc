@@ -15,11 +15,11 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { ICache } from './cache';
+import { ICache } from '.';
 
 export class IMQCache {
 
-    private static adapters: { [name: string]: ICache } = {};
+    public static adapters: { [name: string]: ICache } = {};
 
     public static register(adapter: ICache | string) {
         const self = IMQCache;
@@ -31,23 +31,20 @@ export class IMQCache {
         }
 
         if (!self.adapters[adapter.name]) {
-            self.adapters[adapter.name] = adapter;
+            if (typeof adapter === 'function') {
+                self.adapters[(<any>adapter).name] = new (<any>adapter)();
+            }
+
+            else {
+                self.adapters[adapter.name] = adapter;
+            }
         }
     }
 
-    public static async init() {
-        const self = IMQCache;
-        const promises: any[] = [];
-
-        for (let name of Object.keys(self.adapters)) {
-            promises.push(self.adapters[name].init());
-        }
-
-        return await Promise.all(promises);
-    }
-
-    public static get(name: string): ICache {
-        return IMQCache.adapters[name];
+    public static get(adapter: ICache | string): ICache {
+        return IMQCache.adapters[
+            typeof adapter === 'string' ? adapter : adapter.name
+        ];
     }
 
 }
