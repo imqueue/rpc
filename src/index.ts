@@ -13,7 +13,6 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-export * from './validators';
 export * from './decorators';
 export * from './helpers';
 export * from './cache';

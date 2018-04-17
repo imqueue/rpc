@@ -20,8 +20,7 @@ import * as acorn from 'acorn';
 import {
     ArgDescription,
     ReturnValueDescription,
-    IMQRPCDescription,
-    IMQValidatorInterface
+    IMQRPCDescription
 } from '..';
 
 const TS_TYPES = [
@@ -303,24 +302,6 @@ function cast(type: string) {
 }
 
 /**
- * Expose decorator options interface
- */
-export interface ExposeOptions {
-    validateSignature: boolean;
-    validateArgs: boolean | { [argPosition: number]: IMQValidatorInterface[] }
-}
-
-/**
- * Default expose decorator options to apply.
- *
- * @type {ExposeOptions}
- */
-const DEFAULT_EXPOSE_OPTIONS: ExposeOptions = {
-    validateSignature: true,
-    validateArgs: true
-}
-
-/**
  * Expose decorator factory
  *
  * @param {Partial<ExposeOptions>} options
@@ -330,9 +311,7 @@ const DEFAULT_EXPOSE_OPTIONS: ExposeOptions = {
  *    descriptor: TypedPropertyDescriptor<Function>
  * ) => void} - decorator function
  */
-export function expose(
-    options: Partial<ExposeOptions> = DEFAULT_EXPOSE_OPTIONS
-): Function {
+export function expose(): Function {
     return function(
         target: any,
         methodName: string | symbol,

@@ -26,22 +26,65 @@ import {
     IMQServiceOptions,
     expose,
     property,
-    ICache
+    ICache,
+    ServiceClassDescription,
+    MethodsCollectionDescription
 } from '.';
 import * as cluster from 'cluster';
 import * as os from 'os';
+import { ArgDescription } from "./IMQRPCDescription";
 
 export class Description {
-    @property('ServiceDescription')
-    service: ServiceDescription;
-
-    @property('TypesDescription')
+    service: {
+        name: string,
+        methods: MethodsCollectionDescription
+    };
     types: TypesDescription;
 }
 
 const DEFAULT_SERVICE_OPTIONS: Partial<IMQServiceOptions> = {
     multiProcess: false,
     childrenPerCore: 1
+}
+
+let serviceDescription: Description | null = null;
+
+/**
+ * Returns collection of class methods metadata even those are inherited
+ * from a chain of parent classes
+ *
+ * @param {string} className
+ * @return {MethodsCollectionMetadata}
+ */
+function getClassMethods(className: string): MethodsCollectionDescription {
+    let methods: MethodsCollectionDescription = {};
+    let classInfo: ServiceClassDescription =
+        IMQRPCDescription.serviceDescription[className];
+
+    if (
+        classInfo.inherits &&
+        IMQRPCDescription.serviceDescription[classInfo.inherits]
+    ) {
+        Object.assign(methods, getClassMethods(classInfo.inherits));
+    }
+
+    Object.assign(methods, classInfo.methods);
+
+    return methods;
+}
+
+/**
+ * Checks if given args match given args description at least by args count
+ *
+ * @param {ArgDescription[]} argsInfo
+ * @param {any[]} args
+ * @returns {boolean}
+ */
+function isValidArgsCount(argsInfo: ArgDescription[], args: any[]) {
+    return (argsInfo.some(argInfo => argInfo.isOptional)
+        ? argsInfo.length >= args.length
+        : argsInfo.length === args.length
+    );
 }
 
 /**
@@ -153,6 +196,8 @@ const DEFAULT_SERVICE_OPTIONS: Partial<IMQServiceOptions> = {
  */
 export abstract class IMQService {
 
+    [property: string]: any;
+
     protected imq: IMessageQueue;
     protected logger: ILogger;
     protected cache: ICache;
@@ -178,7 +223,71 @@ export abstract class IMQService {
     }
 
     private async handleRequest(msg: IMQRPCRequest, id: string, from: string) {
+        const method = msg.method;
+        const description = await this.describe();
+        const args = msg.args;
+        let response: IMQRPCResponse = {
+            to: id,
+            data: null,
+            error: null
+        };
 
+        if (!this[method]) {
+            response.error = {
+                code: 'IMQ_RPC_NO_METHOD',
+                message: `Method ${this.name}.${method}() does not exist.`,
+                stack: new Error().stack || '',
+                method: method || '',
+                args: JSON.stringify(args, null, 2)
+            }
+        }
+
+        if (!description.service.methods[method]) {
+            response.error = {
+                code: 'IMQ_RPC_NO_ACCESS',
+                message: `Access to ${this.name}.${method}() denied!`,
+                stack: new Error().stack || '',
+                method: method || '',
+                args: JSON.stringify(args, null, 2)
+            };
+        }
+
+        if (!isValidArgsCount(
+            description.service.methods[method].arguments,
+            args
+        )) {
+            response.error = {
+                code: 'IMQ_RPC_INVALID_ARGS_COUNT',
+                message: `Invalid args count for ${this.name}.${method}().`,
+                stack: new Error().stack || '',
+                method: method || '',
+                args: JSON.stringify(args, null, 2)
+            };
+        }
+
+        if (response.error) {
+            return response;
+        }
+
+        try {
+            response.data = this[method].apply(this, args);
+
+            if (response.data && response.data.then) {
+                response.data = await response.data;
+            }
+        }
+
+        catch (err) {
+            response.error = {
+                code: 'IMQ_RPC_CALL_ERROR',
+                message: err.message,
+                stack: err.stack || new Error().stack || '',
+                method: method || '',
+                args: JSON.stringify(args, null, 2)
+            };
+        }
+
+        return response;
     }
 
     @profile()
@@ -219,6 +328,8 @@ export abstract class IMQService {
                 process.pid
             );
 
+            this.describe();
+
             return this.imq.start();
         }
     }
@@ -240,11 +351,18 @@ export abstract class IMQService {
      */
     @profile()
     @expose()
-    public async describe(): Promise<Description> {
-        return {
-            service: IMQRPCDescription.serviceDescription,
-            types: IMQRPCDescription.typesDescription
-        };
+    public describe(): Description {
+        if (!serviceDescription) {
+            serviceDescription = {
+                service: {
+                    name: this.name,
+                    methods: getClassMethods(this.constructor.name)
+                },
+                types: IMQRPCDescription.typesDescription
+            };
+        }
+
+        return serviceDescription;
     }
 
 }

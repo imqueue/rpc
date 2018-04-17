@@ -24,6 +24,6 @@ import { IMQRPCError } from '.';
  */
 export interface IMQRPCResponse extends IJson {
     to: string;
-    data: IJson;
+    data: IJson | null;
     error: IMQRPCError | null;
 }
