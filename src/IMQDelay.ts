@@ -1,5 +1,5 @@
 /*!
- * IMQ-RPC Interfaces: IMQRPCResponse
+ * IMQDelay implementation
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -15,16 +15,19 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { IJson } from 'imq';
-import { IMQRPCError, IMQRPCRequest } from '.';
+export class IMQDelay {
+    public get ms() {
+        switch (this.unit) {
+            case 'ms': return this.timer;
+            case 's': return this.timer * 1000;
+            case 'm': return this.timer * 60000;
+            case 'h': return this.timer * 3600000;
+            case 'd': return this.timer * 86400000;
+        }
+    }
 
-/**
- * Response message data structure, which service replies to handled
- * requests.
- */
-export interface IMQRPCResponse extends IJson {
-    to: string;
-    data: IJson | null;
-    error: IMQRPCError | null;
-    request: IMQRPCRequest
+    constructor(
+        public timer: number,
+        public unit: 'ms' | 's' | 'm' | 'h' | 'd' = 'ms'
+    ) {}
 }

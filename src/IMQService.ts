@@ -229,7 +229,8 @@ export abstract class IMQService {
         let response: IMQRPCResponse = {
             to: id,
             data: null,
-            error: null
+            error: null,
+            request: msg
         };
 
         if (!this[method]) {
