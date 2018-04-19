@@ -45,7 +45,7 @@ export class Description {
 const DEFAULT_SERVICE_OPTIONS: Partial<IMQServiceOptions> = {
     multiProcess: false,
     childrenPerCore: 1
-}
+};
 
 let serviceDescription: Description | null = null;
 
@@ -54,7 +54,7 @@ let serviceDescription: Description | null = null;
  * from a chain of parent classes
  *
  * @param {string} className
- * @return {MethodsCollectionMetadata}
+ * @return {MethodsCollectionDescription}
  */
 function getClassMethods(className: string): MethodsCollectionDescription {
     let methods: MethodsCollectionDescription = {};
@@ -222,7 +222,7 @@ export abstract class IMQService {
         this.imq.on('message', this.handleRequest);
     }
 
-    private async handleRequest(msg: IMQRPCRequest, id: string, from: string) {
+    private async handleRequest(msg: IMQRPCRequest, id: string) {
         const method = msg.method;
         const description = await this.describe();
         const args = msg.args;
