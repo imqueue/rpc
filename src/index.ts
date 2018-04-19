@@ -18,7 +18,6 @@ export * from './helpers';
 export * from './cache';
 export * from './IMQCache';
 export * from './IMQServiceOptions';
-export * from './IMQRPCAuth';
 export * from './IMQRPCDescription';
 export * from './IMQRPCError';
 export * from './IMQRPCRequest';
