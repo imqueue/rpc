@@ -1,4 +1,6 @@
 /*!
+ * IMQ-RPC helpers: osUuid
+ *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -13,6 +15,13 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-export * from './signature';
-export * from './os-uuid';
-export * from './pid';
+const { machineIdSync } = require('node-machine-id');
+
+/**
+ * Returns machine UUID
+ *
+ * @returns {string}
+ */
+export function osUuid(): string {
+    return machineIdSync({ original: true });
+}

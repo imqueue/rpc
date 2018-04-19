@@ -15,7 +15,55 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
+import IMQ, {
+    IMessageQueue,
+    IMQOptions,
+    DEFAULT_IMQ_OPTIONS,
+    ILogger
+} from 'imq';
+import { IMQServiceOptions, pid } from '.';
 
-export class IMQClient {
+export abstract class IMQClient {
+
+    public options: IMQOptions = DEFAULT_IMQ_OPTIONS;
+    private imq: IMessageQueue;
+    private name: string;
+    private serviceName: string;
+    private logger: ILogger;
+
+    public constructor(options?: Partial<IMQOptions>) {
+        if (this.constructor.name === 'IMQClient') {
+            throw new TypeError('IMQClient class is abstract and can not' +
+                'be instantiated directly!');
+        }
+
+        if (options) {
+            this.options = Object.assign(this.options, options);
+        }
+
+        this.logger = this.options.logger || console;
+
+        this.name = `${this.constructor.name}-${pid(this.constructor.name)}`;
+        this.serviceName = this.constructor.name.replace(/Client$/, '');
+        this.imq = IMQ.create(this.name, this.options);
+    }
+
+    protected async sendRequest<T>(...args: any[]): Promise<T> {
+        return new Promise<T>((resolve, reject) => {
+
+        });
+    }
+
+    public async start() {
+
+    }
+
+    public async stop() {
+
+    }
+
+    public async destroy() {
+
+    }
 
 }
