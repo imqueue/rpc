@@ -16,3 +16,4 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 export * from './src';
+export * from 'imq';
