@@ -22,7 +22,7 @@
   "author": "Mykhailo Stadnyk <mikhus@gmail.com> (https://github.com/Mikhus)",
   "license": "ISC",
   "dependencies": {
-    "imq": "^1.2.4",
+    "imq": "^1.2.5",
     "lockfile": "^1.0.4",
     "murmurhash-native": "^3.2.2",
     "node-machine-id": "^1.1.10"
