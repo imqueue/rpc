@@ -1,5 +1,5 @@
 /*!
- * Message Queue factory for Philz Coffee project
+ * Message Queue exports
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
