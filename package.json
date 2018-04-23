@@ -59,9 +59,6 @@
   "typescript": {
     "definitions": "index.d.ts"
   },
-  "bin": {
-    "imq-rpc": "./cli.js"
-  },
   "nyc": {
     "extension": [
       ".ts"
