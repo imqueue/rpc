@@ -32,4 +32,9 @@ debug*
 .DS_Store
 Thumbs.db
 
-benchmark-result/*
+test/
+
+*.js.map
+*.ts
+!*.d.ts
+tsconfig.json

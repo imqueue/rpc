@@ -178,7 +178,15 @@ function parseDescriptions(name: string, src: string) {
     };
 
     for (let node of nodes) {
+        if (!node) {
+            continue;
+        }
+
         if (node.type !== 'ClassDeclaration') {
+            continue;
+        }
+
+        if (!node.id) {
             continue;
         }
 
