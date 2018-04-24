@@ -18,16 +18,20 @@
 import IMQ, {
     IMessageQueue,
     IMQOptions,
-    DEFAULT_IMQ_OPTIONS,
     ILogger
 } from 'imq';
 import {
     pid,
+    forgetPid,
     osUuid,
+    DEFAULT_IMQ_CLIENT_OPTIONS,
+    ServiceDescription,
     IMQServiceOptions,
+    IMQClientOptions,
     IMQRPCResponse,
     IMQRPCRequest,
-    IMQDelay
+    IMQDelay,
+    remote
 } from '.';
 import { EventEmitter } from 'events';
 
@@ -38,7 +42,8 @@ const SIGNALS: string[] = ['SIGTERM', 'SIGINT', 'SIGHUP', 'SIGBREAK'];
  */
 export abstract class IMQClient extends EventEmitter {
 
-    public options: IMQOptions = DEFAULT_IMQ_OPTIONS;
+    public options: IMQClientOptions;
+    public id: number;
     private imq: IMessageQueue;
     private name: string;
     private serviceName: string;
@@ -54,32 +59,28 @@ export abstract class IMQClient extends EventEmitter {
      * @param {string} name
      */
     public constructor(
-        options?: Partial<IMQOptions>,
+        options?: Partial<IMQClientOptions>,
         serviceName?: string,
         name?: string
     ) {
         super();
+
+        const baseName: string = name || this.constructor.name;
 
         if (this.constructor.name === 'IMQClient') {
             throw new TypeError('IMQClient class is abstract and can not' +
                 'be instantiated directly!');
         }
 
-        if (options) {
-            this.options = Object.assign(this.options, options);
-        }
+        this.options = Object.assign({},
+            DEFAULT_IMQ_CLIENT_OPTIONS,
+            options || {}
+        );
 
+        this.id = pid(baseName);
         this.logger = this.options.logger || console;
-
-        this.name = name
-            ? name
-            : `${this.constructor.name}-${osUuid()}-${
-                pid(this.constructor.name)}`;
-
-        this.serviceName = serviceName
-            ? serviceName
-            : this.constructor.name.replace(/Client$/, '');
-
+        this.name = `${baseName}-${osUuid()}-${this.id}`;
+        this.serviceName = serviceName || baseName.replace(/Client$/, '');
         this.imq = IMQ.create(this.name, this.options);
 
         this.imq.on('message', (message: IMQRPCResponse) => {
@@ -104,6 +105,7 @@ export abstract class IMQClient extends EventEmitter {
         });
 
         const terminate = async () => {
+            forgetPid(baseName, this.id, this.logger);
             await this.destroy();
             process.nextTick(() => process.exit(0));
         };
@@ -119,7 +121,7 @@ export abstract class IMQClient extends EventEmitter {
      * @param {...any[]} args
      * @returns {Promise<T>}
      */
-    protected async sendRequest<T>(...args: any[]): Promise<T> {
+    protected async remoteCall<T>(...args: any[]): Promise<T> {
         const method = args.pop();
         const from = this.name;
         const to = this.serviceName;
@@ -178,4 +180,51 @@ export abstract class IMQClient extends EventEmitter {
         await this.imq.destroy();
     }
 
+    /**
+     * Creates client for a sirvice with the given name
+     *
+     * @param {string} name
+     * @param {Partial<IMQServiceOptions>} options
+     * @returns {IMQClient}
+     */
+    public static async create(
+        name: string,
+        options?: Partial<IMQClientOptions>
+    ): Promise<IMQClient> {
+        const clientOptions: IMQClientOptions = Object.assign({},
+            DEFAULT_IMQ_CLIENT_OPTIONS,
+            options
+        );
+        const Client = require(await generator(name, clientOptions));
+
+        return new Client(clientOptions, name);
+    }
+
+}
+
+/**
+ * Class GeneratorClient - generator helper class implementation
+ * @access private
+ */
+class GeneratorClient extends IMQClient {
+    @remote()
+    public async describe() {
+        return await this.remoteCall<ServiceDescription>(...arguments);
+    }
+}
+
+/**
+ * Client generator helper function
+ *
+ * @access private
+ * @param {string} name
+ * @param {IMQClientOptions} options
+ * @return {Promise<string>}
+ */
+async function generator(
+    name: string,
+    options: IMQClientOptions
+): Promise<string> {
+
+    return '';
 }

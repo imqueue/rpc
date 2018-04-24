@@ -15,9 +15,32 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { IMQOptions } from 'imq';
+import { DEFAULT_IMQ_OPTIONS, IMQOptions } from 'imq';
 
 export interface IMQServiceOptions extends IMQOptions {
     multiProcess: boolean;
     childrenPerCore: number;
 }
+
+export interface IMQClientOptions extends IMQOptions {
+    path: string
+}
+
+/**
+ * Default service options
+ *
+ * @type {IMQServiceOptions}
+ */
+export const DEFAULT_IMQ_SERVICE_OPTIONS: IMQServiceOptions = Object.assign({
+    multiProcess: false,
+    childrenPerCore: 1
+}, DEFAULT_IMQ_OPTIONS);
+
+/**
+ * Default client options
+ *
+ * @type {IMQClientOptions}
+ */
+export const DEFAULT_IMQ_CLIENT_OPTIONS: IMQClientOptions = Object.assign({
+    path: './src/clients'
+}, DEFAULT_IMQ_OPTIONS);

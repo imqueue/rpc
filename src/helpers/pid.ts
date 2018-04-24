@@ -1,5 +1,5 @@
 /*!
- * IMQ-RPC helpers: pid
+ * IMQ-RPC helpers: pid, forgetPid
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -15,8 +15,12 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
+import * as path from 'path';
 import * as fs from 'fs';
-import * as lock from 'lockfile';
+import { ILogger } from 'imq';
+
+export const IMQ_TMP_DIR = process.env.TMPDIR || '/tmp';
+export const IMQ_PID_DIR = path.resolve(IMQ_TMP_DIR, '.imq-rpc');
 
 /**
  * Returns increment-based process identifier for a given name
@@ -24,30 +28,47 @@ import * as lock from 'lockfile';
  * @returns {number}
  */
 export function pid(name: string): number {
-    const tmpDir = process.env.TMPDIR;
-    const pidDir = fs.realpathSync(__dirname + '../../.pid');
-    const pidFile = `${pidDir}/${name}.pid`;
-    const lockFile = `${tmpDir}/${name}.lock`;
-    const lockOpts = { wait: 100, retries: 3 };
-    const pidOpts = { encoding: 'utf8' };
+    const pidFile = `${IMQ_PID_DIR}/${name}`;
+    const pidOpts = { encoding: 'utf8', flag: 'wx' };
 
-    if (!fs.existsSync(pidDir)) {
-        fs.mkdirSync(pidDir);
+    if (!fs.existsSync(IMQ_PID_DIR)) {
+        fs.mkdirSync(IMQ_PID_DIR);
     }
 
-    lock.lockSync(lockFile, lockOpts);
+    let id: number = 0;
+    let done: boolean = false;
 
-    if (!fs.existsSync(pidFile)) {
-        fs.writeFileSync(pidFile, '0', pidOpts);
-        lock.unlockSync(lockFile);
+    while (!done) {
+        try {
+            fs.writeFileSync(`${pidFile}-${id}.pid`, process.pid, pidOpts);
+            done = true;
+        }
 
-        return 0;
+        catch (err) {
+            if (err.code === 'EEXIST') {
+                id++;
+            }
+
+            else {
+                throw err;
+            }
+        }
     }
-
-    let id = parseInt(fs.readFileSync(pidFile, pidOpts), 10) || 0;
-
-    fs.writeFileSync(pidFile, ++id, pidOpts);
-    lock.unlockSync(lockFile);
 
     return id;
+}
+
+/**
+ * Removes pid file for a given name and id
+ *
+ * @param {string} name
+ * @param {number} id
+ * @param {ILogger} logger
+ */
+export function forgetPid(name: string, id: number, logger: ILogger) {
+    try {
+        fs.unlinkSync(`${IMQ_PID_DIR}/${name}-${id}.pid`);
+    }
+
+    catch (err) { /* ignore */ }
 }

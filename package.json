@@ -22,8 +22,8 @@
   "author": "Mykhailo Stadnyk <mikhus@gmail.com> (https://github.com/Mikhus)",
   "license": "ISC",
   "dependencies": {
+    "acorn-es7-plugin": "^1.1.7",
     "imq": "^1.2.6",
-    "lockfile": "^1.0.4",
     "murmurhash-native": "^3.2.2",
     "node-machine-id": "^1.1.10"
   },

@@ -23,6 +23,8 @@ import {
     IMQRPCDescription
 } from '..';
 
+require('acorn-es7-plugin')(acorn);
+
 const TS_TYPES = [
     'object',
     'string',
@@ -52,7 +54,8 @@ type ClassDescriptions = {
 
 const descriptions: ClassDescriptions = {};
 
-const RX_ARG_NAMES = /([^\s,]+)/g;
+const RX_ARG_NAMES = /^(\S+)([=\s]+.*?)?$/;
+const RX_COMMA_SPLIT = /\s*,\s*/;
 const RX_MULTILINE_CLEANUP = /\*?\n +\* ?/g;
 const RX_DESCRIPTION = /^([\s\S]*?)@/;
 const RX_TAG = /(@[^@]+)/g;
@@ -68,10 +71,12 @@ const RX_OPTIONAL = /^\[(.*?)\]$/;
  * @return {string[]}
  */
 function argumentNames(fn: Function): string[] {
-    let src: string = fn.toString();//.replace(STRIP_COMMENTS, '');
+    let src: string = fn.toString();
     let args: string[] | null = src.slice(
-        src.indexOf('(')+1, src.indexOf(')')
-    ).match(RX_ARG_NAMES);
+        src.indexOf('(') + 1, src.indexOf(')')
+    ).split(RX_COMMA_SPLIT).map(arg =>
+        arg.trim().replace(RX_ARG_NAMES, '$1')
+    );
 
     if (args === null) {
         args = [];
@@ -165,11 +170,14 @@ function parseComment(src: string): CommentMetadata {
 function parseDescriptions(name: string, src: string) {
     let comments: acorn.Comment[] = [];
     let options: acorn.Options = {
-        ecmaVersion: 6,
+        ecmaVersion: 7,
         locations: true,
         ranges: true,
         allowReserved: true,
-        onComment: comments
+        onComment: comments,
+        plugins: {
+            asyncawait: true
+        }
     };
     let nodes = acorn.parse(src, options).body;
 

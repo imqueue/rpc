@@ -28,7 +28,8 @@ import {
     property,
     ICache,
     ServiceClassDescription,
-    MethodsCollectionDescription
+    MethodsCollectionDescription,
+    DEFAULT_IMQ_SERVICE_OPTIONS
 } from '.';
 import * as cluster from 'cluster';
 import * as os from 'os';
@@ -41,11 +42,6 @@ export class Description {
     };
     types: TypesDescription;
 }
-
-const DEFAULT_SERVICE_OPTIONS: Partial<IMQServiceOptions> = {
-    multiProcess: false,
-    childrenPerCore: 1
-};
 
 let serviceDescription: Description | null = null;
 
@@ -119,7 +115,7 @@ function isValidArgsCount(argsInfo: ArgDescription[], args: any[]) {
  *     @property('string')
  *     address: string;
  *
- *     @property('boolean', true, [EmailValidator])
+ *     @property('boolean', true)
  *     isPrimary?: boolean;
  * }
  *
@@ -141,10 +137,10 @@ function isValidArgsCount(argsInfo: ArgDescription[], args: any[]) {
  * }
  *
  * class User {
- *     @property('string', false, [ValidateString.minLength(2), ValidateString.capitalized()])
+ *     @property('string', false)
  *     firstName: string;
  *
- *     @property('string', false, [ValidateString.minLength(2), ValidateString.capitalized()])
+ *     @property('string', false)
  *     lastName: string;
  *
  *     @property('Email');
@@ -205,6 +201,13 @@ export abstract class IMQService {
     public name: string;
     public options: IMQServiceOptions;
 
+    /**
+     * Class constructor
+     *
+     * @constructor
+     * @param {Partial<IMQServiceOptions>} options
+     * @param {string} [name]
+     */
     constructor(options?: Partial<IMQServiceOptions>, name?: string) {
         this.name = name || this.constructor.name;
 
@@ -213,15 +216,25 @@ export abstract class IMQService {
                 'not be instantiated directly!');
         }
 
-        options = Object.assign({}, DEFAULT_SERVICE_OPTIONS, options || {});
+        this.options = Object.assign({},
+            DEFAULT_IMQ_SERVICE_OPTIONS,
+            options || {}
+        );
 
-        this.imq = IMQ.create(this.name, options);
-        this.options = (<any>this.imq).options;
         this.logger = this.options.logger || console;
-        this.handleRequest = this.handleRequest.bind(this);
-        this.imq.on('message', this.handleRequest);
+        this.imq = IMQ.create(this.name, options);
+
+        this.imq.on('message', this.handleRequest.bind(this));
     }
 
+    /**
+     * Handles incoming request and produces corresponding response
+     *
+     * @access private
+     * @param {IMQRPCRequest} msg - request message
+     * @param {string} id - message unique identifier
+     * @return {Promise<string>}
+     */
     private async handleRequest(msg: IMQRPCRequest, id: string) {
         const method = msg.method;
         const description = await this.describe();
@@ -267,7 +280,7 @@ export abstract class IMQService {
         }
 
         if (response.error) {
-            return response;
+            return await this.imq.send(msg.from, response);
         }
 
         try {
@@ -288,9 +301,15 @@ export abstract class IMQService {
             };
         }
 
-        return response;
+        return await this.imq.send(msg.from, response);
     }
 
+    /**
+     * Initializes this instance of service and starts handling request
+     * messages.
+     *
+     * @return {Promise<IMessageQueue>}
+     */
     @profile()
     public async start() {
         const numCpus = os.cpus().length;
@@ -335,11 +354,21 @@ export abstract class IMQService {
         }
     }
 
+    /**
+     * Stops service from handling messages
+     *
+     * @return {Promise<void>}
+     */
     @profile()
     public async stop() {
         await this.imq.stop();
     }
 
+    /**
+     * Destroys this instance of service
+     *
+     * @return {Promise<void>}
+     */
     @profile()
     public async destroy() {
         await this.imq.destroy();
