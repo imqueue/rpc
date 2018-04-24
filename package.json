@@ -27,7 +27,8 @@
     "acorn-es7-plugin": "^1.1.7",
     "imq": "^1.2.6",
     "murmurhash-native": "^3.2.2",
-    "node-machine-id": "^1.1.10"
+    "node-machine-id": "^1.1.10",
+    "reflect-metadata": "^0.1.12"
   },
   "devDependencies": {
     "@types/node": "^9.4.6",
@@ -41,7 +42,6 @@
     "nyc": "^11.4.1",
     "opn": "^5.2.0",
     "sinon": "^4.4.2",
-    "reflect-metadata": "^0.1.12",
     "source-map-support": "^0.5.3",
     "ts-node": "^5.0.1",
     "typedoc": "^0.10.0",
