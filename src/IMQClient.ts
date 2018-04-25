@@ -192,7 +192,7 @@ export abstract class IMQClient extends EventEmitter {
     }
 
     /**
-     * Creates client for a sirvice with the given name
+     * Creates client for a service with the given name
      *
      * @param {string} name
      * @param {Partial<IMQServiceOptions>} options
@@ -201,17 +201,13 @@ export abstract class IMQClient extends EventEmitter {
     public static async create(
         name: string,
         options?: Partial<IMQClientOptions>
-    ): Promise<IMQClient> {
+    ): Promise<any> {
         const clientOptions: IMQClientOptions = Object.assign({},
             DEFAULT_IMQ_CLIENT_OPTIONS,
             options
         );
 
-        return generator(name, clientOptions);
-
-        // const Client = require(await generator(name, clientOptions));
-        //
-        // return new Client(clientOptions, name);
+        return await generator(name, clientOptions);
     }
 
 }
