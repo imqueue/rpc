@@ -19,7 +19,9 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { ILogger } from 'imq';
 
-export const IMQ_TMP_DIR = process.env.TMPDIR || '/tmp';
+export const IMQ_TMP_DIR = process.env.TMPDIR ||
+    // istanbul ignore next
+    '/tmp';
 export const IMQ_PID_DIR = path.resolve(IMQ_TMP_DIR, '.imq-rpc');
 
 /**

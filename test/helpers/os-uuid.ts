@@ -1,5 +1,5 @@
 /*!
- * IMQ-RPC Decorators: remote
+ * osUuid() Function Unit Tests
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -15,29 +15,11 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-/**
- * Implements '@remote' decorator factory
- *
- * @return {(
- *    target: any,
- *    methodName: (string|symbol),
- *    descriptor: TypedPropertyDescriptor<Function>
- * ) => void}
- */
-export function remote(...args: any[]) {
-    return function(
-        target: any,
-        methodName: string | symbol,
-        descriptor: TypedPropertyDescriptor<Function>
-    ) {
-        const original = descriptor.value ||
-            // istanbul ignore next
-            (() => {});
+import { expect } from 'chai';
+import { osUuid } from '../..';
 
-        descriptor.value = function(...args: any[]) {
-            args.push(methodName);
-
-            return original.apply(this, args);
-        };
-    }
-}
+describe('osUuid()', () => {
+    it('should be a function', () => {
+        expect(typeof osUuid).to.equal('function');
+    });
+});

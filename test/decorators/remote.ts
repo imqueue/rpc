@@ -1,5 +1,5 @@
 /*!
- * IMQ-RPC Decorators: remote
+ * remote() Function Unit Tests
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -15,29 +15,27 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-/**
- * Implements '@remote' decorator factory
- *
- * @return {(
- *    target: any,
- *    methodName: (string|symbol),
- *    descriptor: TypedPropertyDescriptor<Function>
- * ) => void}
- */
-export function remote(...args: any[]) {
-    return function(
-        target: any,
-        methodName: string | symbol,
-        descriptor: TypedPropertyDescriptor<Function>
-    ) {
-        const original = descriptor.value ||
-            // istanbul ignore next
-            (() => {});
+import { expect } from 'chai';
+import { remote } from '../..';
 
-        descriptor.value = function(...args: any[]) {
-            args.push(methodName);
+describe('remote()', () => {
+    it('should be a function', () => {
+        expect(typeof remote).to.equal('function');
+    });
 
-            return original.apply(this, args);
-        };
-    }
-}
+    it('should return decorator function', () => {
+        expect(typeof remote()).to.equal('function');
+    });
+
+    it('should pass decorated method name on its call', () => {
+        class RemoteDecoratorTestClass {
+            @remote()
+            public decoratedMethod(a: number) {
+                return [...arguments];
+            }
+        }
+
+        expect(new RemoteDecoratorTestClass().decoratedMethod(1))
+            .to.deep.equal([1, 'decoratedMethod']);
+    });
+});

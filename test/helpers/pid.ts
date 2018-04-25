@@ -1,5 +1,5 @@
 /*!
- * IMQ-RPC Decorators: remote
+ * pid(), forgetPid() Functions Unit Tests
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -15,29 +15,17 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-/**
- * Implements '@remote' decorator factory
- *
- * @return {(
- *    target: any,
- *    methodName: (string|symbol),
- *    descriptor: TypedPropertyDescriptor<Function>
- * ) => void}
- */
-export function remote(...args: any[]) {
-    return function(
-        target: any,
-        methodName: string | symbol,
-        descriptor: TypedPropertyDescriptor<Function>
-    ) {
-        const original = descriptor.value ||
-            // istanbul ignore next
-            (() => {});
+import { expect } from 'chai';
+import { pid, forgetPid } from '../..';
 
-        descriptor.value = function(...args: any[]) {
-            args.push(methodName);
+describe('pid()', () => {
+    it('should be a function', () => {
+        expect(typeof pid).to.equal('function');
+    });
+});
 
-            return original.apply(this, args);
-        };
-    }
-}
+describe('forgetPid()', () => {
+    it('should be a function', () => {
+        expect(typeof forgetPid).to.equal('function');
+    });
+});

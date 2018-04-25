@@ -78,10 +78,6 @@ function argumentNames(fn: Function): string[] {
         arg.trim().replace(RX_ARG_NAMES, '$1')
     ).filter(arg => arg);
 
-    if (args === null) {
-        args = [];
-    }
-
     return args;
 }
 
