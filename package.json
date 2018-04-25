@@ -1,6 +1,6 @@
 {
   "name": "imq-rpc",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "RPC-like client-service implementation over messaging queue",
   "scripts": {
     "prepublish": "./node_modules/.bin/tsc",
