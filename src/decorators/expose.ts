@@ -76,7 +76,7 @@ function argumentNames(fn: Function): string[] {
         src.indexOf('(') + 1, src.indexOf(')')
     ).split(RX_COMMA_SPLIT).map(arg =>
         arg.trim().replace(RX_ARG_NAMES, '$1')
-    );
+    ).filter(arg => arg);
 
     if (args === null) {
         args = [];
@@ -252,6 +252,13 @@ function parseDescriptions(name: string, src: string) {
             }
 
             let expr = acorn.parseExpressionAt(src, commentEnd, options);
+
+            if (expr.type === 'Identifier' && expr.name === 'async') {
+                expr = acorn.parseExpressionAt(
+                    src, (<any>expr).range[1], options
+                );
+            }
+
             if (
                 expr.type === 'CallExpression' &&
                 (<any>expr.callee).name === methodName

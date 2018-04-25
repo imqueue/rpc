@@ -31,10 +31,14 @@ import {
     IMQRPCResponse,
     IMQRPCRequest,
     IMQDelay,
-    remote
+    remote,
+    Description
 } from '.';
+import * as ts from 'typescript';
+import * as fs from 'fs';
 import { EventEmitter } from 'events';
 
+const tsOptions = require('../tsconfig.json').compilerOptions;
 const SIGNALS: string[] = ['SIGTERM', 'SIGINT', 'SIGHUP', 'SIGBREAK'];
 
 /**
@@ -44,6 +48,7 @@ export abstract class IMQClient extends EventEmitter {
 
     public options: IMQClientOptions;
     public id: number;
+    private baseName: string;
     private imq: IMessageQueue;
     private name: string;
     private serviceName: string;
@@ -66,6 +71,8 @@ export abstract class IMQClient extends EventEmitter {
         super();
 
         const baseName: string = name || this.constructor.name;
+
+        this.baseName = baseName;
 
         if (this.constructor.name === 'IMQClient') {
             throw new TypeError('IMQClient class is abstract and can not' +
@@ -94,18 +101,20 @@ export abstract class IMQClient extends EventEmitter {
                     this.emit(message.request.method, message);
                 }
 
-                const [ resolve, reject ] = this.resolvers[message.to];
+                const [ resolve, reject ] = this.resolvers[message.to] || [
+                    undefined,
+                    undefined
+                ];
 
                 if (message.error) {
-                    return  reject(message.error);
+                    return reject && reject(message.error);
                 }
 
-                resolve(message.data);
+                resolve && resolve(message.data);
             });
         });
 
         const terminate = async () => {
-            forgetPid(baseName, this.id, this.logger);
             await this.destroy();
             process.nextTick(() => process.exit(0));
         };
@@ -173,6 +182,8 @@ export abstract class IMQClient extends EventEmitter {
      * @returns {Promise<void>}
      */
     public async destroy() {
+        forgetPid(this.baseName, this.id, this.logger);
+
         for (let event of this.eventNames()) {
             this.removeAllListeners(event);
         }
@@ -195,9 +206,12 @@ export abstract class IMQClient extends EventEmitter {
             DEFAULT_IMQ_CLIENT_OPTIONS,
             options
         );
-        const Client = require(await generator(name, clientOptions));
 
-        return new Client(clientOptions, name);
+        return generator(name, clientOptions);
+
+        // const Client = require(await generator(name, clientOptions));
+        //
+        // return new Client(clientOptions, name);
     }
 
 }
@@ -224,7 +238,150 @@ class GeneratorClient extends IMQClient {
 async function generator(
     name: string,
     options: IMQClientOptions
-): Promise<string> {
+): Promise<any> {
+    const client: any = new GeneratorClient(
+        Object.assign({}, options, { logger: {
+            log() {},
+            warn() {},
+            info() {},
+            error() {}
+        }}), name, `${name}Client`);
+    const description: Description = await client.describe();
 
-    return '';
+    const serviceName = description.service.name;
+    const clientName = serviceName.replace(/Service$|$/, 'Client');
+    const namespaceName = serviceName.charAt(0).toLowerCase() +
+        serviceName.substr(1);
+
+    let src = `/*!
+ * IMQ-RPC Service: ${description.service.name}
+ *
+ * Copyright (c) ${new Date().getFullYear()}, imqueue.com
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+ * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+ * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+ * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+ * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+import { IMQClient, Description, remote, profile } from 'imq-rpc';
+
+export namespace ${namespaceName} {\n`;
+
+    for (let typeName of Object.keys(description.types)) {
+        src += `    export interface ${typeName} {\n`;
+
+        for (let propertyName in description.types[typeName]) {
+            const { type, isOptional } =
+                description.types[typeName][propertyName];
+
+            src += ' '.repeat(8);
+            src += `${propertyName}${isOptional ? '?' : ''}: ${type};\n`;
+        }
+
+        src += '    }\n\n';
+    }
+
+    src += `    export class ${clientName} extends IMQClient {\n\n`;
+
+    const methods = description.service.methods;
+
+    for (let methodName of Object.keys(methods)) {
+        let args = methods[methodName].arguments;
+        let description = methods[methodName].description;
+        let ret = methods[methodName].returns;
+        let retType = ret.tsType
+            .replace(/\r?\n/g, ' ')
+            .replace(/\s{2,}/g, ' ');
+
+        if (retType === 'Promise') {
+            retType = 'any';
+        }
+
+        src += '        /**\n';
+        src += description ?description.split(/\r?\n/)
+            .map(line => `         * ${line}`)
+            .join('\n') + '\n         *\n' : '';
+
+        for (let i = 0, s = args.length; i < s; i++) {
+            let arg = args[i];
+            src += `         * @param {${
+                toComment(arg.tsType)}} `;
+            src += arg.isOptional ? `[${arg.name}]` : arg.name;
+            src += arg.description ? ' - ' + arg.description : '';
+            src += '\n';
+        }
+
+        src += `         * @return Promise<${
+            toComment(ret.tsType)}>\n`;
+        src += '         */\n';
+
+        src += '        @profile()\n';
+        src += '        @remote()\n';
+        src += `        public async ${methodName}(`;
+
+        for (let i = 0, s = args.length; i < s; i++) {
+            let arg = args[i];
+            src += arg.name + (arg.isOptional ? '?' : '') +
+                ': ' + arg.tsType.replace(/\s{2,}/g, ' ') +
+                (i === s - 1 ? '': ', ');
+        }
+
+        src += `): Promise<${retType}> {\n`;
+        src += ' '.repeat(12);
+        src += `return await this.remoteCall<${retType}>(...arguments);`;
+        src += '\n        }\n\n';
+    }
+
+    src += '    }\n}\n';
+
+    const module = compile(name, src, options);
+
+    await client.destroy();
+
+    return module[namespaceName];
+}
+
+/**
+ * Type to comment
+ *
+ * @param {string} typedef
+ * @returns {string}
+ */
+function toComment(typedef: string): string {
+    return typedef.split(/\r?\n/)
+        .map((line, linenum) =>
+            (linenum ? '         * ' : '') + line
+        )
+        .join('\n');
+}
+
+/**
+ * Compiles client source code and returns loaded module
+ *
+ * @param {string} name
+ * @param {string} src
+ * @param {IMQClientOptions} options
+ * @returns {any}
+ */
+function compile(name: string, src: string, options: IMQClientOptions) {
+    const path = options.path || './clients';
+    const srcFile = `${path}/${name}.ts`;
+    const jsFile = `${path}/${name}.js`;
+
+    if (!fs.existsSync(path)) {
+        fs.mkdirSync(path);
+    }
+
+    fs.writeFileSync(srcFile, src, { encoding: 'utf8' });
+
+    require('child_process').execSync(__dirname + '/../node_modules/.bin/tsc');
+
+    return require(fs.realpathSync(jsFile));
 }

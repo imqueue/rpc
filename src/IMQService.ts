@@ -280,6 +280,7 @@ export abstract class IMQService {
         }
 
         if (response.error) {
+            this.logger.warn(response.error);
             return await this.imq.send(msg.from, response);
         }
 
