@@ -26,7 +26,7 @@
     "@types/acorn": "^4.0.3",
     "acorn": "^5.5.3",
     "acorn-es7-plugin": "^1.1.7",
-    "imq": "^1.2.6",
+    "imq": "^1.2.7",
     "murmurhash-native": "^3.2.2",
     "node-machine-id": "^1.1.10",
     "reflect-metadata": "^0.1.12",
