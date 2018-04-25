@@ -235,13 +235,7 @@ async function generator(
     name: string,
     options: IMQClientOptions
 ): Promise<any> {
-    const client: any = new GeneratorClient(
-        Object.assign({}, options, { logger: {
-            log() {},
-            warn() {},
-            info() {},
-            error() {}
-        }}), name, `${name}Client`);
+    const client: any = new GeneratorClient(options, name, `${name}Client`);
     const description: Description = await client.describe();
 
     const serviceName = description.service.name;
