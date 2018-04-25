@@ -34,8 +34,8 @@ import {
     remote,
     Description
 } from '.';
-import * as ts from 'typescript';
 import * as fs from 'fs';
+import * as ts from 'typescript';
 import { EventEmitter } from 'events';
 
 const tsOptions = require('../tsconfig.json').compilerOptions;
@@ -380,8 +380,8 @@ function compile(name: string, src: string, options: IMQClientOptions) {
     }
 
     fs.writeFileSync(srcFile, src, { encoding: 'utf8' });
-
-    require('child_process').execSync(__dirname + '/../node_modules/.bin/tsc');
+    fs.writeFileSync(jsFile,
+        ts.transpile(src, tsOptions), { encoding: 'utf8' });
 
     return require(fs.realpathSync(jsFile));
 }
