@@ -23,7 +23,9 @@ export interface IMQServiceOptions extends IMQOptions {
 }
 
 export interface IMQClientOptions extends IMQOptions {
-    path: string
+    path: string,
+    compile: boolean,
+    timeout: number
 }
 
 /**
@@ -42,5 +44,7 @@ export const DEFAULT_IMQ_SERVICE_OPTIONS: IMQServiceOptions = Object.assign({
  * @type {IMQClientOptions}
  */
 export const DEFAULT_IMQ_CLIENT_OPTIONS: IMQClientOptions = Object.assign({
-    path: './src/clients'
+    path: './src/clients',
+    compile: true,
+    timeout: 30000
 }, DEFAULT_IMQ_OPTIONS);

@@ -223,6 +223,29 @@ class GeneratorClient extends IMQClient {
     }
 }
 
+async function getDescription(
+    name: string,
+    options: IMQClientOptions
+): Promise<Description> {
+    return new Promise<Description>(async (resolve, reject) => {
+        const client: any = new GeneratorClient(options, name, `${name}Client`);
+        const timeout = setTimeout(async () => {
+            await client.destroy();
+            timeout && clearTimeout(timeout);
+            resolve = () => {};
+            reject(new EvalError('Generate client error: service remote ' +
+                `call timed-out! Is service "${name}" running?`));
+        }, options.timeout);
+
+        const description = await client.describe();
+        timeout && clearTimeout(timeout);
+        await client.destroy();
+
+        resolve(description);
+    });
+
+}
+
 /**
  * Client generator helper function
  *
@@ -235,8 +258,7 @@ async function generator(
     name: string,
     options: IMQClientOptions
 ): Promise<any> {
-    const client: any = new GeneratorClient(options, name, `${name}Client`);
-    const description: Description = await client.describe();
+    const description: Description = await getDescription(name, options);
 
     const serviceName = description.service.name;
     const clientName = serviceName.replace(/Service$|$/, 'Client');
@@ -333,9 +355,7 @@ export namespace ${namespaceName} {\n`;
 
     const module = compile(name, src, options);
 
-    await client.destroy();
-
-    return module[namespaceName];
+    return module ? module[namespaceName] : null;
 }
 
 /**
@@ -370,8 +390,13 @@ function compile(name: string, src: string, options: IMQClientOptions) {
     }
 
     fs.writeFileSync(srcFile, src, { encoding: 'utf8' });
-    fs.writeFileSync(jsFile,
-        ts.transpile(src, tsOptions), { encoding: 'utf8' });
 
-    return require(fs.realpathSync(jsFile));
+    if (options.compile) {
+        fs.writeFileSync(jsFile,
+            ts.transpile(src, tsOptions), { encoding: 'utf8' });
+
+        return require(fs.realpathSync(jsFile));
+    }
+
+    return null;
 }
