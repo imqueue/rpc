@@ -145,7 +145,7 @@ import { IMQClient } from 'imq-rpc';
 ~~~
 
 In this case client code will be generated and written to a corresponding
-file `Hello.Client.ts` under specified path. Then it can be compiled and
+file `./clients/Hello.ts` under specified path. Then it can be compiled and
 imported within your project build process, and referred in your code
 as expected:
 
