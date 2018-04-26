@@ -18,7 +18,7 @@
 import { expect } from 'chai';
 import { remote } from '../..';
 
-describe('remote()', () => {
+describe('decorators/remote()', () => {
     it('should be a function', () => {
         expect(typeof remote).to.equal('function');
     });

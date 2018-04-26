@@ -38,7 +38,7 @@ function rmdirr(path: string) {
     }
 };
 
-describe('pid()', () => {
+describe('helpers/pid()', () => {
     let TEST_PID_DIR: string;
 
     beforeEach(() => TEST_PID_DIR = `${IMQ_TMP_DIR}/${uuid()}`);
@@ -67,7 +67,7 @@ describe('pid()', () => {
     });
 });
 
-describe('forgetPid()', () => {
+describe('helpers/forgetPid()', () => {
     let TEST_PID_DIR: string;
 
     beforeEach(() => TEST_PID_DIR = `${IMQ_TMP_DIR}/${uuid()}`);

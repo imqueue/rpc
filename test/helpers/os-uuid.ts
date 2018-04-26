@@ -18,7 +18,7 @@
 import { expect } from 'chai';
 import { osUuid } from '../..';
 
-describe('osUuid()', () => {
+describe('helpers/osUuid()', () => {
     it('should be a function', () => {
         expect(typeof osUuid).to.equal('function');
     });

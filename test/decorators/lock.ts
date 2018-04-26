@@ -18,7 +18,7 @@
 import { expect } from 'chai';
 import { lock } from '../..';
 
-describe('lock()', () => {
+describe('decorators/lock()', () => {
     it('should be a function', () => {
         expect(typeof lock).to.equal('function');
     });

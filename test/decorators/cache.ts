@@ -18,7 +18,7 @@
 import { expect } from 'chai';
 import { cache } from '../..';
 
-describe('cache()', () => {
+describe('decorators/cache()', () => {
     it('should be a function', () => {
         expect(typeof cache).to.equal('function');
     });

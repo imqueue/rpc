@@ -18,7 +18,7 @@
 import { expect } from 'chai';
 import { signature } from '../..';
 
-describe('signature()', () => {
+describe('helpers/signature()', () => {
     it('should be a function', () => {
         expect(typeof signature).to.equal('function');
     });

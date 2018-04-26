@@ -57,7 +57,7 @@ class ExposeTestClassExtended extends ExposeTestClass {
     public extendedMethod() {}
 }
 
-describe('expose()', () => {
+describe('decorators/expose()', () => {
     it('should be a function', () => {
         expect(typeof expose).to.equal('function');
     });

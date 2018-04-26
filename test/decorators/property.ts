@@ -45,7 +45,7 @@ class TestBaseComplexType {
 
 const typesMetadata = IMQRPCDescription.typesDescription;
 
-describe('property()', () => {
+describe('decorators/property()', () => {
     it('should be a function', () => {
         expect(typeof property).to.equal('function');
     });
