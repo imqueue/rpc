@@ -100,6 +100,7 @@ function parseComment(src: string): CommentMetadata {
     };
     let match, tags = [];
 
+    // istanbul ignore next
     data.description = String(
         (cleanSrc.match(RX_DESCRIPTION) || [])[1] || ''
     ).trim();
@@ -164,8 +165,8 @@ function parseComment(src: string): CommentMetadata {
  * @param {string} src - class source code
  */
 function parseDescriptions(name: string, src: string) {
-    let comments: acorn.Comment[] = [];
-    let options: acorn.Options = {
+    const comments: acorn.Comment[] = [];
+    const options: acorn.Options = {
         ecmaVersion: 7,
         locations: true,
         ranges: true,
@@ -175,34 +176,24 @@ function parseDescriptions(name: string, src: string) {
             asyncawait: true
         }
     };
-    let nodes = acorn.parse(src, options).body;
+    const nodes = acorn.parse(src, options).body;
 
     descriptions[name] = {
         inherits: 'Function'
     };
 
     for (let node of nodes) {
-        if (!node) {
-            continue;
-        }
-
-        if (node.type !== 'ClassDeclaration') {
-            continue;
-        }
-
-        if (!node.id) {
-            continue;
-        }
-
-        if (node.id.name !== name) {
-            continue;
-        }
-
-        if (node.body.type !== 'ClassBody') {
+        // istanbul ignore if
+        if (!(
+            node && node.type === 'ClassDeclaration' &&
+            node.id && node.id.name === name &&
+            node.body.type === 'ClassBody'
+        )) {
             continue;
         }
 
         if (node.superClass) {
+            // istanbul ignore next
             if (node.superClass.type === 'MemberExpression') {
                 descriptions[name].inherits =
                     (<any>node.superClass.property).name;
@@ -214,25 +205,26 @@ function parseDescriptions(name: string, src: string) {
         }
 
         for (let method of node.body.body) {
+            // istanbul ignore if
             if (method.type !== 'MethodDefinition') {
                 continue;
             }
 
-            let methodName: string = (<any>method.key).name;
-            let blocks: acorn.Comment[] = comments.filter(comment =>
+            const methodName: string = (<any>method.key).name;
+            const blocks: acorn.Comment[] = comments.filter(comment =>
                 comment.type === 'Block');
 
             if (!blocks.length) {
                 continue;
             }
 
-            let methodStart: number = (<any>method).start;
+            const methodStart: number = (<any>method).start;
             let commentEnd: number = blocks[0].end;
             let lastDif: number = methodStart - blocks[0].end;
             let foundBlock: acorn.Comment = blocks[0];
 
             for (let comment of blocks) {
-                let dif: number = methodStart - comment.end;
+                const dif: number = methodStart - comment.end;
 
                 if (dif < 0) {
                     break;
@@ -288,6 +280,7 @@ function get<T>(
             <CommentBlockMetadata>descriptions[className][method]
         ).comment;
 
+        // istanbul ignore else
         if (comment[prop]) {
             return <any>comment[prop];
         }

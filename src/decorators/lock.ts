@@ -30,19 +30,22 @@ import { IMQLock, AcquiredLock, signature } from '..';
  * ) => void}
  */
 export function lock(enabled: boolean = true) {
-    const withLocks = enabled || (process.env['DISABLE_LOCKS']);
-
     return function(
         target: any,
         methodName: string | symbol,
         descriptor: TypedPropertyDescriptor<Function>
     ) {
-        const original = descriptor.value || target[methodName];
-        const className = typeof target === 'function' && target.name
+        const original = descriptor.value ||
+            // istanbul ignore next
+            (() => {});
+        const className = typeof target === 'function'
             ? target.name              // static
             : target.constructor.name; // dynamic
 
         descriptor.value = async function<T>(...args: any[]): Promise<T> {
+            const withLocks = !parseInt(
+                process.env['DISABLE_LOCKS'] + ''
+            ) && enabled;
             let lock: AcquiredLock<T>;
             let sig: string = '';
 
@@ -70,10 +73,12 @@ export function lock(enabled: boolean = true) {
             }
 
             catch (err) {
+                // istanbul ignore next
                 if (withLocks) {
                     IMQLock.release(sig, null, err);
                 }
 
+                // istanbul ignore next
                 throw err;
             }
         };
