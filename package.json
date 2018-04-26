@@ -19,6 +19,10 @@
     "type": "git",
     "url": "git@github.com/imqueue/imq-rpc.git"
   },
+  "bugs": {
+    "url" : "https://github.com/imqueue/imq-rpc/issues"
+  },
+  "homepage": "https://imqueue.com/",
   "author": "Mykhailo Stadnyk <mikhus@gmail.com> (https://github.com/Mikhus)",
   "license": "ISC",
   "dependencies": {
@@ -26,7 +30,7 @@
     "@types/acorn": "^4.0.3",
     "acorn": "^5.5.3",
     "acorn-es7-plugin": "^1.1.7",
-    "imq": "^1.2.12",
+    "imq": "^1.2.13",
     "murmurhash-native": "^3.2.2",
     "node-machine-id": "^1.1.10",
     "reflect-metadata": "^0.1.12",
