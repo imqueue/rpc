@@ -2,6 +2,16 @@
   "name": "imq-rpc",
   "version": "1.0.13",
   "description": "RPC-like client-service implementation over messaging queue",
+  "keywords": [
+    "redis",
+    "redis-queue",
+    "client",
+    "rpc-client",
+    "service",
+    "rpc-service",
+    "rpc",
+    "message-queue"
+  ],
   "scripts": {
     "prepublish": "./node_modules/.bin/tsc",
     "test": "./node_modules/.bin/tsc && ./node_modules/.bin/nyc mocha && ./node_modules/.bin/nyc report --reporter=text-lcov | coveralls",
@@ -31,7 +41,7 @@
     "@types/acorn": "^4.0.3",
     "acorn": "^5.5.3",
     "acorn-es7-plugin": "^1.1.7",
-    "imq": "^1.2.15",
+    "imq": "^1.2.16",
     "murmurhash-native": "^3.2.2",
     "node-machine-id": "^1.1.10",
     "reflect-metadata": "^0.1.12",
