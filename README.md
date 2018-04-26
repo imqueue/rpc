@@ -1,6 +1,6 @@
 # I Message Queue RPC (imq-rpc)
 
-[![Build Status](https://travis-ci.org/imqueue/imq-rpc.svg?branch=master)](https://travis-ci.org/imqueue/imq-rpc) [![License](https://img.shields.io/badge/license-ISC-blue.svg)](https://rawgit.com/imqueue/imq-rpc/master/LICENSE)
+[![Build Status](https://travis-ci.org/imqueue/imq-rpc.svg?branch=master)](https://travis-ci.org/imqueue/imq-rpc) [![Coverage Status](https://coveralls.io/repos/github/imqueue/imq-rpc/badge.svg?branch=master)](https://coveralls.io/github/imqueue/imq-rpc?branch=master) [![License](https://img.shields.io/badge/license-ISC-blue.svg)](https://rawgit.com/imqueue/imq-rpc/master/LICENSE)
 
 RPC-like client-service implementation over messaging queue. This module
 provides base set of abstract classes and decorators to build services and 
