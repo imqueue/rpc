@@ -15,9 +15,9 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
+import { logger } from '../mocks';
 import { expect } from 'chai';
 import { pid, forgetPid, IMQ_TMP_DIR, uuid } from '../..';
-import { logger } from '../mocks';
 import * as fs from 'fs';
 
 function rmdirr(path: string) {

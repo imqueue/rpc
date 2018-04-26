@@ -15,6 +15,7 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
+import '../mocks';
 import { expect } from 'chai';
 import { lock } from '../..';
 

@@ -25,6 +25,8 @@ import {
 } from 'imq';
 import * as os from 'os';
 
+console.log(redis);
+
 export interface IRedisCacheOptions extends Partial<IMQOptions> {
     conn?: IRedisClient
 }
@@ -55,7 +57,9 @@ export class RedisCache implements ICache {
             {}, DEFAULT_REDIS_CACHE_OPTIONS, options || {}
         );
 
-        this.logger = this.options.logger || console;
+        this.logger = this.options.logger ||
+            // istanbul ignore next
+            console;
 
         if (RedisCache.redis) {
             return this;
@@ -93,6 +97,7 @@ export class RedisCache implements ICache {
                 resolve(this);
             });
 
+            // istanbul ignore next
             RedisCache.redis.on('error', (err: Error) => {
                 this.logger.error(
                     `${this.name}: error connecting redis, pid ${process.pid}:`,
@@ -183,6 +188,7 @@ export class RedisCache implements ICache {
      */
     public static async destroy() {
         try {
+            // istanbul ignore else
             if (RedisCache.redis) {
                 RedisCache.redis.removeAllListeners();
                 RedisCache.redis.end(false);

@@ -16,11 +16,8 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 import '../mocks';
-import * as redis from 'redis';
 import { expect } from 'chai';
-import { cache, RedisCache } from '../..';
-
-(<any>RedisCache).redis = redis.createClient();
+import { RedisCache, cache } from '../..';
 
 class CacheTestClass {
 
