@@ -1,6 +1,6 @@
 {
   "name": "imq-rpc",
-  "version": "1.0.13",
+  "version": "1.1.0",
   "description": "RPC-like client-service implementation over messaging queue",
   "keywords": [
     "redis",
