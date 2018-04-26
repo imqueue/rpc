@@ -51,15 +51,15 @@ export class RedisCache implements ICache {
      * @returns {Promise<RedisCache>}
      */
     public async init(options?: IRedisCacheOptions): Promise<RedisCache> {
-        if (RedisCache.redis) {
-            return this;
-        }
-
         this.options = Object.assign(
             {}, DEFAULT_REDIS_CACHE_OPTIONS, options || {}
         );
 
         this.logger = this.options.logger || console;
+
+        if (RedisCache.redis) {
+            return this;
+        }
 
         if (this.options.conn) {
             this.logger.info('Re-using given connection for cache.');
@@ -152,7 +152,7 @@ export class RedisCache implements ICache {
     ): Promise<boolean> {
         const args: any[] = [
             this.key(key),
-            JSON.stringify(value)
+            JSON.stringify(value && value.then ? await value : value)
         ];
 
         if (ttl && ttl > 0) {
@@ -174,6 +174,24 @@ export class RedisCache implements ICache {
      */
     public async del(key: string): Promise<boolean> {
         return await RedisCache.redis.del(this.key(key));
+    }
+
+    /**
+     * Safely destroys redis connection
+     *
+     * @returns {Promise<void>}
+     */
+    public static async destroy() {
+        try {
+            if (RedisCache.redis) {
+                RedisCache.redis.removeAllListeners();
+                RedisCache.redis.end(false);
+                RedisCache.redis.unref();
+                delete RedisCache.redis;
+            }
+        }
+
+        catch (err) {}
     }
 
 }

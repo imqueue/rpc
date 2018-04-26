@@ -15,15 +15,62 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
+import '../mocks';
+import * as redis from 'redis';
 import { expect } from 'chai';
-import { cache } from '../..';
+import { cache, RedisCache } from '../..';
+
+(<any>RedisCache).redis = redis.createClient();
+
+class CacheTestClass {
+
+    @cache()
+    public async testMethod() {
+        return Math.random() * Math.random() + Math.random();
+    }
+
+    @cache({ ttl: 100 })
+    public async testMethodWithTTL() {
+        return Math.random() * Math.random() + Math.random();
+    }
+
+}
 
 describe('decorators/cache()', () => {
+    let obj: any;
+
+    before(() => obj = new CacheTestClass());
+    after(async () => await RedisCache.destroy());
+
     it('should be a function', () => {
         expect(typeof cache).to.equal('function');
     });
 
     it('should return decorator function', () => {
         expect(typeof cache()).to.equal('function');
+    });
+
+    it('should cache method execution result', async () => {
+        const callOne = await obj.testMethod();
+        const callTwo = await obj.testMethod();
+
+        const callThree = await obj.testMethod(1);
+        const callFour = await obj.testMethod(1);
+
+        expect(callOne).to.be.equal(callTwo);
+        expect(callThree).to.be.equal(callFour);
+    });
+
+    it('should expire if ttl specified', async () => {
+        const callOne = await obj.testMethodWithTTL();
+        const callTwo = await obj.testMethodWithTTL();
+
+        expect(callOne).to.equal(callTwo);
+
+        await (async () => setTimeout(async () => {
+            const callThree = await obj.testMethodWithTTL();
+
+            expect(callThree).not.to.equal(callOne);
+        }, 100));
     });
 });

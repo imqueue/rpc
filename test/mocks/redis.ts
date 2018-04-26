@@ -34,10 +34,10 @@ export class RedisClientMock extends EventEmitter {
     private static __clientList: any = {};
     private __rt: any;
     private static __keys: any = {};
-    private static __scripts: any = {};
     private __name: string = '';
     // noinspection JSUnusedGlobalSymbols
     public connected: boolean = true;
+    public ready: boolean = true;
 
     constructor() {
         super();
@@ -51,16 +51,26 @@ export class RedisClientMock extends EventEmitter {
     // noinspection JSUnusedGlobalSymbols
     public quit() {}
 
-    // noinspection JSMethodCanBeStatic
-    public set(...args: any[]): boolean {
+    // noinspection JSUnusedGlobalSymbols,JSMethodCanBeStatic
+    public async set(...args: any[]): Promise<boolean> {
         const [key, val] = args;
         RedisClientMock.__keys[key] = val;
-        args.pop()(null, 1);
+        const cb = args.pop();
+        typeof cb === 'function' && cb(null, 1);
         return true;
     }
 
     // noinspection JSUnusedGlobalSymbols,JSMethodCanBeStatic
-    public setnx(...args: any[]): boolean {
+    public async get(...args: any[]): Promise<string> {
+        const [key] = args;
+        const val = RedisClientMock.__keys[key];
+        const cb = args.pop();
+        typeof cb === 'function' && cb(null, val);
+        return val;
+    }
+
+    // noinspection JSUnusedGlobalSymbols,JSMethodCanBeStatic
+    public async setnx(...args: any[]): Promise<boolean> {
         const self = RedisClientMock;
         const key = args.shift();
         let result = 0;
@@ -70,141 +80,13 @@ export class RedisClientMock extends EventEmitter {
                 result = 1;
             }
         }
-        args.pop()(null, result);
-        return true;
-    }
-
-    // noinspection TypescriptExplicitMemberType,JSMethodCanBeStatic
-    public lpush(key: string, value: any, cb?: any): boolean {
-        const self = RedisClientMock;
-        if (!self.__queues__[key]) {
-            self.__queues__[key] = [];
-        }
-        self.__queues__[key].push(value);
-        cb(null, 1);
-        return true;
-    }
-
-    public brpop(...args: any[]): boolean {
-        const [key, timeout, cb] = args;
-        const q = RedisClientMock.__queues__[key] || [];
-        if (!q.length) {
-            this.__rt && clearTimeout(this.__rt);
-            this.__rt = setTimeout(() => this.brpop(
-                key, timeout, cb
-            ), timeout || 100);
-        } else {
-            cb && cb(null, [key, q.shift()]);
-        }
-        return true;
-    }
-
-    public brpoplpush(
-        from: string,
-        to: string,
-        timeout: number,
-        cb?: Function
-    ): boolean {
-        const fromQ = RedisClientMock.__queues__[from] =
-            RedisClientMock.__queues__[from] || [];
-        const toQ = RedisClientMock.__queues__[to] =
-            RedisClientMock.__queues__[to] || [];
-        if (!fromQ.length) {
-            this.__rt && clearTimeout(this.__rt);
-            this.__rt = setTimeout(() => this.brpoplpush(
-                from, to, timeout, cb
-            ), timeout || 100);
-        } else {
-            toQ.push(fromQ.shift());
-            cb && cb(null, '1');
-        }
-        return true;
-    }
-
-    // noinspection JSUnusedGlobalSymbols,JSMethodCanBeStatic
-    public lrange(
-        key: string,
-        start: number,
-        stop: number,
-        cb?: Function
-    ): boolean {
-        const q = RedisClientMock.__queues__[key] =
-            RedisClientMock.__queues__[key] || [];
-        cb && cb(null, q.splice(start, stop)[0]);
-        return true;
-    }
-
-    // noinspection JSUnusedGlobalSymbols,JSMethodCanBeStatic
-    public scan(...args: any[]): boolean {
         const cb = args.pop();
-        const qs = RedisClientMock.__queues__;
-        const found: string[] = [];
-        for (let q of Object.keys(qs)) {
-            if (q.match(/worker/)) {
-                found.push(q);
-            }
-        }
-        cb && cb(null, ['0', found]);
-        return true;
-    }
-
-    // noinspection JSMethodCanBeStatic
-    public script(...args: any[]): boolean {
-        const cmd = args.shift();
-        const script = args.shift();
-        let hash: any = '';
-        if (cmd === 'load') {
-            hash = sha1(script);
-            RedisClientMock.__scripts[hash] = script;
-        }
-        if (cmd === 'exists') {
-            hash = RedisClientMock.__scripts[hash] !== undefined;
-        }
-        args.pop()(null, hash);
-        return true;
-    }
-
-    // noinspection JSUnusedGlobalSymbols
-    public client(...args: any[]): boolean {
-        const self = RedisClientMock;
-        const cb = args.pop();
-        const cmd = args.shift();
-        const name = args.shift();
-        if (cmd === 'list') {
-            return cb(null, Object.keys(self.__clientList)
-                .map((name: string, id: number) => `id=${id} name=${name}`)
-                .join('\n'));
-        }
-        else if (cmd === 'setname') {
-            this.__name = name;
-            self.__clientList[name] = true;
-        }
-
-        cb(null, true);
-        return true;
-    }
-
-    // noinspection JSMethodCanBeStatic
-    public exists(...args: any[]): boolean {
-        const key = args.shift();
-        args.pop()(null, RedisClientMock.__keys[key] !== undefined);
+        typeof cb === 'function' && cb(null, result);
         return true;
     }
 
     // noinspection JSUnusedGlobalSymbols,JSMethodCanBeStatic
-    public psubscribe(...args: any[]): boolean {
-        args.pop()(null, 1);
-        return true;
-    }
-
-    // noinspection JSUnusedGlobalSymbols,JSMethodCanBeStatic
-    public evalsha(...args: any[]): boolean {
-        args.pop()();
-        return true;
-    }
-
-    // noinspection JSUnusedGlobalSymbols,JSMethodCanBeStatic
-    public del(...args: any[]): boolean {
+    public async del(...args: any[]): Promise<boolean> {
         const self = RedisClientMock;
         const cb = args.pop();
         let count = 0;
@@ -218,19 +100,7 @@ export class RedisClientMock extends EventEmitter {
                 count++;
             }
         }
-        cb(null, count);
-        return true;
-    }
-
-    // noinspection JSUnusedGlobalSymbols
-    public zadd(...args: any[]): boolean {
-        const [key, score, value, cb] = args;
-        const timeout = score - Date.now();
-        setTimeout(() => {
-            const toKey = key.split(/:/).slice(0,2).join(':');
-            this.lpush(toKey, value);
-        }, timeout);
-        cb && cb();
+        typeof cb === 'function' && cb(null, count);
         return true;
     }
 
@@ -244,10 +114,6 @@ export class RedisClientMock extends EventEmitter {
         return true;
     }
 
-    // noinspection JSUnusedGlobalSymbols,JSMethodCanBeStatic
-    public config(): boolean {
-        return true;
-    }
 }
 
 /**

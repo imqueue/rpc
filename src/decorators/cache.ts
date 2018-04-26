@@ -38,7 +38,9 @@ export const cache: CacheDecorator = function(options?: CacheDecoratorOptions) {
         methodName: string | symbol,
         descriptor: TypedPropertyDescriptor<Function>
     ) {
-        const original = descriptor.value || (() => {});
+        const original = descriptor.value ||
+            // istanbul ignore next
+            (() => {});
 
         descriptor.value = async function(...args: any[]) {
             const context: any = this;
@@ -47,6 +49,7 @@ export const cache: CacheDecorator = function(options?: CacheDecoratorOptions) {
             if (!context.cache) {
                 let cache = IMQCache.get(Adapter);
 
+                // istanbul ignore next
                 if (cache && cache.ready) {
                     context.cache = cache;
                 }
@@ -70,22 +73,35 @@ export const cache: CacheDecorator = function(options?: CacheDecoratorOptions) {
                 }
             }
 
-            const key = signature(className, methodName, args);
+            try {
+                const key = signature(className, methodName, args);
 
-            let result = await context.cache.get(key);
+                let result = await context.cache.get(key);
 
-            if (result === undefined) {
-                result = original.apply(this, args);
+                if (result === undefined) {
+                    result = original.apply(this, args);
 
-                await context.cache.set(
-                    key,
-                    result,
-                    cacheOptions.ttl,
-                    !!cacheOptions.nx
-                );
+                    await context.cache.set(
+                        key,
+                        result,
+                        cacheOptions.ttl,
+                        !!cacheOptions.nx
+                    );
+                }
+
+                return result;
             }
 
-            return result;
+            catch (err) {
+                // istanbul ignore next
+                (this.logger || context.cache.logger).warn(
+                    'cache: Error fetching cached value for %s.%s(), args: %s!',
+                    className, methodName, JSON.stringify(args), err
+                );
+
+                // istanbul ignore next
+                return original.apply(this, args);
+            }
         };
     }
 };
