@@ -1,5 +1,5 @@
 /*!
- * lock() Function Unit Tests
+ * IMQ-RPC Unit Test Mocks: logger
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -15,15 +15,9 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { expect } from 'chai';
-import { lock } from '../..';
-
-describe('lock()', () => {
-    it('should be a function', () => {
-        expect(typeof lock).to.equal('function');
-    });
-
-    it('should return decorator function', () => {
-        expect(typeof lock()).to.equal('function');
-    });
-});
+export const logger: any = {
+    log() {},
+    info() {},
+    warn() {},
+    error() {}
+};

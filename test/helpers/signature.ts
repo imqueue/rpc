@@ -22,4 +22,25 @@ describe('signature()', () => {
     it('should be a function', () => {
         expect(typeof signature).to.equal('function');
     });
+
+    it('should return hash string', () => {
+        expect(/^[0-9a-f]{32}$/.test(signature('A', 'a', []))).to.be.true;
+    });
+
+    it('should return same hash string for the same arguments bypassed', () => {
+        const hashOne: string = signature('A', 'a', []);
+        const hashTwo: string = signature('A', 'a', []);
+
+        expect(hashOne).to.equal(hashTwo);
+    });
+
+    it('should return different hash string for different args', () => {
+        const hashOne: string = signature('A', 'a', []);
+        const hashTwo: string = signature('A', 'b', []);
+        const hashThree: string = signature('A', 'a', [1,2,3]);
+
+        expect(hashOne).not.to.equal(hashTwo);
+        expect(hashTwo).not.to.equal(hashThree);
+        expect(hashOne).not.to.equal(hashThree);
+    });
 });

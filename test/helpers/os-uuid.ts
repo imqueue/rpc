@@ -22,4 +22,8 @@ describe('osUuid()', () => {
     it('should be a function', () => {
         expect(typeof osUuid).to.equal('function');
     });
+
+    it('should return same id for each call', () => {
+        expect(osUuid()).to.equal(osUuid());
+    });
 });

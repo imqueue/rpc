@@ -378,7 +378,7 @@ export abstract class IMQService {
     /**
      * Returns service description metadata
      *
-     * @returns {Description} - service description metadata
+     * @returns {Promise<Description>} - service description metadata
      */
     @profile()
     @expose()

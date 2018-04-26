@@ -330,10 +330,8 @@ export namespace ${namespaceName} {\n`;
             src += '\n';
         }
 
-        src += `         * @return Promise<${
-            toComment(ret.tsType)}>\n`;
+        src += `         * @return {${toComment(ret.tsType, true)}}\n`;
         src += '         */\n';
-
         src += '        @profile()\n';
         src += '        @remote()\n';
         src += `        public async ${methodName}(`;
@@ -345,9 +343,10 @@ export namespace ${namespaceName} {\n`;
                 (i === s - 1 ? '': ', ');
         }
 
-        src += `): Promise<${retType}> {\n`;
+        src += `): ${promisedType(retType)} {\n`;
         src += ' '.repeat(12);
-        src += `return await this.remoteCall<${retType}>(...arguments);`;
+        src += `return await this.remoteCall<${
+            cleanType(retType)}>(...arguments);`;
         src += '\n        }\n\n';
     }
 
@@ -359,12 +358,41 @@ export namespace ${namespaceName} {\n`;
 }
 
 /**
- * Type to comment
+ * Return promised typedef of a given type if its missing
  *
  * @param {string} typedef
  * @returns {string}
  */
-function toComment(typedef: string): string {
+function promisedType(typedef: string) {
+    if (!/^Promise</.test(typedef)) {
+        typedef = `Promise<${typedef}>`;
+    }
+
+    return typedef;
+}
+
+/**
+ * Removes Promise from type definition if any
+ *
+ * @param {string} typedef
+ * @returns {string}
+ */
+function cleanType(typedef: string) {
+    return typedef.replace(/^Promise<([\s\S]+?)>$/, '$1');
+}
+
+/**
+ * Type to comment
+ *
+ * @param {string} typedef
+ * @param {boolean} [promised]
+ * @returns {string}
+ */
+function toComment(typedef: string, promised: boolean = false): string {
+    if (promised) {
+        typedef = promisedType(typedef);
+    }
+
     return typedef.split(/\r?\n/)
         .map((line, linenum) =>
             (linenum ? '         * ' : '') + line

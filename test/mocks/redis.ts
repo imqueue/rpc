@@ -1,0 +1,247 @@
+/*!
+ * IMQ Unit Test Mocks: redis
+ *
+ * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+ * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+ * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+ * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+ * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+import * as mock from 'mock-require';
+import { EventEmitter } from 'events';
+import * as crypto from 'crypto';
+import { IMulti, IRedisClient } from '../..';
+
+function sha1(str: string) {
+    let sha: crypto.Hash = crypto.createHash('sha1');
+    sha.update(str);
+    return sha.digest('hex');
+}
+
+/**
+ * @implements {IRedisClient}
+ */
+export class RedisClientMock extends EventEmitter {
+    private static __queues__: any = {};
+    private static __clientList: any = {};
+    private __rt: any;
+    private static __keys: any = {};
+    private static __scripts: any = {};
+    private __name: string = '';
+    public connected: boolean = true;
+
+    constructor() {
+        super();
+        setTimeout(() => {
+            this.emit('ready', this);
+        });
+    }
+
+    public end() {}
+    public quit() {}
+
+    public set(...args: any[]): boolean {
+        const [key, val] = args;
+        RedisClientMock.__keys[key] = val;
+        args.pop()(null, 1);
+        return true;
+    }
+
+    public setnx(...args: any[]): boolean {
+        const self = RedisClientMock;
+        const key = args.shift();
+        let result = 0;
+        if (/:watch:lock$/.test(key)) {
+            if (typeof self.__keys[key] === 'undefined') {
+                self.__keys[key] = args.shift();
+                result = 1;
+            }
+        }
+        args.pop()(null, result);
+        return true;
+    }
+
+    public lpush(key: string, value: any, cb?: any): boolean {
+        const self = RedisClientMock;
+        if (!self.__queues__[key]) {
+            self.__queues__[key] = [];
+        }
+        self.__queues__[key].push(value);
+        cb(null, 1);
+        return true;
+    }
+
+    public brpop(...args: any[]): boolean {
+        const [key, timeout, cb] = args;
+        const q = RedisClientMock.__queues__[key] || [];
+        if (!q.length) {
+            this.__rt && clearTimeout(this.__rt);
+            this.__rt = setTimeout(() => this.brpop(
+                key, timeout, cb
+            ), timeout || 100);
+        } else {
+            cb && cb(null, [key, q.shift()]);
+        }
+        return true;
+    }
+
+    public brpoplpush(
+        from: string,
+        to: string,
+        timeout: number,
+        cb?: Function
+    ): boolean {
+        const fromQ = RedisClientMock.__queues__[from] =
+            RedisClientMock.__queues__[from] || [];
+        const toQ = RedisClientMock.__queues__[to] =
+            RedisClientMock.__queues__[to] || [];
+        if (!fromQ.length) {
+            this.__rt && clearTimeout(this.__rt);
+            this.__rt = setTimeout(() => this.brpoplpush(
+                from, to, timeout, cb
+            ), timeout || 100);
+        } else {
+            toQ.push(fromQ.shift());
+            cb && cb(null, '1');
+        }
+        return true;
+    }
+
+    public lrange(
+        key: string,
+        start: number,
+        stop: number,
+        cb?: Function
+    ): boolean {
+        const q = RedisClientMock.__queues__[key] =
+            RedisClientMock.__queues__[key] || [];
+        cb && cb(null, q.splice(start, stop)[0]);
+        return true;
+    }
+
+    public scan(...args: any[]): boolean {
+        const cb = args.pop();
+        const qs = RedisClientMock.__queues__;
+        const found: string[] = [];
+        for (let q of Object.keys(qs)) {
+            if (q.match(/worker/)) {
+                found.push(q);
+            }
+        }
+        cb && cb(null, ['0', found]);
+        return true;
+    }
+
+    public script(...args: any[]): boolean {
+        const cmd = args.shift();
+        const script = args.shift();
+        let hash: any = '';
+        if (cmd === 'load') {
+            hash = sha1(script);
+            RedisClientMock.__scripts[hash] = script;
+        }
+        if (cmd === 'exists') {
+            hash = RedisClientMock.__scripts[hash] !== undefined;
+        }
+        args.pop()(null, hash);
+        return true;
+    }
+
+    public client(...args: any[]): boolean {
+        const self = RedisClientMock;
+        const cb = args.pop();
+        const cmd = args.shift();
+        const name = args.shift();
+        if (cmd === 'list') {
+            return cb(null, Object.keys(self.__clientList)
+                .map((name: string, id: number) => `id=${id} name=${name}`)
+                .join('\n'));
+        }
+        else if (cmd === 'setname') {
+            this.__name = name;
+            self.__clientList[name] = true;
+        }
+
+        cb(null, true);
+        return true;
+    }
+
+    public exists(...args: any[]): boolean {
+        const key = args.shift();
+        args.pop()(null, RedisClientMock.__keys[key] !== undefined);
+        return true;
+    }
+
+    public psubscribe(...args: any[]): boolean {
+        args.pop()(null, 1);
+        return true;
+    }
+
+    public evalsha(...args: any[]): boolean {
+        args.pop()();
+        return true;
+    }
+
+    public del(...args: any[]): boolean {
+        const self = RedisClientMock;
+        const cb = args.pop();
+        let count = 0;
+        for (let key of args) {
+            if (self.__keys[key] !== undefined) {
+                delete self.__keys[key];
+                count++;
+            }
+            if (self.__queues__[key] !== undefined) {
+                delete self.__queues__[key];
+                count++;
+            }
+        }
+        cb(null, count);
+        return true;
+    }
+
+    public zadd(...args: any[]): boolean {
+        const [key, score, value, cb] = args;
+        const timeout = score - Date.now();
+        setTimeout(() => {
+            const toKey = key.split(/:/).slice(0,2).join(':');
+            this.lpush(toKey, value);
+        }, timeout);
+        cb && cb();
+        return true;
+    }
+
+    public unref(): boolean {
+        delete RedisClientMock.__clientList[this.__name];
+        if (this.__rt) {
+            clearTimeout(this.__rt);
+            delete this.__rt;
+        }
+        return true;
+    }
+
+    public config(): boolean {
+        return true;
+    }
+}
+
+/**
+ * @implements {IMulti}
+ */
+export class RedisMultiMock extends EventEmitter {}
+
+mock('redis', {
+    createClient() { return new RedisClientMock() },
+    RedisClient: RedisClientMock,
+    Multi: RedisMultiMock
+});
+
+export * from 'redis';

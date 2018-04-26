@@ -1,5 +1,5 @@
 /*!
- * lock() Function Unit Tests
+ * IMQService Unit Tests
  *
  * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
  *
@@ -16,14 +16,10 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 import { expect } from 'chai';
-import { lock } from '../..';
+import { IMQService } from '..';
 
-describe('lock()', () => {
-    it('should be a function', () => {
-        expect(typeof lock).to.equal('function');
-    });
-
-    it('should return decorator function', () => {
-        expect(typeof lock()).to.equal('function');
+describe('IMQService', () => {
+    it('should be a class', () => {
+        expect(typeof IMQService).to.equal('function');
     });
 });

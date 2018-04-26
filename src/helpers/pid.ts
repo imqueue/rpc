@@ -27,14 +27,20 @@ export const IMQ_PID_DIR = path.resolve(IMQ_TMP_DIR, '.imq-rpc');
 /**
  * Returns increment-based process identifier for a given name
  *
+ * @param {string} name - name of a service to create pid file for
+ * @param {string} path - directory to
  * @returns {number}
  */
-export function pid(name: string): number {
-    const pidFile = `${IMQ_PID_DIR}/${name}`;
+export function pid(
+    name: string,
+    // istanbul ignore next
+    path: string = IMQ_PID_DIR
+): number {
+    const pidFile = `${path}/${name}`;
     const pidOpts = { encoding: 'utf8', flag: 'wx' };
 
-    if (!fs.existsSync(IMQ_PID_DIR)) {
-        fs.mkdirSync(IMQ_PID_DIR);
+    if (!fs.existsSync(path)) {
+        fs.mkdirSync(path);
     }
 
     let id: number = 0;
@@ -47,6 +53,7 @@ export function pid(name: string): number {
         }
 
         catch (err) {
+            // istanbul ignore next
             if (err.code === 'EEXIST') {
                 id++;
             }
@@ -66,10 +73,17 @@ export function pid(name: string): number {
  * @param {string} name
  * @param {number} id
  * @param {ILogger} logger
+ * @param {string} [path]
  */
-export function forgetPid(name: string, id: number, logger: ILogger) {
+export function forgetPid(
+    name: string,
+    id: number,
+    logger: ILogger,
+    // istanbul ignore next
+    path: string = IMQ_PID_DIR
+) {
     try {
-        fs.unlinkSync(`${IMQ_PID_DIR}/${name}-${id}.pid`);
+        fs.unlinkSync(`${path}/${name}-${id}.pid`);
     }
 
     catch (err) { /* ignore */ }

@@ -16,16 +16,73 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 import { expect } from 'chai';
-import { pid, forgetPid } from '../..';
+import { pid, forgetPid, IMQ_TMP_DIR, uuid } from '../..';
+import { logger } from '../mocks';
+import * as fs from 'fs';
+
+function rmdirr(path: string) {
+    if (fs.existsSync(path)) {
+        fs.readdirSync(path).forEach((file) => {
+            const curPath = `${path}/${file}`;
+
+            if (fs.lstatSync(curPath).isDirectory()) {
+                rmdirr(curPath);
+            }
+
+            else {
+                fs.unlinkSync(curPath);
+            }
+        });
+
+        fs.rmdirSync(path);
+    }
+};
 
 describe('pid()', () => {
+    let TEST_PID_DIR: string;
+
+    beforeEach(() => TEST_PID_DIR = `${IMQ_TMP_DIR}/${uuid()}`);
+    afterEach(() => rmdirr(TEST_PID_DIR));
+
     it('should be a function', () => {
         expect(typeof pid).to.equal('function');
+    });
+
+    it('should return pid file numeric incremental identifier', () => {
+        const name: string = 'TestPidFile';
+
+        expect(pid(name, TEST_PID_DIR)).to.equal(0);
+        expect(pid(name, TEST_PID_DIR)).to.equal(1);
+        expect(pid(name, TEST_PID_DIR)).to.equal(2);
+    });
+
+    it('should re-use free identifiers', () => {
+        const name: string = 'TestPidFile';
+
+        expect(pid(name, TEST_PID_DIR)).to.equal(0);
+        expect(pid(name, TEST_PID_DIR)).to.equal(1);
+        expect(pid(name, TEST_PID_DIR)).to.equal(2);
+        fs.unlinkSync(`${TEST_PID_DIR}/${name}-1.pid`);
+        expect(pid(name, TEST_PID_DIR)).to.equal(1);
     });
 });
 
 describe('forgetPid()', () => {
+    let TEST_PID_DIR: string;
+
+    beforeEach(() => TEST_PID_DIR = `${IMQ_TMP_DIR}/${uuid()}`);
+    afterEach(() => rmdirr(TEST_PID_DIR));
+
     it('should be a function', () => {
         expect(typeof forgetPid).to.equal('function');
+    });
+
+    it('should free-up pid file', () => {
+        const name: string = 'TestPidFile';
+        const id: number = pid(name, TEST_PID_DIR);
+
+        forgetPid(name, id, logger, TEST_PID_DIR);
+
+        expect(fs.existsSync(`${TEST_PID_DIR}/${name}-0.pid`)).not.to.be.ok;
     });
 });
