@@ -37,7 +37,7 @@ class Hello extends IMQService {
      * @returns {string} - hello string
      */
     @expose()
-    public async hello(name?: string): Promise<string> {
+    public hello(name?: string): string {
         return `Hello, ${name}!`;
     }
 
@@ -80,6 +80,12 @@ import { IMQClient, remote } from 'imq-rpc';
 
 class HelloClient extends IMQClient {
 
+    /**
+     * Says hello using given name
+     *
+     * @param {string} name
+     * @returns {Promise<string>}
+     */
     @remote()
     public async hello(name?: string): Promise<string> {
         return await this.remoteCall<string>(...arguments);
