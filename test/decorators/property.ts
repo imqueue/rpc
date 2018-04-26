@@ -31,6 +31,7 @@ class TestPointType {
 
 }
 
+// noinspection JSUnusedLocalSymbols
 class TestBaseComplexType {
 
     @property('string')

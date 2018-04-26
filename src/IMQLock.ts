@@ -173,6 +173,7 @@ export class IMQLock {
      * @returns {boolean}
      */
     public static locked(key: string): boolean {
+        // noinspection PointlessBooleanExpressionJS
         return !!IMQLock.acquiredLocks[key];
     }
 }

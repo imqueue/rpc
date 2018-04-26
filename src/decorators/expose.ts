@@ -59,9 +59,11 @@ const RX_COMMA_SPLIT = /\s*,\s*/;
 const RX_MULTILINE_CLEANUP = /\*?\n +\* ?/g;
 const RX_DESCRIPTION = /^([\s\S]*?)@/;
 const RX_TAG = /(@[^@]+)/g;
+// noinspection RegExpRedundantEscape
 const RX_TYPE = /\{([\s\S]+)\}/;
 const RX_LI_CLEANUP = /^\s*-\s*/;
 const RX_SPACE_SPLIT = / /;
+// noinspection RegExpRedundantEscape
 const RX_OPTIONAL = /^\[(.*?)\]$/;
 
 /**
@@ -72,13 +74,11 @@ const RX_OPTIONAL = /^\[(.*?)\]$/;
  */
 function argumentNames(fn: Function): string[] {
     let src: string = fn.toString();
-    let args: string[] | null = src.slice(
+    return src.slice(
         src.indexOf('(') + 1, src.indexOf(')')
     ).split(RX_COMMA_SPLIT).map(arg =>
         arg.trim().replace(RX_ARG_NAMES, '$1')
     ).filter(arg => arg);
-
-    return args;
 }
 
 /**
@@ -323,7 +323,6 @@ function cast(type: string) {
 /**
  * Expose decorator factory
  *
- * @param {Partial<ExposeOptions>} options
  * @return {(
  *    target: object,
  *    methodName: (string|symbol),

@@ -36,7 +36,7 @@ function rmdirr(path: string) {
 
         fs.rmdirSync(path);
     }
-};
+}
 
 describe('helpers/pid()', () => {
     let TEST_PID_DIR: string;

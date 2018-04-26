@@ -88,7 +88,7 @@ export const cache: CacheDecorator = function(options?: CacheDecoratorOptions) {
             return result;
         };
     }
-}
+};
 
 cache.globalOptions = {
     adapter: RedisCache

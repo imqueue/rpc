@@ -18,14 +18,11 @@
 import IMQ, { ILogger, IMessageQueue, profile } from 'imq';
 import {
     TypesDescription,
-    ServiceDescription,
     IMQRPCDescription,
-    IMQRPCError,
     IMQRPCRequest,
     IMQRPCResponse,
     IMQServiceOptions,
     expose,
-    property,
     ICache,
     ServiceClassDescription,
     MethodsCollectionDescription,
@@ -85,110 +82,7 @@ function isValidArgsCount(argsInfo: ArgDescription[], args: any[]) {
 
 /**
  * Class IMQService
- * Basic abstract service (server-side) implementation.
- *
- * @example
- * ~~~typescript
- * import { IMQService, expose, profile, property } from 'imq-rpc';
- *
- *  class Address {
- *     @property('string')
- *     country: sting;
- *
- *     @property('string')
- *     city: string;
- *
- *     @property('string')
- *     address: string;
- *
- *     @property('string')
- *     zipCode: string;
- *
- *     @property("'billing' | 'shipping'")
- *     type: 'billing' | 'shipping';
- *
- *     @property('boolean', true)
- *     isPrimary?: boolean;
- * }
- *
- * class Email {
- *     @property('string')
- *     address: string;
- *
- *     @property('boolean', true)
- *     isPrimary?: boolean;
- * }
- *
- * class Phone {
- *     @property('string')
- *     countryCode: string;
- *
- *     @property('string');
- *     areaCode: string;
- *
- *     @property('string')
- *     number: string;
- *
- *     @property('boolean', true)
- *     isPrimary?: boolean;
- *
- *      @property("'cell' | 'work' | 'home'", true)
- *     type?: 'cell' | 'work' | 'home';
- * }
- *
- * class User {
- *     @property('string', false)
- *     firstName: string;
- *
- *     @property('string', false)
- *     lastName: string;
- *
- *     @property('Email');
- *     email: Email[];
- *
- *     @property('Phone[]')
- *     phone: Phone[];
- *
- *     @property('Address[]')
- *     address: Address[]
- * }
- *
- * \/**
- *  * Class UserService
- *  * Implements user server-data manipulations.
- *  *\/
- * class UserService() extends IMQService {
- *
- *     /**
- *      * Finds and returns a user object from server
- *      *
- *      * @param {number} id - user identifier
- *      * @returns {User | null} - user object or null if not found
- *      *\/
- *     @expose()
- *     public async find(id: number): User | null {
- *         // ... implementation goes here ...
- *     }
- *
- *     /**
- *      * Persist user data on server
- *      *
- *      * @param {Partial<User>} user - user data
- *      * @returns {boolean} - save operation result
- *      *\/
- *     @expose()
- *     public async save(user: Partial<User>): boolean {
- *         // ... implementation goes here ...
- *     }
- *
- *     // ... other methods implementation ...
- * }
- *
- * (async () => {
- *    const service = new UserService({ multiProcess: true });
- *    await service.start();
- * })();
- * ~~~
+ * Basic abstract service (server-side) implementation
  */
 export abstract class IMQService {
 
@@ -201,6 +95,7 @@ export abstract class IMQService {
     public name: string;
     public options: IMQServiceOptions;
 
+    // noinspection TypeScriptAbstractClassConstructorCanBeMadeProtected
     /**
      * Class constructor
      *

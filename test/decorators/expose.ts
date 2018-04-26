@@ -25,6 +25,7 @@ class ExposeTestClass {
     @expose()
     public testMethod() {}
 
+    // noinspection JSUnusedLocalSymbols
     @expose()
     public async anotherMethod(strArr: string[], num?: number) {}
 
@@ -48,10 +49,12 @@ class ExposeTestClass {
         });
     }
 
+    // noinspection JSUnusedGlobalSymbols
     public nonExposedMethod() {}
 
 }
 
+// noinspection JSUnusedLocalSymbols
 class ExposeTestClassExtended extends ExposeTestClass {
     @expose()
     public extendedMethod() {}

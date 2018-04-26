@@ -25,7 +25,6 @@ import {
     forgetPid,
     osUuid,
     DEFAULT_IMQ_CLIENT_OPTIONS,
-    ServiceDescription,
     IMQServiceOptions,
     IMQClientOptions,
     IMQRPCResponse,
@@ -46,15 +45,16 @@ const SIGNALS: string[] = ['SIGTERM', 'SIGINT', 'SIGHUP', 'SIGBREAK'];
  */
 export abstract class IMQClient extends EventEmitter {
 
-    public options: IMQClientOptions;
-    public id: number;
-    private baseName: string;
+    public readonly options: IMQClientOptions;
+    public readonly id: number;
+    private readonly baseName: string;
     private imq: IMessageQueue;
-    private name: string;
-    private serviceName: string;
-    private logger: ILogger;
+    private readonly name: string;
+    private readonly serviceName: string;
+    private readonly logger: ILogger;
     private resolvers: { [id: string]: [Function, Function] } = {};
 
+    // noinspection TypeScriptAbstractClassConstructorCanBeMadeProtected
     /**
      * Class constructor
      *
@@ -75,7 +75,7 @@ export abstract class IMQClient extends EventEmitter {
         this.baseName = baseName;
 
         if (this.constructor.name === 'IMQClient') {
-            throw new TypeError('IMQClient class is abstract and can not' +
+            throw new TypeError('IMQClient class is abstract and cannot ' +
                 'be instantiated directly!');
         }
 
@@ -219,10 +219,19 @@ export abstract class IMQClient extends EventEmitter {
 class GeneratorClient extends IMQClient {
     @remote()
     public async describe() {
-        return await this.remoteCall<ServiceDescription>(...arguments);
+        return await this.remoteCall<Description>(...arguments);
     }
 }
 
+/**
+ * Fetches and returns service description using the timeout (to handle
+ * situations when the service is not started)
+ *
+ * @access private
+ * @param {string} name
+ * @param {IMQClientOptions} options
+ * @returns {Promise<Description>}
+ */
 async function getDescription(
     name: string,
     options: IMQClientOptions
@@ -252,7 +261,7 @@ async function getDescription(
  * @access private
  * @param {string} name
  * @param {IMQClientOptions} options
- * @return {Promise<string>}
+ * @returns {Promise<string>}
  */
 async function generator(
     name: string,
@@ -317,7 +326,7 @@ export namespace ${namespaceName} {\n`;
         }
 
         src += '        /**\n';
-        src += description ?description.split(/\r?\n/)
+        src += description ? description.split(/\r?\n/)
             .map(line => `         * ${line}`)
             .join('\n') + '\n         *\n' : '';
 
@@ -360,6 +369,7 @@ export namespace ${namespaceName} {\n`;
 /**
  * Return promised typedef of a given type if its missing
  *
+ * @access private
  * @param {string} typedef
  * @returns {string}
  */
@@ -374,6 +384,7 @@ function promisedType(typedef: string) {
 /**
  * Removes Promise from type definition if any
  *
+ * @access private
  * @param {string} typedef
  * @returns {string}
  */
@@ -384,6 +395,7 @@ function cleanType(typedef: string) {
 /**
  * Type to comment
  *
+ * @access private
  * @param {string} typedef
  * @param {boolean} [promised]
  * @returns {string}
@@ -394,15 +406,14 @@ function toComment(typedef: string, promised: boolean = false): string {
     }
 
     return typedef.split(/\r?\n/)
-        .map((line, linenum) =>
-            (linenum ? '         * ' : '') + line
-        )
+        .map((line, lineNum) => (lineNum ? '         * ' : '') + line)
         .join('\n');
 }
 
 /**
  * Compiles client source code and returns loaded module
  *
+ * @access private
  * @param {string} name
  * @param {string} src
  * @param {IMQClientOptions} options

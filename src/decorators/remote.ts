@@ -24,7 +24,7 @@
  *    descriptor: TypedPropertyDescriptor<Function>
  * ) => void}
  */
-export function remote(...args: any[]) {
+export function remote() {
     return function(
         target: any,
         methodName: string | symbol,

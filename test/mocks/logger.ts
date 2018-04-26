@@ -15,6 +15,7 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
+// noinspection JSUnusedGlobalSymbols
 export const logger: any = {
     log() {},
     info() {},
