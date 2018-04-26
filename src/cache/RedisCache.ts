@@ -25,8 +25,6 @@ import {
 } from 'imq';
 import * as os from 'os';
 
-console.log(redis);
-
 export interface IRedisCacheOptions extends Partial<IMQOptions> {
     conn?: IRedisClient
 }
