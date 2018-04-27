@@ -6,6 +6,15 @@ RPC-like client-service implementation over messaging queue. This module
 provides base set of abstract classes and decorators to build services and 
 clients for them.
 
+## Why?
+
+To provide fast and reliable way of communication between backend services.
+
+IMQ-RPC provides a simple and reliable solution, using which developer can focus
+exactly on business logic implementation and be assured the services 
+inter-communication is handled properly, performs fast and is scalable enough
+to handle any load.
+
 ## Installation
 
 ~~~bash
