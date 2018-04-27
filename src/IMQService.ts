@@ -74,6 +74,7 @@ function getClassMethods(className: string): MethodsCollectionDescription {
  * @returns {boolean}
  */
 function isValidArgsCount(argsInfo: ArgDescription[], args: any[]) {
+    // istanbul ignore next
     return (argsInfo.some(argInfo => argInfo.isOptional)
         ? argsInfo.length >= args.length
         : argsInfo.length === args.length
@@ -107,8 +108,8 @@ export abstract class IMQService {
         this.name = name || this.constructor.name;
 
         if (this.name === 'IMQService') {
-            throw new TypeError('IMQService class is abstract and can ' +
-                'not be instantiated directly!');
+            throw new TypeError('IMQService class is abstract and cannot ' +
+                'be instantiated directly!');
         }
 
         this.options = Object.assign({},
@@ -116,10 +117,14 @@ export abstract class IMQService {
             options || {}
         );
 
-        this.logger = this.options.logger || console;
+        this.logger = this.options.logger ||
+            // istanbul ignore next
+            console;
         this.imq = IMQ.create(this.name, options);
 
-        this.imq.on('message', this.handleRequest.bind(this));
+        this.handleRequest = this.handleRequest.bind(this);
+
+        this.imq.on('message', this.handleRequest);
     }
 
     /**
@@ -145,31 +150,31 @@ export abstract class IMQService {
             response.error = {
                 code: 'IMQ_RPC_NO_METHOD',
                 message: `Method ${this.name}.${method}() does not exist.`,
-                stack: new Error().stack || '',
-                method: method || '',
+                stack: new Error().stack || /* istanbul ignore next */'',
+                method: method || /* istanbul ignore next */'',
                 args: JSON.stringify(args, null, 2)
             }
         }
 
-        if (!description.service.methods[method]) {
+        else if (!description.service.methods[method]) {
             response.error = {
                 code: 'IMQ_RPC_NO_ACCESS',
                 message: `Access to ${this.name}.${method}() denied!`,
-                stack: new Error().stack || '',
-                method: method || '',
+                stack: new Error().stack || /* istanbul ignore next */'',
+                method: method || /* istanbul ignore next */'',
                 args: JSON.stringify(args, null, 2)
             };
         }
 
-        if (!isValidArgsCount(
+        else if (!isValidArgsCount(
             description.service.methods[method].arguments,
             args
         )) {
             response.error = {
                 code: 'IMQ_RPC_INVALID_ARGS_COUNT',
                 message: `Invalid args count for ${this.name}.${method}().`,
-                stack: new Error().stack || '',
-                method: method || '',
+                stack: new Error().stack || /* istanbul ignore next */'',
+                method: method || /* istanbul ignore next */'',
                 args: JSON.stringify(args, null, 2)
             };
         }
@@ -182,6 +187,7 @@ export abstract class IMQService {
         try {
             response.data = this[method].apply(this, args);
 
+            // istanbul ignore next
             if (response.data && response.data.then) {
                 response.data = await response.data;
             }
@@ -191,8 +197,10 @@ export abstract class IMQService {
             response.error = {
                 code: 'IMQ_RPC_CALL_ERROR',
                 message: err.message,
-                stack: err.stack || new Error().stack || '',
-                method: method || '',
+                stack: err.stack ||
+                    /* istanbul ignore next */new Error().stack ||
+                    /* istanbul ignore next */'',
+                method: method || /* istanbul ignore next */'',
                 args: JSON.stringify(args, null, 2)
             };
         }
@@ -208,24 +216,27 @@ export abstract class IMQService {
      */
     @profile()
     public async start() {
-        const numCpus = os.cpus().length;
-        const numWorkers = numCpus * this.options.childrenPerCore;
-
         if (!this.options.multiProcess) {
             this.logger.info(
                 '%s: starting single-worker, pid %s',
                 this.name, process.pid
             );
 
+            this.describe();
+
             return this.imq.start();
         }
 
         if (cluster.isMaster) {
+            const numCpus = os.cpus().length;
+            const numWorkers = numCpus * this.options.childrenPerCore;
+
             for (let i = 0; i < numWorkers; i++) {
                 this.logger.info('%s: starting worker #%s ...', this.name, i);
                 cluster.fork({ workerId: i });
             }
 
+            // istanbul ignore next
             cluster.on('exit', (worker: any) => {
                 this.logger.info(
                     '%s: worker pid %s died, exiting',
