@@ -52,7 +52,9 @@ export class RedisCache implements ICache {
      */
     public async init(options?: IRedisCacheOptions): Promise<RedisCache> {
         this.options = Object.assign(
-            {}, DEFAULT_REDIS_CACHE_OPTIONS, options || {}
+            {}, DEFAULT_REDIS_CACHE_OPTIONS, options ||
+            // istanbul ignore next
+            {}
         );
 
         this.logger = this.options.logger ||

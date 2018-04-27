@@ -30,3 +30,5 @@ export interface ICache {
     del(key: string): Promise<boolean>;
 
 }
+
+export type ICacheAdapter = ICacheConstructor | ICache | string;

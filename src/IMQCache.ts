@@ -15,7 +15,7 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { ICache } from '.';
+import { ICache, ICacheAdapter } from '.';
 
 /**
  * Generic cache registry
@@ -32,10 +32,11 @@ export class IMQCache {
      * @param {any} options - adapter specific options
      * @returns {IMQCache}
      */
-    public static register(adapter: ICache | string, options?: any) {
+    public static register(adapter: ICacheAdapter, options?: any) {
         const self = IMQCache;
 
         if (typeof adapter === 'string') {
+            // istanbul ignore else
             if (!self.adapters[adapter]) {
                 self.adapters[adapter] = <ICache>new (require(
                     `${__dirname}/cache/${adapter}.js`
@@ -44,6 +45,7 @@ export class IMQCache {
         }
 
         else {
+            // istanbul ignore else
             if (!self.adapters[adapter.name]) {
                 if (typeof adapter === 'function') {
                     self.adapters[(<any>adapter).name] = new (<any>adapter)();
@@ -67,7 +69,7 @@ export class IMQCache {
      * @param {any} options - adapter specific options
      * @returns {IMQCache}
      */
-    public static apply(adapter: ICache | string, options: any) {
+    public static apply(adapter: ICacheAdapter, options: any) {
         const self = IMQCache;
 
         if (!options) {
@@ -93,6 +95,7 @@ export class IMQCache {
         const promises = [];
 
         for (let adapter of Object.keys(self.adapters)) {
+            // istanbul ignore else
             if (!self.adapters[adapter].ready) {
                 promises.push(
                     self.adapters[adapter].init(
@@ -113,7 +116,7 @@ export class IMQCache {
      * @param { ICache | string} adapter - adapter name or class
      * @returns {ICache} - adapter instance
      */
-    public static get(adapter: ICache | string): ICache {
+    public static get(adapter: ICacheAdapter): ICache {
         return IMQCache.adapters[
             typeof adapter === 'string' ? adapter : adapter.name
         ];
