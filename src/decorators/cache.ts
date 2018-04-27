@@ -61,10 +61,11 @@ export const cache: CacheDecorator = function(options?: CacheDecoratorOptions) {
                         opts = { conn: (<any>context.imq).writer };
                     }
 
-                    if (context.imq && context.imq.logger) {
-                        opts = Object.assign(opts || {}, {
-                            logger: context.imq.logger
-                        });
+                    const logger = context.logger ||
+                        (context.imq && context.imq.logger);
+
+                    if (logger) {
+                        opts = Object.assign(opts || {}, { logger });
                     }
 
                     await IMQCache.register(Adapter, opts).init();

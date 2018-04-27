@@ -15,11 +15,15 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import '../mocks';
+import { logger } from '../mocks';
 import { expect } from 'chai';
 import { RedisCache, cache } from '../..';
+import { ILogger } from 'imq';
 
 class CacheTestClass {
+
+    // noinspection JSUnusedLocalSymbols
+    private logger: ILogger = logger;
 
     @cache()
     public async testMethod() {

@@ -15,7 +15,7 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { redis } from '../mocks';
+import { redis, logger } from '../mocks';
 import { expect } from 'chai';
 import { RedisCache } from '../..';
 import { uuid } from 'imq';
@@ -37,19 +37,19 @@ describe('cache/RedisCache', () => {
         it('should not throw without options', async () => {
             const cache = new RedisCache();
 
-            expect(async () => await cache.init()).not.to.throw;
+            expect(async () => await cache.init({ logger })).not.to.throw;
         });
 
         it('should re-use existing conn if given', async () => {
             let cache = new RedisCache();
 
-            await cache.init();
+            await cache.init({ logger });
 
             const oldConn = (<any>RedisCache).redis;
 
             cache = new RedisCache();
 
-            await cache.init();
+            await cache.init({ logger });
 
             expect(oldConn).to.equal((<any>RedisCache).redis);
         });
@@ -58,7 +58,7 @@ describe('cache/RedisCache', () => {
             const conn = redis.createClient();
             const cache = new RedisCache();
 
-            await cache.init({ conn });
+            await cache.init({ conn, logger });
 
             expect((<any>RedisCache).redis).to.equal(conn);
         });
@@ -69,7 +69,7 @@ describe('cache/RedisCache', () => {
 
         before(async() => {
             cache = new RedisCache();
-            await cache.init();
+            await cache.init({ logger });
         });
 
         after(async () => RedisCache.destroy());
@@ -97,7 +97,7 @@ describe('cache/RedisCache', () => {
 
         before(async() => {
             cache = new RedisCache();
-            await cache.init();
+            await cache.init({ logger });
         });
 
         after(async () => RedisCache.destroy());
@@ -124,7 +124,7 @@ describe('cache/RedisCache', () => {
         it('should remove', async () => {
             const cache = new RedisCache();
             const key = uuid();
-            await cache.init();
+            await cache.init({ logger });
             await cache.set(key, 'value');
             await cache.del(key);
             expect(await cache.get(key)).to.be.undefined;
