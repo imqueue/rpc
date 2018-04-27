@@ -76,7 +76,7 @@ There are 3 ways of building service clients:
 File: `client.ts` (manually written client example):
 
 ~~~typescript
-import { IMQClient, remote } from 'imq-rpc';
+import { IMQClient, IMQDelay, remote } from 'imq-rpc';
 
 class HelloClient extends IMQClient {
 
@@ -87,7 +87,7 @@ class HelloClient extends IMQClient {
      * @returns {Promise<string>}
      */
     @remote()
-    public async hello(name?: string): Promise<string> {
+    public async hello(name?: string, delay?: IMQDelay): Promise<string> {
         return await this.remoteCall<string>(...arguments);
     }
 

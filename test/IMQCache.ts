@@ -84,6 +84,7 @@ describe('IMQCache', () => {
     describe('init()', () => {
         it('should initialize all registered adapters', async () => {
             IMQCache.register(RedisCache);
+            IMQCache.apply(RedisCache, { logger });
 
             const spy = sinon.spy(IMQCache.adapters['RedisCache'], 'init');
 

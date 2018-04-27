@@ -37,6 +37,8 @@ import * as fs from 'fs';
 import * as ts from 'typescript';
 import { EventEmitter } from 'events';
 
+process.setMaxListeners(10000);
+
 const tsOptions = require('../tsconfig.json').compilerOptions;
 const SIGNALS: string[] = ['SIGTERM', 'SIGINT', 'SIGHUP', 'SIGBREAK'];
 
@@ -49,7 +51,7 @@ export abstract class IMQClient extends EventEmitter {
     public readonly id: number;
     private readonly baseName: string;
     private imq: IMessageQueue;
-    private readonly name: string;
+    public readonly name: string;
     private readonly serviceName: string;
     private readonly logger: ILogger;
     private resolvers: { [id: string]: [Function, Function] } = {};
@@ -81,41 +83,18 @@ export abstract class IMQClient extends EventEmitter {
 
         this.options = Object.assign({},
             DEFAULT_IMQ_CLIENT_OPTIONS,
-            options || {}
+            options || /* istanbul ignore next */ {}
         );
 
         this.id = pid(baseName);
-        this.logger = this.options.logger || console;
+        this.logger = this.options.logger || /* istanbul ignore next */ console;
         this.name = `${baseName}-${osUuid()}-${this.id}`;
         this.serviceName = serviceName || baseName.replace(/Client$/, '');
         this.imq = IMQ.create(this.name, this.options);
 
-        this.imq.on('message', (message: IMQRPCResponse) => {
-            process.nextTick(() => {
-                if (!this.resolvers[message.to]) {
-                    // when there is no resolvers it means
-                    // we have massage in queue which was initiated
-                    // by some process which is broken. So we provide an
-                    // ability to handle enqueued messages via EventEmitter
-                    // interface
-                    this.emit(message.request.method, message);
-                }
-
-                const [ resolve, reject ] = this.resolvers[message.to] || [
-                    undefined,
-                    undefined
-                ];
-
-                if (message.error) {
-                    return reject && reject(message.error);
-                }
-
-                resolve && resolve(message.data);
-            });
-        });
-
         const terminate = async () => {
             await this.destroy();
+            // istanbul ignore next
             process.nextTick(() => process.exit(0));
         };
 
@@ -139,6 +118,7 @@ export abstract class IMQClient extends EventEmitter {
         if (args[args.length - 1] instanceof IMQDelay) {
             delay = args.pop().ms;
 
+            // istanbul ignore if
             if (!isFinite(delay) || isNaN(delay) || delay < 0) {
                 delay = 0;
             }
@@ -153,6 +133,7 @@ export abstract class IMQClient extends EventEmitter {
             }
 
             catch (err) {
+                // istanbul ignore next
                 reject(err);
             }
         });
@@ -164,9 +145,37 @@ export abstract class IMQClient extends EventEmitter {
      * @returns {Promise<void>}
      */
     public async start() {
+        this.imq.on('message', (message: IMQRPCResponse) => {
+            process.nextTick(() => {
+                // the following condition below is hard to test with the
+                // current redis mock, BTW it was tested manually on real
+                // redis run
+                // istanbul ignore if
+                if (!this.resolvers[message.to]) {
+                    // when there is no resolvers it means
+                    // we have massage in queue which was initiated
+                    // by some process which is broken. So we provide an
+                    // ability to handle enqueued messages via EventEmitter
+                    // interface
+                    this.emit(message.request.method, message);
+                }
+
+                const [ resolve, reject ] = this.resolvers[message.to] ||
+                    // istanbul ignore next
+                    [ undefined, undefined ];
+
+                if (message.error) {
+                    return reject && reject(message.error);
+                }
+
+                resolve && resolve(message.data);
+            });
+        });
+
         await this.imq.start();
     }
 
+    // noinspection JSUnusedGlobalSymbols
     /**
      * Stops client work
      *
@@ -183,12 +192,20 @@ export abstract class IMQClient extends EventEmitter {
      */
     public async destroy() {
         forgetPid(this.baseName, this.id, this.logger);
-
-        for (let event of this.eventNames()) {
-            this.removeAllListeners(event);
-        }
-
+        this.removeAllListeners();
         await this.imq.destroy();
+    }
+
+
+    /**
+     * Returns service description metadata.
+     *
+     * @param {IMQDelay} delay
+     * @returns {Promise<Description>}
+     */
+    @remote()
+    public async describe(delay?: IMQDelay): Promise<Description> {
+        return await this.remoteCall<Description>(...arguments);
     }
 
     /**
@@ -216,12 +233,7 @@ export abstract class IMQClient extends EventEmitter {
  * Class GeneratorClient - generator helper class implementation
  * @access private
  */
-class GeneratorClient extends IMQClient {
-    @remote()
-    public async describe() {
-        return await this.remoteCall<Description>(...arguments);
-    }
-}
+class GeneratorClient extends IMQClient {}
 
 /**
  * Fetches and returns service description using the timeout (to handle
@@ -238,14 +250,13 @@ async function getDescription(
 ): Promise<Description> {
     return new Promise<Description>(async (resolve, reject) => {
         const client: any = new GeneratorClient(options, name, `${name}Client`);
+        await client.start();
         const timeout = setTimeout(async () => {
             await client.destroy();
             timeout && clearTimeout(timeout);
-            resolve = () => {};
             reject(new EvalError('Generate client error: service remote ' +
                 `call timed-out! Is service "${name}" running?`));
         }, options.timeout);
-
         const description = await client.describe();
         timeout && clearTimeout(timeout);
         await client.destroy();
@@ -291,7 +302,7 @@ async function generator(
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { IMQClient, Description, remote, profile } from 'imq-rpc';
+import { IMQClient, IMQDelay, Description, remote, profile } from 'imq-rpc';
 
 export namespace ${namespaceName} {\n`;
 
@@ -314,6 +325,10 @@ export namespace ${namespaceName} {\n`;
     const methods = description.service.methods;
 
     for (let methodName of Object.keys(methods)) {
+        if (methodName === 'describe') {
+            continue; // do not create inherited method - no need
+        }
+
         let args = methods[methodName].arguments;
         let description = methods[methodName].description;
         let ret = methods[methodName].returns;
@@ -321,11 +336,27 @@ export namespace ${namespaceName} {\n`;
             .replace(/\r?\n/g, ' ')
             .replace(/\s{2,}/g, ' ');
 
+        // make sure each method allows optional delay argument
+        const lastArg = args[args.length - 1];
+
+        if (lastArg && lastArg.type !== 'IMQDelay') {
+            args.push({
+                description: 'if passed the method will be called with ' +
+                             'the specified delay over message queue',
+                name: 'delay',
+                type: 'IMQDelay',
+                tsType: 'IMQDelay',
+                isOptional: true
+            });
+        }
+
+        // istanbul ignore if
         if (retType === 'Promise') {
-            retType = 'any';
+            retType = 'Promise<any>';
         }
 
         src += '        /**\n';
+        // istanbul ignore next
         src += description ? description.split(/\r?\n/)
             .map(line => `         * ${line}`)
             .join('\n') + '\n         *\n' : '';
@@ -363,7 +394,7 @@ export namespace ${namespaceName} {\n`;
 
     const module = compile(name, src, options);
 
-    return module ? module[namespaceName] : null;
+    return module ? module[namespaceName] : /* istanbul ignore next */ null;
 }
 
 /**
@@ -374,6 +405,7 @@ export namespace ${namespaceName} {\n`;
  * @returns {string}
  */
 function promisedType(typedef: string) {
+    // istanbul ignore next
     if (!/^Promise</.test(typedef)) {
         typedef = `Promise<${typedef}>`;
     }
@@ -405,6 +437,7 @@ function toComment(typedef: string, promised: boolean = false): string {
         typedef = promisedType(typedef);
     }
 
+    // istanbul ignore next
     return typedef.split(/\r?\n/)
         .map((line, lineNum) => (lineNum ? '         * ' : '') + line)
         .join('\n');
@@ -420,16 +453,18 @@ function toComment(typedef: string, promised: boolean = false): string {
  * @returns {any}
  */
 function compile(name: string, src: string, options: IMQClientOptions) {
-    const path = options.path || './clients';
+    const path = options.path;
     const srcFile = `${path}/${name}.ts`;
     const jsFile = `${path}/${name}.js`;
 
+    // istanbul ignore else
     if (!fs.existsSync(path)) {
         fs.mkdirSync(path);
     }
 
     fs.writeFileSync(srcFile, src, { encoding: 'utf8' });
 
+    // istanbul ignore else
     if (options.compile) {
         fs.writeFileSync(jsFile,
             ts.transpile(src, tsOptions), { encoding: 'utf8' });
@@ -437,5 +472,6 @@ function compile(name: string, src: string, options: IMQClientOptions) {
         return require(fs.realpathSync(jsFile));
     }
 
+    // istanbul ignore next
     return null;
 }
