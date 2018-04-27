@@ -99,6 +99,7 @@ export class IMQLock {
             return new Promise<T>((resolve, reject) => {
                 let timer: any = null;
 
+                // istanbul ignore else
                 if (IMQLock.deadlockTimeout) {
                     // avoid dead-locks using timeouts
                     timer = setTimeout(() => {
@@ -113,6 +114,7 @@ export class IMQLock {
                 }
 
                 IMQLock.queues[key].push([
+                    // istanbul ignore next
                     (result: any) => { // lock resolve
                         try {
                             timer && clearTimeout(timer);
@@ -124,6 +126,7 @@ export class IMQLock {
 
                         resolve(result);
                     },
+                    // istanbul ignore next
                     (err: any) => { // lock reject
                         try {
                             timer && clearTimeout(timer);

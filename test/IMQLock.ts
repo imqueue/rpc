@@ -17,10 +17,57 @@
  */
 import './mocks';
 import { expect } from 'chai';
-import { IMQLock } from '..';
+import { IMQLock, AcquiredLock } from '..';
+
+const LOCK_TIMEOUT = 100;
+const ORIGINAL_LOCK_TIMEOUT = IMQLock.deadlockTimeout;
+
+async function deadLocked() {
+    const lock: AcquiredLock<number> =
+        await IMQLock.acquire<number>('deadLocked')
+    ;
+
+    if (IMQLock.locked('lockable')) {
+        try {
+            const res = await new Promise(resolve => setTimeout(() =>
+                resolve(Math.random() * Math.random() + Math.random()),
+                LOCK_TIMEOUT
+            ));
+            IMQLock.release('deadLocked', res);
+            return res;
+        }
+
+        catch (err) {
+            IMQLock.release('deadLocked', null, err);
+            throw err;
+        }
+    }
+
+    return lock;
+}
 
 describe('IMQLock', () => {
+    this.timeout = 30000;
+
+    before(() => IMQLock.deadlockTimeout = LOCK_TIMEOUT);
+    after(() => IMQLock.deadlockTimeout = ORIGINAL_LOCK_TIMEOUT);
+
     it('should be a class', () => {
         expect(typeof IMQLock).to.equal('function');
+    });
+
+    describe('acquire()', () => {
+        it('should avoid dead-locks using timeout', async () => {
+            try {
+                for (let i = 0; i < 10; ++i) {
+                    await deadLocked();
+                }
+            }
+
+            catch (err) {
+                expect(err.message).to.contain('Lock timeout');
+            }
+
+        });
     });
 });
