@@ -22,6 +22,7 @@ import {
     IMQRPCRequest,
     IMQRPCResponse,
     IMQServiceOptions,
+    IMQError,
     expose,
     ICache,
     ServiceClassDescription,
@@ -147,36 +148,27 @@ export abstract class IMQService {
         };
 
         if (!this[method]) {
-            response.error = {
-                code: 'IMQ_RPC_NO_METHOD',
-                message: `Method ${this.name}.${method}() does not exist.`,
-                stack: new Error().stack || /* istanbul ignore next */'',
-                method: method || /* istanbul ignore next */'',
-                args: JSON.stringify(args, null, 2)
-            }
+            response.error = IMQError(
+                'IMQ_RPC_NO_METHOD',
+                `Method ${this.name}.${method}() does not exist.`,
+                new Error().stack, method, args);
         }
 
         else if (!description.service.methods[method]) {
-            response.error = {
-                code: 'IMQ_RPC_NO_ACCESS',
-                message: `Access to ${this.name}.${method}() denied!`,
-                stack: new Error().stack || /* istanbul ignore next */'',
-                method: method || /* istanbul ignore next */'',
-                args: JSON.stringify(args, null, 2)
-            };
+            response.error = IMQError(
+                'IMQ_RPC_NO_ACCESS',
+                `Access to ${this.name}.${method}() denied!`,
+                new Error().stack, method, args);
         }
 
         else if (!isValidArgsCount(
             description.service.methods[method].arguments,
             args
         )) {
-            response.error = {
-                code: 'IMQ_RPC_INVALID_ARGS_COUNT',
-                message: `Invalid args count for ${this.name}.${method}().`,
-                stack: new Error().stack || /* istanbul ignore next */'',
-                method: method || /* istanbul ignore next */'',
-                args: JSON.stringify(args, null, 2)
-            };
+            response.error = IMQError(
+                'IMQ_RPC_INVALID_ARGS_COUNT',
+                `Invalid args count for ${this.name}.${method}().`,
+                new Error().stack, method, args);
         }
 
         if (response.error) {
@@ -194,15 +186,8 @@ export abstract class IMQService {
         }
 
         catch (err) {
-            response.error = {
-                code: 'IMQ_RPC_CALL_ERROR',
-                message: err.message,
-                stack: err.stack ||
-                    /* istanbul ignore next */new Error().stack ||
-                    /* istanbul ignore next */'',
-                method: method || /* istanbul ignore next */'',
-                args: JSON.stringify(args, null, 2)
-            };
+            response.error = IMQError('IMQ_RPC_CALL_ERROR',
+                err.message, err.stack, method, args);
         }
 
         return await this.imq.send(msg.from, response);

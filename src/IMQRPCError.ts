@@ -28,3 +28,29 @@ export interface IMQRPCError extends IJson {
     method: string;
     args: string;
 }
+
+// istanbul ignore next
+/**
+ *
+ * @param {string} code
+ * @param {string} message
+ * @param {string} stack
+ * @param {string} method
+ * @param {any} args
+ * @return {IMQRPCError}
+ */
+export function IMQError(
+    code: string,
+    message: string,
+    stack: any,
+    method: any,
+    args: any
+): IMQRPCError {
+    return {
+        code,
+        message,
+        stack: stack || '',
+        method: method || '',
+        args: JSON.stringify(args, null, 2)
+    };
+}
