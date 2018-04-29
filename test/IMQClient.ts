@@ -173,11 +173,38 @@ describe('IMQClient', () => {
                 const testService: any = await IMQClient.create(
                     'TestService', { logger, path: CLIENTS_PATH });
                 const cli = new testService.TestClient({ logger });
+
                 expect(cli).instanceOf(IMQClient);
+
+                const notExists = await new Promise(resolve =>
+                    fs.access(`${CLIENTS_PATH}/TestService.ts`, resolve));
+                expect(!notExists).to.be.equal(true, 'TestService.ts does not exit');
+
                 cli.destroy();
                 rmdirr(CLIENTS_PATH);
             } catch (err) {
                 rmdirr(CLIENTS_PATH);
+                throw err;
+            }
+        });
+
+        it('should just return module without writing', async () => {
+            try {
+                const testService: any = await IMQClient.create('TestService', {
+                    logger,
+                    path: CLIENTS_PATH,
+                    write: false,
+                });
+                const cli = new testService.TestClient({ logger });
+
+                expect(cli).instanceOf(IMQClient);
+
+                const notExists = await new Promise(resolve =>
+                    fs.access(`${CLIENTS_PATH}/TestService.ts`, resolve));
+                expect(!notExists).to.be.equal(false, 'TestService.ts exits');
+
+                cli.destroy();
+            } catch (err) {
                 throw err;
             }
         });

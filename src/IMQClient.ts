@@ -36,6 +36,7 @@ import {
 import * as fs from 'fs';
 import * as ts from 'typescript';
 import { EventEmitter } from 'events';
+import * as vm from 'vm';
 
 process.setMaxListeners(10000);
 
@@ -392,7 +393,7 @@ export namespace ${namespaceName} {\n`;
 
     src += '    }\n}\n';
 
-    const module = compile(name, src, options);
+    const module = await compile(name, src, options);
 
     return module ? module[namespaceName] : /* istanbul ignore next */ null;
 }
@@ -400,7 +401,7 @@ export namespace ${namespaceName} {\n`;
 /**
  * Return promised typedef of a given type if its missing
  *
- * @access private
+ *c @access private
  * @param {string} typedef
  * @returns {string}
  */
@@ -452,24 +453,28 @@ function toComment(typedef: string, promised: boolean = false): string {
  * @param {IMQClientOptions} options
  * @returns {any}
  */
-function compile(name: string, src: string, options: IMQClientOptions) {
+async function compile(name: string, src: string, options: IMQClientOptions): Promise<any> {
     const path = options.path;
     const srcFile = `${path}/${name}.ts`;
     const jsFile = `${path}/${name}.js`;
 
-    // istanbul ignore else
-    if (!fs.existsSync(path)) {
-        fs.mkdirSync(path);
-    }
+	const js = ts.transpile(src, tsOptions);
+	if (options.write) {
+		// istanbul ignore else
+		if (!fs.existsSync(path)) {
+			fs.mkdirSync(path);
+		}
 
-    fs.writeFileSync(srcFile, src, { encoding: 'utf8' });
+		fs.writeFileSync(srcFile, src, { encoding: 'utf8' });
+        fs.writeFileSync(jsFile, js, { encoding: 'utf8' });
+	}
 
     // istanbul ignore else
     if (options.compile) {
-        fs.writeFileSync(jsFile,
-            ts.transpile(src, tsOptions), { encoding: 'utf8' });
-
-        return require(fs.realpathSync(jsFile));
+		const script = new vm.Script(js);
+        const context = { exports: {}, require };
+		script.runInNewContext(context, { filename: jsFile });
+		return context.exports;
     }
 
     // istanbul ignore next
