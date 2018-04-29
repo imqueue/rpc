@@ -31,9 +31,11 @@ import {
     IMQRPCRequest,
     IMQDelay,
     remote,
-    Description
+    Description,
+    fileExists,
+    mkdir,
+    writeFile,
 } from '.';
-import * as fs from 'fs';
 import * as ts from 'typescript';
 import { EventEmitter } from 'events';
 import * as vm from 'vm';
@@ -460,16 +462,18 @@ async function compile(name: string, src: string, options: IMQClientOptions): Pr
     const srcFile = `${path}/${name}.ts`;
     const jsFile = `${path}/${name}.js`;
 
-	const js = ts.transpile(src, tsOptions);
-	if (options.write) {
-		// istanbul ignore else
-		if (!fs.existsSync(path)) {
-			fs.mkdirSync(path);
-		}
+    const js = ts.transpile(src, tsOptions);
+    if (options.write) {
+        // istanbul ignore else
+        if (!await fileExists(path)) {
+            await mkdir(path);
+        }
 
-		fs.writeFileSync(srcFile, src, { encoding: 'utf8' });
-        fs.writeFileSync(jsFile, js, { encoding: 'utf8' });
-	}
+        await Promise.all([
+            writeFile(srcFile, src),
+            writeFile(jsFile, js),
+        ]);
+    }
 
     // istanbul ignore else
     if (options.compile) {
@@ -482,3 +486,4 @@ async function compile(name: string, src: string, options: IMQClientOptions): Pr
     // istanbul ignore next
     return null;
 }
+
