@@ -288,7 +288,7 @@ async function generator(
         serviceName.substr(1);
 
     let src = `/*!
- * IMQ-RPC Service: ${description.service.name}
+ * IMQ-RPC Service Client: ${description.service.name}
  *
  * Copyright (c) ${new Date().getFullYear()}, imqueue.com
  *
