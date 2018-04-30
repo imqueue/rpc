@@ -267,6 +267,7 @@ async function getDescription(
 
 }
 
+// codebeat:disable[LOC,ABC]
 /**
  * Client generator helper function
  *
@@ -397,6 +398,7 @@ export namespace ${namespaceName} {\n`;
 
     return module ? module[namespaceName] : /* istanbul ignore next */ null;
 }
+// codebeat:enable[LOC,ABC]
 
 /**
  * Return promised typedef of a given type if its missing
