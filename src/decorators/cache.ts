@@ -28,6 +28,7 @@ export interface CacheDecorator {
     globalOptions?: CacheDecoratorOptions;
 }
 
+// codebeat:disable[BLOCK_NESTING]
 export const cache: CacheDecorator = function(options?: CacheDecoratorOptions) {
     const cacheOptions: CacheDecoratorOptions =
         Object.assign({}, cache.globalOptions, options || {});
@@ -106,6 +107,7 @@ export const cache: CacheDecorator = function(options?: CacheDecoratorOptions) {
         };
     }
 };
+// codebeat:enable[BLOCK_NESTING]
 
 cache.globalOptions = {
     adapter: RedisCache
