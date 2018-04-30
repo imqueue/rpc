@@ -158,7 +158,7 @@ function parseComment(src: string): CommentMetadata {
     return data;
 }
 
-// codebeat:enable[LOC,ABC]
+// codebeat:disable[LOC,ABC]
 /**
  * Finds and parses methods and their comment blocks for a given class
  *
@@ -260,7 +260,7 @@ function parseDescriptions(name: string, src: string) {
         }
     }
 }
-// codebeat:disable[LOC,ABC]
+// codebeat:enable[LOC,ABC]
 
 /**
  * Helper function to make easy descriptions parts extractions
