@@ -23,10 +23,10 @@ export interface IMQServiceOptions extends IMQOptions {
 }
 
 export interface IMQClientOptions extends IMQOptions {
-    path: string,
-    compile: boolean,
-    timeout: number,
-    write: boolean,
+    path: string;
+    compile: boolean;
+    timeout: number;
+    write: boolean;
 }
 
 /**

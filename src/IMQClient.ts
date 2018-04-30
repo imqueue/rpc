@@ -311,7 +311,7 @@ export namespace ${namespaceName} {\n`;
     for (let typeName of Object.keys(description.types)) {
         src += `    export interface ${typeName} {\n`;
 
-        for (let propertyName in description.types[typeName]) {
+        for (let propertyName of Object.keys(description.types[typeName])) {
             const { type, isOptional } =
                 description.types[typeName][propertyName];
 
