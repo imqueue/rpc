@@ -40,7 +40,7 @@ class CacheTestClass {
 describe('decorators/cache()', () => {
     let obj: any;
 
-    before(() => obj = new CacheTestClass());
+    before(() => { obj = new CacheTestClass() });
     after(async () => await RedisCache.destroy());
 
     it('should be a function', () => {
