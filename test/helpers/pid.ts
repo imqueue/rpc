@@ -41,8 +41,8 @@ function rmdirr(path: string) {
 describe('helpers/pid()', () => {
     let TEST_PID_DIR: string;
 
-    beforeEach(() => TEST_PID_DIR = `${IMQ_TMP_DIR}/${uuid()}`);
-    afterEach(() => rmdirr(TEST_PID_DIR));
+    beforeEach(() => { TEST_PID_DIR = `${IMQ_TMP_DIR}/${uuid()}` });
+    afterEach(() => { rmdirr(TEST_PID_DIR) });
 
     it('should be a function', () => {
         expect(typeof pid).to.equal('function');
@@ -70,8 +70,8 @@ describe('helpers/pid()', () => {
 describe('helpers/forgetPid()', () => {
     let TEST_PID_DIR: string;
 
-    beforeEach(() => TEST_PID_DIR = `${IMQ_TMP_DIR}/${uuid()}`);
-    afterEach(() => rmdirr(TEST_PID_DIR));
+    beforeEach(() => { TEST_PID_DIR = `${IMQ_TMP_DIR}/${uuid()}` });
+    afterEach(() => { rmdirr(TEST_PID_DIR) });
 
     it('should be a function', () => {
         expect(typeof forgetPid).to.equal('function');

@@ -38,8 +38,8 @@
   "author": "Mykhailo Stadnyk <mikhus@gmail.com> (https://github.com/Mikhus)",
   "license": "ISC",
   "dependencies": {
-    "@types/node": "^9.4.6",
     "@types/acorn": "^4.0.3",
+    "@types/node": "^10.0.1",
     "acorn": "^5.5.3",
     "acorn-es7-plugin": "^1.1.7",
     "imq": "^1.2.18",
@@ -50,7 +50,7 @@
   },
   "devDependencies": {
     "@types/chai": "^4.1.2",
-    "@types/mocha": "^2.2.48",
+    "@types/mocha": "^5.2.0",
     "@types/mock-require": "^2.0.0",
     "@types/sinon": "^4.3.0",
     "chai": "^4.1.2",
@@ -61,10 +61,10 @@
     "mock-require": "^3.0.1",
     "nyc": "^11.4.1",
     "opn": "^5.2.0",
-    "sinon": "^4.4.2",
+    "sinon": "^5.0.2",
     "source-map-support": "^0.5.3",
-    "ts-node": "^5.0.1",
-    "typedoc": "^0.10.0"
+    "ts-node": "^6.0.2",
+    "typedoc": "^0.11.1"
   },
   "main": "index.js",
   "typescript": {
