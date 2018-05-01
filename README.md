@@ -3,6 +3,8 @@
 [![Build Status](https://travis-ci.org/imqueue/imq-rpc.svg?branch=master)](https://travis-ci.org/imqueue/imq-rpc)
 [![codebeat badge](https://codebeat.co/badges/c2cc3954-6824-4cdf-8349-12bd9c31955a)](https://codebeat.co/projects/github-com-imqueue-imq-rpc-master)
 [![Coverage Status](https://coveralls.io/repos/github/imqueue/imq-rpc/badge.svg?branch=master)](https://coveralls.io/github/imqueue/imq-rpc?branch=master)
+[![David](https://img.shields.io/david/imqueue/imq-rpc.svg)](https://david-dm.org/imqueue/imq-rpc)
+[![David](https://img.shields.io/david/dev/imqueue/imq-rpc.svg)](https://david-dm.org/imqueue/imq-rpc?type=dev)
 [![License](https://img.shields.io/badge/license-ISC-blue.svg)](https://rawgit.com/imqueue/imq-rpc/master/LICENSE)
 
 RPC-like client-service implementation over messaging queue. This module
