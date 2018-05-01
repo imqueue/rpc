@@ -16,3 +16,4 @@
 export * from './signature';
 export * from './os-uuid';
 export * from './pid';
+export * from './fs';
