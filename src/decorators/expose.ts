@@ -23,8 +23,6 @@ import {
     IMQRPCDescription
 } from '..';
 
-require('acorn-es7-plugin')(acorn);
-
 const TS_TYPES = [
     'object',
     'string',
@@ -168,14 +166,11 @@ function parseComment(src: string): CommentMetadata {
 function parseDescriptions(name: string, src: string) {
     const comments: acorn.Comment[] = [];
     const options: acorn.Options = {
-        ecmaVersion: 7,
+        ecmaVersion: 8,
         locations: true,
         ranges: true,
         allowReserved: true,
         onComment: comments,
-        plugins: {
-            asyncawait: true
-        }
     };
     const nodes = acorn.parse(src, options).body;
 
@@ -204,7 +199,8 @@ function parseDescriptions(name: string, src: string) {
                 descriptions[name].inherits = node.superClass.name;
             }
         }
-
+        
+        const methods = node.body.body.filter(f => f.type === 'MethodDefinition');
         for (let method of node.body.body) {
             // istanbul ignore if
             if (method.type !== 'MethodDefinition') {
@@ -240,18 +236,16 @@ function parseDescriptions(name: string, src: string) {
                 foundBlock = comment;
             }
 
-            let expr = acorn.parseExpressionAt(src, commentEnd, options);
-
-            if (expr.type === 'Identifier' && expr.name === 'async') {
-                expr = acorn.parseExpressionAt(
-                    src, (<any>expr).range[1], options
-                );
+            if (!method.range || foundBlock.start > method.range[1]) {
+                continue
             }
 
-            if (
-                expr.type === 'CallExpression' &&
-                (<any>expr.callee).name === methodName
-            ) {
+            const index = methods.indexOf(method);
+            const prev = index && methods[index - 1];
+            const prevBeforeComment = !prev
+                || (prev && prev.range && prev.range[1] < foundBlock.start);
+
+            if (prevBeforeComment) {
                 // it's a method comment block!!!!
                 descriptions[name][methodName] = {
                     comment: parseComment(foundBlock.value)
