@@ -53,6 +53,20 @@ class ExposeTestClass {
     // noinspection JSUnusedGlobalSymbols
     public nonExposedMethod() {}
 
+    /**
+     * @param {number} a
+     * @returns {string}
+     */
+    @expose()
+    async withEmbeddedAsync(a: number) {
+        return await new Promise(async (resolve) => {
+            try {
+                resolve(a.toString());
+            } catch(e) {
+                resolve('');
+            }
+        });
+    }
 }
 
 // noinspection JSUnusedLocalSymbols
@@ -152,5 +166,13 @@ describe('decorators/expose()', () => {
             .not.to.be.undefined;
         expect(description.ExposeTestClassExtended.inherits)
             .to.be.equal('ExposeTestClass');
+    });
+    it('should parse embedded async functions', () => {
+        expect(description.ExposeTestClass.methods.withEmbeddedAsync.returns)
+            .to.deep.equal({
+                description: '',
+                type: 'Promise',
+                tsType: 'string'
+            });
     });
 });
