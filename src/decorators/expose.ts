@@ -216,7 +216,6 @@ function parseDescriptions(name: string, src: string) {
             }
 
             const methodStart: number = (<any>method).start;
-            let commentEnd: number = blocks[0].end;
             let lastDif: number = methodStart - blocks[0].end;
             let foundBlock: acorn.Comment = blocks[0];
 
@@ -232,7 +231,6 @@ function parseDescriptions(name: string, src: string) {
                 }
 
                 lastDif = dif;
-                commentEnd = comment.end;
                 foundBlock = comment;
             }
 
@@ -243,7 +241,7 @@ function parseDescriptions(name: string, src: string) {
             const index = methods.indexOf(method);
             const prev = index && methods[index - 1];
             const prevBeforeComment = !prev
-                || (prev && prev.range && prev.range[1] < foundBlock.start);
+                || (prev && prev.range && prev.range[1] <= foundBlock.start);
 
             if (prevBeforeComment) {
                 // it's a method comment block!!!!
