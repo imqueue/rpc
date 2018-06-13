@@ -73,8 +73,8 @@ import { IMQRPCDescription } from '..';
  *
  * @return {(
  *    target: any,
- *    methodName: (string|symbol),
- *    descriptor: TypedPropertyDescriptor<Function>
+ *    methodName: (string),
+ *    descriptor: TypedPropertyDescriptor<(...args: any[]) => any>
  * ) => void}
  */
 export function property(type: string, isOptional: boolean = false): any {
