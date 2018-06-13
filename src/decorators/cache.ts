@@ -24,7 +24,7 @@ export interface CacheDecoratorOptions {
 }
 
 export interface CacheDecorator {
-    (options?: CacheDecoratorOptions): Function;
+    (options?: CacheDecoratorOptions): (...args: any[]) => any;
     globalOptions?: CacheDecoratorOptions;
 }
 
@@ -37,7 +37,7 @@ export const cache: CacheDecorator = function(options?: CacheDecoratorOptions) {
     return function(
         target: any,
         methodName: string | symbol,
-        descriptor: TypedPropertyDescriptor<Function>
+        descriptor: TypedPropertyDescriptor<(...args: any[]) => any>
     ) {
         const original = descriptor.value ||
             // istanbul ignore next

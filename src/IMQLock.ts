@@ -19,7 +19,7 @@
 import { ILogger } from 'imq';
 
 export type AcquiredLock<T> = T | boolean;
-export type IMQLockTask = [Function, Function];
+export type IMQLockTask = [(...args: any[]) => any, (...args: any[]) => any];
 export type IMQLockQueue  = Array<IMQLockTask>;
 
 /**
@@ -86,12 +86,12 @@ export class IMQLock {
      * Acquires a lock for a given key
      *
      * @param {string} key
-     * @param {Function} callback
+     * @param {(...args: any[]) => any} callback
      * @returns {AcquiredLock}
      */
     public static async acquire<T>(
         key: string,
-        callback?: Function
+        callback?: (...args: any[]) => any
     ): Promise<AcquiredLock<T>> {
         IMQLock.queues[key] = IMQLock.queues[key] || [];
 

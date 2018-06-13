@@ -20,15 +20,15 @@
  *
  * @return {(
  *    target: any,
- *    methodName: (string|symbol),
- *    descriptor: TypedPropertyDescriptor<Function>
+ *    methodName: (string),
+ *    descriptor: TypedPropertyDescriptor<(...args: any[]) => any>
  * ) => void}
  */
 export function remote() {
     return function(
         target: any,
-        methodName: string | symbol,
-        descriptor: TypedPropertyDescriptor<Function>
+        methodName: string,
+        descriptor: TypedPropertyDescriptor<(...args: any[]) => any>
     ) {
         const original = descriptor.value ||
             // istanbul ignore next

@@ -57,7 +57,10 @@ export abstract class IMQClient extends EventEmitter {
     public readonly name: string;
     private readonly serviceName: string;
     private readonly logger: ILogger;
-    private resolvers: { [id: string]: [Function, Function] } = {};
+    private resolvers: { [id: string]: [
+        (...args: any[]) => any,
+        (...args: any[]) => any]
+    } = {};
 
     // noinspection TypeScriptAbstractClassConstructorCanBeMadeProtected
     /**

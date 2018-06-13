@@ -25,15 +25,15 @@ import { IMQLock, AcquiredLock, signature } from '..';
  *
  * @return {(
  *  target: any,
- *  methodName: (string|symbol),
- *  descriptor: TypedPropertyDescriptor<Function>
+ *  methodName: (string),
+ *  descriptor: TypedPropertyDescriptor<(...args: any[]) => any>
  * ) => void}
  */
 export function lock(enabled: boolean = true) {
     return function(
         target: any,
         methodName: string | symbol,
-        descriptor: TypedPropertyDescriptor<Function>
+        descriptor: TypedPropertyDescriptor<(...args: any[]) => any>
     ) {
         const original = descriptor.value ||
             // istanbul ignore next

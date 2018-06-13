@@ -67,10 +67,10 @@ const RX_OPTIONAL = /^\[(.*?)\]$/;
 /**
  * Lookup and returns a list of argument names for a given function
  *
- * @param {Function} fn
+ * @param {(...args: any[]) => any} fn
  * @return {string[]}
  */
-function argumentNames(fn: Function): string[] {
+function argumentNames(fn: (...args: any[]) => any): string[] {
     let src: string = fn.toString();
     return src.slice(
         src.indexOf('(') + 1, src.indexOf(')')
@@ -266,7 +266,7 @@ function parseDescriptions(name: string, src: string) {
 function get<T>(
     prop: string,
     className: string,
-    method: string | symbol,
+    method: string,
     defaults: T
 ): T {
     if (descriptions[className] && descriptions[className][method]) {
@@ -312,18 +312,20 @@ function cast(type: string) {
  *
  * @return {(
  *    target: object,
- *    methodName: (string|symbol),
- *    descriptor: TypedPropertyDescriptor<Function>
+ *    methodName: (string),
+ *    descriptor: TypedPropertyDescriptor<(...args: any[]) => any>
  * ) => void} - decorator function
  */
-export function expose(): Function {
+export function expose(): (...args: any[]) => any {
     return function(
         target: any,
-        methodName: string | symbol,
-        descriptor: TypedPropertyDescriptor<Function>
+        methodName: string,
+        descriptor: TypedPropertyDescriptor<(...args: any[]) => any>
     ) {
         let className: string = target.constructor.name;
-        let argNames: string[] = argumentNames(<Function>descriptor.value);
+        let argNames: string[] = argumentNames(
+            <(...args: any[]) => any>descriptor.value
+        );
         let retType = Reflect.getMetadata(
             'design:returntype',
             target,
