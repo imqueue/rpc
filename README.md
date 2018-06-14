@@ -5,6 +5,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/imqueue/imq-rpc/badge.svg?branch=master)](https://coveralls.io/github/imqueue/imq-rpc?branch=master)
 [![David](https://img.shields.io/david/imqueue/imq-rpc.svg)](https://david-dm.org/imqueue/imq-rpc)
 [![David](https://img.shields.io/david/dev/imqueue/imq-rpc.svg)](https://david-dm.org/imqueue/imq-rpc?type=dev)
+[![Known Vulnerabilities](https://snyk.io/test/github/imqueue/imq-rpc/badge.svg?targetFile=package.json)](https://snyk.io/test/github/imqueue/imq-rpc?targetFile=package.json)
 [![License](https://img.shields.io/badge/license-ISC-blue.svg)](https://rawgit.com/imqueue/imq-rpc/master/LICENSE)
 
 RPC-like client-service implementation over messaging queue. This module
