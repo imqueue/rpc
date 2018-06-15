@@ -1,7 +1,7 @@
 /*!
  * IMQLock implementation
  *
- * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
+ * Copyright (c) 2018, imqueue.com <support@imqueue.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,7 +16,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-import { ILogger } from 'imq';
+import { ILogger } from '@imqueue/core';
 
 export type AcquiredLock<T> = T | boolean;
 export type IMQLockTask = [(...args: any[]) => any, (...args: any[]) => any];

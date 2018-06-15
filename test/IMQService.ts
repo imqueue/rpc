@@ -1,7 +1,7 @@
 /*!
  * IMQService Unit Tests
  *
- * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
+ * Copyright (c) 2018, imqueue.com <support@imqueue.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -20,7 +20,7 @@ import { expect } from 'chai';
 import * as sinon from 'sinon';
 import * as cluster from 'cluster';
 import { IMQService, IMQRPCRequest, Description, expose } from '..';
-import { uuid } from 'imq';
+import { uuid } from '@imqueue/core';
 
 class TestService extends IMQService {
 

@@ -1,7 +1,7 @@
 /*!
  * IMQ-RPC Interfaces: IMQServiceOptions
  *
- * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
+ * Copyright (c) 2018, imqueue.com <support@imqueue.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,7 +15,7 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { DEFAULT_IMQ_OPTIONS, IMQOptions } from 'imq';
+import { DEFAULT_IMQ_OPTIONS, IMQOptions } from '@imqueue/core';
 
 export interface IMQServiceOptions extends IMQOptions {
     multiProcess: boolean;

@@ -1,7 +1,7 @@
 /*!
  * RedisCache Unit Tests
  *
- * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
+ * Copyright (c) 2018, imqueue.com <support@imqueue.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -18,7 +18,7 @@
 import { redis, logger } from '../mocks';
 import { expect } from 'chai';
 import { RedisCache } from '../..';
-import { uuid } from 'imq';
+import { uuid } from '@imqueue/core';
 
 describe('cache/RedisCache', () => {
     it('should be a class', () => {

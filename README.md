@@ -1,12 +1,12 @@
-# I Message Queue RPC (imq-rpc)
+# I Message Queue RPC (@imqueue/rpc)
 
-[![Build Status](https://travis-ci.org/imqueue/imq-rpc.svg?branch=master)](https://travis-ci.org/imqueue/imq-rpc)
-[![codebeat badge](https://codebeat.co/badges/c2cc3954-6824-4cdf-8349-12bd9c31955a)](https://codebeat.co/projects/github-com-imqueue-imq-rpc-master)
-[![Coverage Status](https://coveralls.io/repos/github/imqueue/imq-rpc/badge.svg?branch=master)](https://coveralls.io/github/imqueue/imq-rpc?branch=master)
-[![David](https://img.shields.io/david/imqueue/imq-rpc.svg)](https://david-dm.org/imqueue/imq-rpc)
-[![David](https://img.shields.io/david/dev/imqueue/imq-rpc.svg)](https://david-dm.org/imqueue/imq-rpc?type=dev)
-[![Known Vulnerabilities](https://snyk.io/test/github/imqueue/imq-rpc/badge.svg?targetFile=package.json)](https://snyk.io/test/github/imqueue/imq-rpc?targetFile=package.json)
-[![License](https://img.shields.io/badge/license-ISC-blue.svg)](https://rawgit.com/imqueue/imq-rpc/master/LICENSE)
+[![Build Status](https://travis-ci.org/imqueue/rpc.svg?branch=master)](https://travis-ci.org/imqueue/rpc)
+[![codebeat badge](https://codebeat.co/badges/c2cc3954-6824-4cdf-8349-12bd9c31955a)](https://codebeat.co/projects/github-com-imqueue-rpc-master)
+[![Coverage Status](https://coveralls.io/repos/github/imqueue/rpc/badge.svg?branch=master)](https://coveralls.io/github/imqueue/rpc?branch=master)
+[![David](https://img.shields.io/david/imqueue/rpc.svg)](https://david-dm.org/imqueue/rpc)
+[![David](https://img.shields.io/david/dev/imqueue/rpc.svg)](https://david-dm.org/imqueue/rpc?type=dev)
+[![Known Vulnerabilities](https://snyk.io/test/github/imqueue/rpc/badge.svg?targetFile=package.json)](https://snyk.io/test/github/imqueue/rpc?targetFile=package.json)
+[![License](https://img.shields.io/badge/license-ISC-blue.svg)](https://rawgit.com/imqueue/rpc/master/LICENSE)
 
 RPC-like client-service implementation over messaging queue. This module
 provides base set of abstract classes and decorators to build services and 
@@ -24,7 +24,7 @@ to handle any load.
 ## Installation
 
 ~~~bash
-npm i --save imq-rpc
+npm i --save @imqueue/rpc
 ~~~
 
 ## Usage
@@ -41,7 +41,7 @@ types usages.
 File `service.ts`:
 
 ~~~typescript
-import { IMQService, expose } from 'imq-rpc';
+import { IMQService, expose } from '@imqueue/rpc';
 
 class Hello extends IMQService {
 
@@ -91,7 +91,7 @@ There are 3 ways of building service clients:
 File: `client.ts` (manually written client example):
 
 ~~~typescript
-import { IMQClient, IMQDelay, remote } from 'imq-rpc';
+import { IMQClient, IMQDelay, remote } from '@imqueue/rpc';
 
 class HelloClient extends IMQClient {
 
@@ -127,7 +127,7 @@ class HelloClient extends IMQClient {
 Using dynamically built clients (for the same service described above):
 
 ~~~typescript
-import { IMQClient } from 'imq-rpc';
+import { IMQClient } from '@imqueue/rpc';
 
 (async () => {
     try {
@@ -157,7 +157,7 @@ BTW, `IMQClient.create()` supports a source code generation without a module
 loading as well: 
 
 ~~~typescript
-import { IMQClient } from 'imq-rpc';
+import { IMQClient } from '@imqueue/rpc';
 
 (async () => {
     await IMQClient.create('Hello', {
@@ -193,4 +193,4 @@ a first build then re-used each new build to make it work consistently.
 
 ## License
 
-[ISC](https://github.com/imqueue/imq-rpc/blob/master/LICENSE)
+[ISC](https://github.com/imqueue/rpc/blob/master/LICENSE)
