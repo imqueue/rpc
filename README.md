@@ -1,7 +1,7 @@
 # I Message Queue RPC (@imqueue/rpc)
 
 [![Build Status](https://travis-ci.org/imqueue/rpc.svg?branch=master)](https://travis-ci.org/imqueue/rpc)
-[![codebeat badge](https://codebeat.co/badges/c2cc3954-6824-4cdf-8349-12bd9c31955a)](https://codebeat.co/projects/github-com-imqueue-rpc-master)
+[![codebeat badge](https://codebeat.co/badges/77983b75-d869-4ba5-9526-5f1dea6f7294)](https://codebeat.co/projects/github-com-imqueue-rpc-master)
 [![Coverage Status](https://coveralls.io/repos/github/imqueue/rpc/badge.svg?branch=master)](https://coveralls.io/github/imqueue/rpc?branch=master)
 [![David](https://img.shields.io/david/imqueue/rpc.svg)](https://david-dm.org/imqueue/rpc)
 [![David](https://img.shields.io/david/dev/imqueue/rpc.svg)](https://david-dm.org/imqueue/rpc?type=dev)
