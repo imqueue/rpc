@@ -1,7 +1,7 @@
 /*!
  * IMQ-RPC helpers: pid, forgetPid
  *
- * Copyright (c) 2018, Mykhailo Stadnyk <mikhus@gmail.com>
+ * Copyright (c) 2018, imqueue.com <support@imqueue.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -17,7 +17,7 @@
  */
 import * as path from 'path';
 import * as fs from 'fs';
-import { ILogger } from 'imq';
+import { ILogger } from '@imqueue/core';
 
 export const IMQ_TMP_DIR = process.env.TMPDIR ||
     // istanbul ignore next
