@@ -23,7 +23,7 @@ import { IMQRPCDescription } from '..';
  *
  * @example
  * ~~~typescript
- * import { property, expose, IMQService } from 'imq-rpc';
+ * import { property, expose, IMQService } from '@imqueue/rpc';
  *
  * class Address {
  *     @property('string')
