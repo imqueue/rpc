@@ -295,7 +295,7 @@ async function generator(
     let src = `/*!
  * IMQ-RPC Service Client: ${description.service.name}
  *
- * Copyright (c) ${new Date().getFullYear()}, imqueue.com
+ * Copyright (c) ${new Date().getFullYear()}, imqueue.com <support@imqueue.com>
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -309,7 +309,7 @@ async function generator(
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { IMQClient, IMQDelay, remote, profile } from 'imq-rpc';
+import { IMQClient, IMQDelay, remote, profile } from '@imqueue/rpc';
 
 export namespace ${namespaceName} {\n`;
 

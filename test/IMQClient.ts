@@ -30,7 +30,7 @@ import * as sinon from 'sinon';
 import * as fs from 'fs';
 import * as imqRpc from '..';
 
-mock('imq-rpc', imqRpc);
+mock('@imqueue/rpc', imqRpc);
 
 class TestService extends IMQService {
 
