@@ -94,7 +94,7 @@ export abstract class IMQClient extends EventEmitter {
 
         this.id = pid(baseName);
         this.logger = this.options.logger || /* istanbul ignore next */ console;
-        this.name = `${baseName}-${osUuid()}-${this.id}`;
+        this.name = `${baseName}-${osUuid()}-${this.id}:client`;
         this.serviceName = serviceName || baseName.replace(/Client$/, '');
         this.imq = IMQ.create(this.name, this.options);
 
