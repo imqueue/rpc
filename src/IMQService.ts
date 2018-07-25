@@ -121,7 +121,7 @@ export abstract class IMQService {
         this.logger = this.options.logger ||
             // istanbul ignore next
             console;
-        this.imq = IMQ.create(this.name, options);
+        this.imq = IMQ.create(this.name, this.options);
 
         this.handleRequest = this.handleRequest.bind(this);
 
