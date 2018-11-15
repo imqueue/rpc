@@ -30,8 +30,10 @@ export interface CacheDecorator {
 
 // codebeat:disable[BLOCK_NESTING]
 export const cache: CacheDecorator = function(options?: CacheDecoratorOptions) {
-    const cacheOptions: CacheDecoratorOptions =
-        Object.assign({}, cache.globalOptions, options || {});
+    const cacheOptions: CacheDecoratorOptions = {
+        ...cache.globalOptions,
+        ...options,
+    };
     let Adapter: any = cacheOptions.adapter || RedisCache;
 
     return function(
@@ -39,9 +41,7 @@ export const cache: CacheDecorator = function(options?: CacheDecoratorOptions) {
         methodName: string | symbol,
         descriptor: TypedPropertyDescriptor<(...args: any[]) => any>
     ) {
-        const original = descriptor.value ||
-            // istanbul ignore next
-            (() => {});
+        const original: (...args: any[]) => any = descriptor.value as any;
 
         descriptor.value = async function(...args: any[]) {
             const context: any = this;
@@ -66,7 +66,7 @@ export const cache: CacheDecorator = function(options?: CacheDecoratorOptions) {
                         (context.imq && context.imq.logger);
 
                     if (logger) {
-                        opts = Object.assign(opts || {}, { logger });
+                        opts = { ...opts, logger };
                     }
 
                     await IMQCache.register(Adapter, opts).init();

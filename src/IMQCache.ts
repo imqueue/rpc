@@ -80,7 +80,7 @@ export class IMQCache {
 
         let opts = self.options[name] || {};
 
-        self.options[name] = Object.assign(opts, options);
+        self.options[name] = { ...opts, ...options };
 
         return self;
     }

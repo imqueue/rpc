@@ -34,27 +34,25 @@ export interface IMQClientOptions extends IMQOptions {
  *
  * @type {IMQServiceOptions}
  */
-export const DEFAULT_IMQ_SERVICE_OPTIONS: IMQServiceOptions = Object.assign({},
-    DEFAULT_IMQ_OPTIONS, {
-        cleanup: true,
-        cleanupFilter: '*:client',
-        multiProcess: false,
-        childrenPerCore: 1,
-    },
-);
+export const DEFAULT_IMQ_SERVICE_OPTIONS: IMQServiceOptions = {
+    ...DEFAULT_IMQ_OPTIONS,
+    cleanup: true,
+    cleanupFilter: '*:client',
+    multiProcess: false,
+    childrenPerCore: 1,
+};
 
 /**
  * Default client options
  *
  * @type {IMQClientOptions}
  */
-export const DEFAULT_IMQ_CLIENT_OPTIONS: IMQClientOptions = Object.assign({},
-    DEFAULT_IMQ_OPTIONS, {
-        cleanup: true,
-        cleanupFilter: '*:client',
-        path: './src/clients',
-        compile: true,
-        timeout: 30000,
-        write: true,
-    },
-);
+export const DEFAULT_IMQ_CLIENT_OPTIONS: IMQClientOptions = {
+    ...DEFAULT_IMQ_OPTIONS,
+    cleanup: true,
+    cleanupFilter: '*:client',
+    path: './src/clients',
+    compile: true,
+    timeout: 30000,
+    write: true,
+};

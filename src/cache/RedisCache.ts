@@ -29,10 +29,10 @@ export interface IRedisCacheOptions extends Partial<IMQOptions> {
     conn?: IRedisClient
 }
 
-export const DEFAULT_REDIS_CACHE_OPTIONS = Object.assign(
-    {}, DEFAULT_IMQ_OPTIONS, {
-        prefix: 'imq-cache'
-    });
+export const DEFAULT_REDIS_CACHE_OPTIONS = {
+    ...DEFAULT_IMQ_OPTIONS,
+    prefix: 'imq-cache',
+};
 
 /**
  * Class RedisCache. Implements cache engine over redis.
@@ -47,15 +47,14 @@ export class RedisCache implements ICache {
     /**
      * Initializes cache instance
      *
-     * @param {IRedisCacheOptions} options
+     * @param {IRedisCacheOptions} [options]
      * @returns {Promise<RedisCache>}
      */
     public async init(options?: IRedisCacheOptions): Promise<RedisCache> {
-        this.options = Object.assign(
-            {}, DEFAULT_REDIS_CACHE_OPTIONS, options ||
-            // istanbul ignore next
-            {}
-        );
+        this.options = {
+            ...DEFAULT_REDIS_CACHE_OPTIONS,
+            ...options,
+        };
 
         this.logger = this.options.logger ||
             // istanbul ignore next
