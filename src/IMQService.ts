@@ -113,14 +113,8 @@ export abstract class IMQService {
                 'be instantiated directly!');
         }
 
-        this.options = Object.assign({},
-            DEFAULT_IMQ_SERVICE_OPTIONS,
-            options || {}
-        );
-
-        this.logger = this.options.logger ||
-            // istanbul ignore next
-            console;
+        this.options = { ...DEFAULT_IMQ_SERVICE_OPTIONS, ...options };
+        this.logger = this.options.logger || /* istanbul ignore next */ console;
         this.imq = IMQ.create(this.name, this.options);
 
         this.handleRequest = this.handleRequest.bind(this);

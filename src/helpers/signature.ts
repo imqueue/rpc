@@ -15,7 +15,7 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-const hash = require('murmurhash-native');
+import { murmurHash64 } from 'murmurhash-native';
 
 /**
  * Constructs and returns hash string for a given set of className, methodName
@@ -31,7 +31,7 @@ export function signature(
     methodName: string | symbol,
     args: any[]
 ): string {
-    return hash.murmurHash128x64(JSON.stringify([
+    return murmurHash64(JSON.stringify([
         className, methodName, args
     ]));
 }

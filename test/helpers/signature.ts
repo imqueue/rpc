@@ -25,7 +25,7 @@ describe('helpers/signature()', () => {
     });
 
     it('should return hash string', () => {
-        expect(/^[0-9a-f]{32}$/.test(signature('A', 'a', []))).to.be.true;
+        expect(/^[0-9a-f]{16,32}$/.test(signature('A', 'a', []))).to.be.true;
     });
 
     it('should return same hash string for the same arguments bypassed', () => {

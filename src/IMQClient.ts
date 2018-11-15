@@ -87,11 +87,7 @@ export abstract class IMQClient extends EventEmitter {
                 'be instantiated directly!');
         }
 
-        this.options = Object.assign({},
-            DEFAULT_IMQ_CLIENT_OPTIONS,
-            options || /* istanbul ignore next */ {}
-        );
-
+        this.options = { ...DEFAULT_IMQ_CLIENT_OPTIONS, ...options };
         this.id = pid(baseName);
         this.logger = this.options.logger || /* istanbul ignore next */ console;
         this.name = `${baseName}-${osUuid()}-${this.id}:client`;
@@ -225,10 +221,10 @@ export abstract class IMQClient extends EventEmitter {
         name: string,
         options?: Partial<IMQClientOptions>
     ): Promise<any> {
-        const clientOptions: IMQClientOptions = Object.assign({},
-            DEFAULT_IMQ_CLIENT_OPTIONS,
-            options
-        );
+        const clientOptions: IMQClientOptions = {
+            ...DEFAULT_IMQ_CLIENT_OPTIONS,
+            ...options,
+        };
 
         return await generator(name, clientOptions);
     }
