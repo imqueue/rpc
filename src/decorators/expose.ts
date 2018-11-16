@@ -172,7 +172,7 @@ function parseDescriptions(name: string, src: string) {
         allowReserved: true,
         onComment: comments,
     };
-    const nodes = acorn.parse(src, options).body;
+    const nodes = (acorn.parse(src, options) as any).body;
 
     descriptions[name] = {
         inherits: 'Function'
@@ -200,7 +200,9 @@ function parseDescriptions(name: string, src: string) {
             }
         }
         
-        const methods = node.body.body.filter(f => f.type === 'MethodDefinition');
+        const methods = node.body.body.filter((f: any) =>
+            f.type === 'MethodDefinition');
+
         for (let method of node.body.body) {
             // istanbul ignore if
             if (method.type !== 'MethodDefinition') {
@@ -235,7 +237,7 @@ function parseDescriptions(name: string, src: string) {
             }
 
             if (!method.range || foundBlock.start > method.range[1]) {
-                continue
+                continue;
             }
 
             const index = methods.indexOf(method);
