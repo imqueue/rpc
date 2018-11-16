@@ -42,7 +42,7 @@
     "@types/acorn": "^4.0.3",
     "@types/node": "^10.9.4",
     "acorn": "^5.7.3",
-    "murmurhash-native": "royaltm/node-murmurhash-native",
+    "murmurhash-native": "^3.3.0",
     "node-machine-id": "^1.1.10",
     "reflect-metadata": "^0.1.12",
     "typescript": "^3.0.3"
