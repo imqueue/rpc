@@ -91,10 +91,10 @@ describe('IMQService', () => {
             });
 
             let counter = 0;
-            const spy = sinon.stub(cluster, 'fork').callsFake(async () => {
+            const spy = sinon.stub(cluster, 'fork').callsFake((async () => {
                 (<any>cluster).isMaster = false;
                 (++counter == 1) && await service.start();
-            });
+            }) as any);
 
             await service.start();
 
