@@ -315,8 +315,9 @@ export namespace ${namespaceName} {\n`;
 
     for (let typeName of Object.keys(description.types)) {
         src += `    export interface ${typeName} ${
-            description.types[typeName].inherits
-                ? `extends ${description.types[typeName].inherits} `
+            description.types[typeName].inherits &&
+            description.types[description.types[typeName].inherits]
+                ? `extends ${description.types[typeName].inherits}`
                 : ''
         } {\n`;
 
