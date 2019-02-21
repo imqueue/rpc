@@ -32,6 +32,11 @@ class SchemaField {
     value: any;
 }
 
+@indexed(() => `[fieldName: string]: ${SchemaField.name}`)
+class SchemaThunk {
+    [fieldName: string]: SchemaField;
+}
+
 const typesMetadata = IMQRPCDescription.typesDescription;
 
 describe('decorators/property()', () => {
@@ -46,6 +51,12 @@ describe('decorators/property()', () => {
     it('should properly fill exposed metadata', () => {
         expect(typesMetadata.Schema).not.to.be.undefined;
         expect(typesMetadata.Schema.indexType)
+            .contains('[fieldName: string]: SchemaField');
+    });
+
+    it('should accept thunk definition', () => {
+        expect(typesMetadata.SchemaThunk).not.to.be.undefined;
+        expect(typesMetadata.SchemaThunk.indexType)
             .contains('[fieldName: string]: SchemaField');
     });
 });
