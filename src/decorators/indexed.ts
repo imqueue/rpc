@@ -16,6 +16,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 import { IMQRPCDescription } from '..';
+import { Thunk } from '..';
 
 /**
  * Implements '@indexed' decorator factory
@@ -34,22 +35,32 @@ import { IMQRPCDescription } from '..';
  *
  * @return {(constructor: Function) => void}
  */
-export function indexed(indexTypedef: string): any {
+export function indexed(indexTypedef: string | Thunk): any {
     return function (constructor: Function): any {
         // istanbul ignore if
         if (!indexTypedef) {
             return ; // nothing to do here
         }
 
+        if (typeof indexTypedef === 'function') {
+            indexTypedef = indexTypedef();
+        }
+
+        // istanbul ignore if
+        if (typeof indexTypedef !== 'string') {
+            indexTypedef = String(indexTypedef);
+        }
+
         const typeName = constructor.name;
 
         IMQRPCDescription.typesDescription[typeName] =
         IMQRPCDescription.typesDescription[typeName] || {
-            indexType: indexTypedef,
+            indexType: indexTypedef as string,
             properties: {},
             inherits: Object.getPrototypeOf(constructor).name,
         };
 
-        IMQRPCDescription.typesDescription[typeName].indexType = indexTypedef;
+        IMQRPCDescription.typesDescription[typeName]
+            .indexType = indexTypedef as string;
     };
 }
