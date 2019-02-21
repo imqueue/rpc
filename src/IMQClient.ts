@@ -329,8 +329,6 @@ export namespace ${namespaceName} {\n`;
             src += `${indexType.trim().replace(RX_SEMICOLON, '').trim()};\n`;
         }
 
-        src += '\n';
-
         for (const propertyName of Object.keys(
             description.types[typeName].properties,
         )) {
