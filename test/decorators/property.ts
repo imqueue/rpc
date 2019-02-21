@@ -58,6 +58,20 @@ class ThunkComplexTypeDef {
     self: ThunkComplexTypeDef;
 }
 
+class ArrayPropTypes {
+    @property(() => Array.of(TestPointType))
+    points: TestPointType[];
+
+    @property([TestPointType])
+    otherPoints: TestPointType[];
+
+    @property(Array.of('TestPointType'))
+    morePoints: TestPointType[];
+
+    @property(() => ['TestPointType'])
+    yetMorePoints: TestPointType[];
+}
+
 const typesMetadata = IMQRPCDescription.typesDescription;
 
 describe('decorators/property()', () => {
@@ -128,5 +142,17 @@ describe('decorators/property()', () => {
             .equals('TestPointType');
         expect(typesMetadata.ThunkComplexTypeDef.properties.self.type)
             .equals('ThunkComplexTypeDef');
+    });
+
+    it('should accept array types', () => {
+        expect(typesMetadata.ArrayPropTypes).not.to.be.undefined;
+        expect(typesMetadata.ArrayPropTypes.properties.points.type)
+            .equals('TestPointType[]');
+        expect(typesMetadata.ArrayPropTypes.properties.otherPoints.type)
+            .equals('TestPointType[]');
+        expect(typesMetadata.ArrayPropTypes.properties.morePoints.type)
+            .equals('TestPointType[]');
+        expect(typesMetadata.ArrayPropTypes.properties.yetMorePoints.type)
+            .equals('TestPointType[]');
     });
 });
