@@ -83,7 +83,7 @@ export interface Thunk {
  */
 export function property(
     type: string | Thunk | any,
-    isOptional: boolean = false
+    isOptional: boolean = false,
 ): any {
     // istanbul ignore if
     if (!type) {
@@ -95,12 +95,30 @@ export function property(
         propertyKey: string,
     ): any {
         const typeName = target.constructor.name;
-        const typeDef = typeof type === 'string'
-            ? type
-            : (type.name
-                ? type.name
-                : type().name || String(type)
-            );
+        let typeDef: any;
+
+        if (typeof type === 'function' && !(type as Function).name) {
+            type = type();
+        }
+
+        if (Array.isArray(type)) {
+            typeDef = type[0];
+        } else {
+            typeDef = type;
+        }
+
+        if (typeof typeDef !== 'string') {
+            typeDef = typeDef.name;
+        }
+
+        if (Array.isArray(type)) {
+            typeDef += '[]';
+        }
+
+        // istanbul ignore if
+        if (!typeDef) {
+            typeDef = String(type);
+        }
 
         IMQRPCDescription.typesDescription[typeName] =
         IMQRPCDescription.typesDescription[typeName] || {
@@ -109,7 +127,7 @@ export function property(
         };
 
         IMQRPCDescription.typesDescription[typeName].properties[propertyKey] = {
-            type: typeDef,
+            type: typeDef as string,
             isOptional
         };
     };
