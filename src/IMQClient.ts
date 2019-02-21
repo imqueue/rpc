@@ -44,6 +44,7 @@ process.setMaxListeners(10000);
 
 const tsOptions = require('../tsconfig.json').compilerOptions;
 const SIGNALS: string[] = ['SIGTERM', 'SIGINT', 'SIGHUP', 'SIGBREAK'];
+const RX_SEMICOLON: RegExp = /;+$/g;
 
 /**
  * Class IMQClient - base abstract class for service clients.
@@ -321,7 +322,16 @@ export namespace ${namespaceName} {\n`;
                 : ''
         } {\n`;
 
-        for (let propertyName of Object.keys(
+        const indexType = description.types[typeName].indexType;
+
+        if (indexType) {
+            src += ' '.repeat(8);
+            src += `${indexType.trim().replace(RX_SEMICOLON, '').trim()};\n`;
+        }
+
+        src += '\n';
+
+        for (const propertyName of Object.keys(
             description.types[typeName].properties,
         )) {
             const { type, isOptional } =
@@ -338,14 +348,14 @@ export namespace ${namespaceName} {\n`;
 
     const methods = description.service.methods;
 
-    for (let methodName of Object.keys(methods)) {
+    for (const methodName of Object.keys(methods)) {
         if (methodName === 'describe') {
             continue; // do not create inherited method - no need
         }
 
-        let args = methods[methodName].arguments;
-        let description = methods[methodName].description;
-        let ret = methods[methodName].returns;
+        const args = methods[methodName].arguments;
+        const description = methods[methodName].description;
+        const ret = methods[methodName].returns;
         let retType = ret.tsType
             .replace(/\r?\n/g, ' ')
             .replace(/\s{2,}/g, ' ');
@@ -376,7 +386,7 @@ export namespace ${namespaceName} {\n`;
             .join('\n') + '\n         *\n' : '';
 
         for (let i = 0, s = args.length; i < s; i++) {
-            let arg = args[i];
+            const arg = args[i];
             src += `         * @param {${
                 toComment(arg.tsType)}} `;
             src += arg.isOptional ? `[${arg.name}]` : arg.name;
@@ -391,7 +401,7 @@ export namespace ${namespaceName} {\n`;
         src += `        public async ${methodName}(`;
 
         for (let i = 0, s = args.length; i < s; i++) {
-            let arg = args[i];
+            const arg = args[i];
             src += arg.name + (arg.isOptional ? '?' : '') +
                 ': ' + arg.tsType.replace(/\s{2,}/g, ' ') +
                 (i === s - 1 ? '': ', ');
@@ -489,7 +499,9 @@ async function compile(name: string, src: string, options: IMQClientOptions): Pr
     if (options.compile) {
 		const script = new vm.Script(js);
         const context = { exports: {}, require };
-		script.runInNewContext(context, { filename: jsFile });
+
+        script.runInNewContext(context, { filename: jsFile });
+
 		return context.exports;
     }
 
