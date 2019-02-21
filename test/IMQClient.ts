@@ -172,13 +172,17 @@ describe('IMQClient', () => {
             try {
                 const testService: any = await IMQClient.create(
                     'TestService', { logger, path: CLIENTS_PATH });
+                // noinspection TypeScriptUnresolvedFunction
                 const cli = new testService.TestClient({ logger });
 
                 expect(cli).instanceOf(IMQClient);
 
                 const notExists = await new Promise(resolve =>
                     fs.access(`${CLIENTS_PATH}/TestService.ts`, resolve));
-                expect(!notExists).to.be.equal(true, 'TestService.ts does not exit');
+                expect(!notExists).to.be.equal(
+                    true,
+                    'TestService.ts does not exit'
+                );
 
                 cli.destroy();
                 rmdirr(CLIENTS_PATH);
@@ -195,6 +199,7 @@ describe('IMQClient', () => {
                     path: CLIENTS_PATH,
                     write: false,
                 });
+                // noinspection TypeScriptUnresolvedFunction
                 const cli = new testService.TestClient({ logger });
 
                 expect(cli).instanceOf(IMQClient);
@@ -226,7 +231,7 @@ describe('IMQClient', () => {
 
     describe('stop()', () => {
         it('should stop client form serving messages', async () => {
-            const spy = sinon.spy((<any>client).imq, 'stop');
+            const spy = sinon.spy((<any>client).imq, 'stop' as any);
             await client.stop();
             expect(spy.called).to.be.true;
             spy.restore();
