@@ -101,13 +101,13 @@ export function property(
             type = type();
         }
 
-        if (Array.isArray(type)) {
-            typeDef = type[0];
-        } else {
-            typeDef = type;
+        typeDef = type;
+
+        if (Array.isArray(typeDef)) {
+            typeDef = typeDef[0];
         }
 
-        if (typeof typeDef !== 'string') {
+        if (typeDef && typeof typeDef !== 'string') {
             typeDef = typeDef.name;
         }
 
