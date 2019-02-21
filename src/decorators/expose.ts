@@ -103,7 +103,7 @@ function parseComment(src: string): CommentMetadata {
         (cleanSrc.match(RX_DESCRIPTION) || [])[1] || ''
     ).trim();
 
-    while (match = RX_TAG.exec(cleanSrc)) {
+    while ((match = RX_TAG.exec(cleanSrc))) {
         tags.push(match[1].trim());
     }
 
@@ -326,12 +326,12 @@ export function expose(): (...args: any[]) => any {
     ) {
         let className: string = target.constructor.name;
         let argNames: string[] = argumentNames(
-            <(...args: any[]) => any>descriptor.value
+            <(...args: any[]) => any>descriptor.value,
         );
         let retType = Reflect.getMetadata(
             'design:returntype',
             target,
-            methodName
+            methodName,
         );
         let retTypeName: string = retType ? retType.name : String(retType);
 
@@ -345,7 +345,7 @@ export function expose(): (...args: any[]) => any {
             'returns', className, methodName, {
                 description: '',
                 type: retTypeName,
-                tsType: cast(retTypeName)
+                tsType: cast(retTypeName),
             });
 
         ret.type = retTypeName;
@@ -357,7 +357,7 @@ export function expose(): (...args: any[]) => any {
                     name: argNames[i],
                     type: '',
                     tsType: '',
-                    isOptional : false
+                    isOptional : false,
                 };
             }
         }
@@ -374,12 +374,12 @@ export function expose(): (...args: any[]) => any {
         IMQRPCDescription.serviceDescription[className] =
         IMQRPCDescription.serviceDescription[className] || {
             inherits: descriptions[className].inherits,
-            methods: {}
+            methods: {},
         };
         IMQRPCDescription.serviceDescription[className].methods[methodName] = {
             description: get<string>('description', className, methodName, ''),
             arguments: args,
-            returns: ret
+            returns: ret,
         };
     }
 }

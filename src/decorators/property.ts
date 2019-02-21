@@ -82,8 +82,11 @@ export function property(type: string, isOptional: boolean = false): any {
         const typeName = target.constructor.name;
 
         IMQRPCDescription.typesDescription[typeName] =
-        IMQRPCDescription.typesDescription[typeName] || {};
-        IMQRPCDescription.typesDescription[typeName][propertyKey] = {
+        IMQRPCDescription.typesDescription[typeName] || {
+            properties: {},
+            inherits: Object.getPrototypeOf(target.constructor).name,
+        };
+        IMQRPCDescription.typesDescription[typeName].properties[propertyKey] = {
             type,
             isOptional
         };

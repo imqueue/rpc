@@ -45,6 +45,11 @@ class TestBaseComplexType {
     point: TestPointType;
 }
 
+class TestExtendedComplexType extends TestPointType {
+    @property('boolean')
+    public is3d: boolean;
+}
+
 const typesMetadata = IMQRPCDescription.typesDescription;
 
 describe('decorators/property()', () => {
@@ -59,44 +64,53 @@ describe('decorators/property()', () => {
     it('should properly fill exposed metadata', () => {
         expect(typesMetadata.TestBaseComplexType).not.to.be.undefined;
         expect(typesMetadata.TestPointType).not.to.be.undefined;
+        expect(typesMetadata.TestPointType.properties).not.to.be.undefined;
 
-        expect(typesMetadata.TestPointType.x).not.to.be.undefined;
-        expect(typesMetadata.TestPointType.y).not.to.be.undefined;
-        expect(typesMetadata.TestPointType.z).not.to.be.undefined;
+        expect(typesMetadata.TestPointType.properties.x).not.to.be.undefined;
+        expect(typesMetadata.TestPointType.properties.y).not.to.be.undefined;
+        expect(typesMetadata.TestPointType.properties.z).not.to.be.undefined;
 
-        expect(typesMetadata.TestPointType.x.type)
+        expect(typesMetadata.TestPointType.properties.x.type)
             .to.equal('number');
-        expect(typesMetadata.TestPointType.y.type)
+        expect(typesMetadata.TestPointType.properties.y.type)
             .to.equal('number');
-        expect(typesMetadata.TestPointType.z.type)
+        expect(typesMetadata.TestPointType.properties.z.type)
             .to.equal('number');
 
-        expect(typesMetadata.TestPointType.x.isOptional)
+        expect(typesMetadata.TestPointType.properties.x.isOptional)
             .to.be.false;
-        expect(typesMetadata.TestPointType.y.isOptional)
+        expect(typesMetadata.TestPointType.properties.y.isOptional)
             .to.be.false;
-        expect(typesMetadata.TestPointType.z.isOptional)
+        expect(typesMetadata.TestPointType.properties.z.isOptional)
             .to.be.true;
 
-        expect(typesMetadata.TestBaseComplexType.mandatoryStr)
+        expect(typesMetadata.TestBaseComplexType.properties.mandatoryStr)
             .not.to.be.undefined;
-        expect(typesMetadata.TestBaseComplexType.nonMandatoryStr)
+        expect(typesMetadata.TestBaseComplexType.properties.nonMandatoryStr)
             .not.to.be.undefined;
-        expect(typesMetadata.TestBaseComplexType.point)
+        expect(typesMetadata.TestBaseComplexType.properties.point)
             .not.to.be.undefined;
 
-        expect(typesMetadata.TestBaseComplexType.mandatoryStr.type)
+        expect(typesMetadata.TestBaseComplexType.properties.mandatoryStr.type)
             .to.equal('string');
-        expect(typesMetadata.TestBaseComplexType.nonMandatoryStr.type)
-            .to.equal('string');
-        expect(typesMetadata.TestBaseComplexType.point.type)
+        expect(
+            typesMetadata.TestBaseComplexType.properties.nonMandatoryStr.type
+        ).to.equal('string');
+        expect(typesMetadata.TestBaseComplexType.properties.point.type)
             .to.equal('TestPointType');
 
-        expect(typesMetadata.TestBaseComplexType.mandatoryStr.isOptional)
+        expect(
+            typesMetadata.TestBaseComplexType.properties.mandatoryStr.isOptional
+        ).to.be.false;
+        expect(
+            typesMetadata.TestBaseComplexType.properties.nonMandatoryStr
+                .isOptional
+        ).to.be.true;
+        expect(typesMetadata.TestBaseComplexType.properties.point.isOptional)
             .to.be.false;
-        expect(typesMetadata.TestBaseComplexType.nonMandatoryStr.isOptional)
-            .to.be.true;
-        expect(typesMetadata.TestBaseComplexType.point.isOptional)
-            .to.be.false;
+        expect(typesMetadata.TestExtendedComplexType.inherits)
+            .equals('TestPointType');
+        expect(typesMetadata.TestPointType.inherits)
+            .not.to.be.ok;
     });
 });

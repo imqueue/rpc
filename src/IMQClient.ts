@@ -128,7 +128,11 @@ export abstract class IMQClient extends EventEmitter {
 
         return new Promise<T>(async (resolve, reject) => {
             try {
-                const message: IMQRPCRequest = { from, method, args};
+                const message: IMQRPCRequest = {
+                    from,
+                    method,
+                    args,
+                } as IMQRPCRequest;
                 const id = await this.imq.send(to, message, delay, reject);
 
                 this.resolvers[id] = [resolve, reject];
@@ -138,7 +142,7 @@ export abstract class IMQClient extends EventEmitter {
                 // istanbul ignore next
                 reject(err);
             }
-        });
+        }) as Promise<T>;
     }
 
     /**
@@ -264,7 +268,7 @@ async function getDescription(
         await client.destroy();
 
         resolve(description);
-    });
+    }) as Promise<Description>;
 
 }
 
@@ -310,11 +314,17 @@ import { IMQClient, IMQDelay, remote, profile } from '@imqueue/rpc';
 export namespace ${namespaceName} {\n`;
 
     for (let typeName of Object.keys(description.types)) {
-        src += `    export interface ${typeName} {\n`;
+        src += `    export interface ${typeName} ${
+            description.types[typeName].inherits
+                ? `extends ${description.types[typeName].inherits} `
+                : ''
+        } {\n`;
 
-        for (let propertyName of Object.keys(description.types[typeName])) {
+        for (let propertyName of Object.keys(
+            description.types[typeName].properties,
+        )) {
             const { type, isOptional } =
-                description.types[typeName][propertyName];
+                description.types[typeName].properties[propertyName];
 
             src += ' '.repeat(8);
             src += `${propertyName}${isOptional ? '?' : ''}: ${type};\n`;

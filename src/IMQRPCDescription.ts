@@ -86,7 +86,10 @@ export interface TypeDescription {
  * Entire service types metadata structure
  */
 export interface TypesDescription {
-    [typeName: string]: TypeDescription;
+    [typeName: string]: {
+        properties: TypeDescription,
+        inherits: string,
+    };
 }
 
 export class IMQRPCDescription {
