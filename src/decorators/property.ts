@@ -17,6 +17,10 @@
  */
 import { IMQRPCDescription } from '..';
 
+export interface Thunk {
+    (): any;
+}
+
 /**
  * Implements '@property' decorator factory
  * This is used to specify complex service types to be exposed
@@ -77,9 +81,26 @@ import { IMQRPCDescription } from '..';
  *    descriptor: TypedPropertyDescriptor<(...args: any[]) => any>
  * ) => void}
  */
-export function property(type: string, isOptional: boolean = false): any {
-    return function (target: any, propertyKey: string): any {
+export function property(
+    type: string | Thunk | any,
+    isOptional: boolean = false
+): any {
+    // istanbul ignore if
+    if (!type) {
+        return ;
+    }
+
+    return function (
+        target: any,
+        propertyKey: string,
+    ): any {
         const typeName = target.constructor.name;
+        const typeDef = typeof type === 'string'
+            ? type
+            : (type.name
+                ? type.name
+                : type().name || String(type)
+            );
 
         IMQRPCDescription.typesDescription[typeName] =
         IMQRPCDescription.typesDescription[typeName] || {
@@ -88,7 +109,7 @@ export function property(type: string, isOptional: boolean = false): any {
         };
 
         IMQRPCDescription.typesDescription[typeName].properties[propertyKey] = {
-            type,
+            type: typeDef,
             isOptional
         };
     };

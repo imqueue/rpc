@@ -50,6 +50,14 @@ class TestExtendedComplexType extends TestPointType {
     public is3d: boolean;
 }
 
+class ThunkComplexTypeDef {
+    @property(TestPointType)
+    point: TestPointType;
+
+    @property(() => ThunkComplexTypeDef)
+    self: ThunkComplexTypeDef;
+}
+
 const typesMetadata = IMQRPCDescription.typesDescription;
 
 describe('decorators/property()', () => {
@@ -112,5 +120,13 @@ describe('decorators/property()', () => {
             .equals('TestPointType');
         expect(typesMetadata.TestPointType.inherits)
             .not.to.be.ok;
+    });
+
+    it('should allow objects and thunks as typedefs', () => {
+        expect(typesMetadata.ThunkComplexTypeDef).not.to.be.undefined;
+        expect(typesMetadata.ThunkComplexTypeDef.properties.point.type)
+            .equals('TestPointType');
+        expect(typesMetadata.ThunkComplexTypeDef.properties.self.type)
+            .equals('ThunkComplexTypeDef');
     });
 });
