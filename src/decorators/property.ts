@@ -86,6 +86,7 @@ export function property(type: string, isOptional: boolean = false): any {
             properties: {},
             inherits: Object.getPrototypeOf(target.constructor).name,
         };
+
         IMQRPCDescription.typesDescription[typeName].properties[propertyKey] = {
             type,
             isOptional

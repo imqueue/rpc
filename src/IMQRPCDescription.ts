@@ -89,6 +89,7 @@ export interface TypesDescription {
     [typeName: string]: {
         properties: TypeDescription,
         inherits: string,
+        indexType?: string,
     };
 }
 
