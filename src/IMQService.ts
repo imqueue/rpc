@@ -180,7 +180,7 @@ export abstract class IMQService {
         }
 
         catch (err) {
-            response.error = IMQError('IMQ_RPC_CALL_ERROR',
+            response.error = IMQError(err.code || 'IMQ_RPC_CALL_ERROR',
                 err.message, err.stack, method, args);
         }
 
