@@ -47,7 +47,7 @@ async function deadLocked() {
 }
 
 describe('IMQLock', () => {
-    this.timeout = 30000;
+    (this as any).timeout = 30000;
 
     before(() => { IMQLock.deadlockTimeout = LOCK_TIMEOUT });
     after(() => { IMQLock.deadlockTimeout = ORIGINAL_LOCK_TIMEOUT });

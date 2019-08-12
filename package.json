@@ -38,7 +38,7 @@
   "author": "imqueue.com <support@imqueue.com> (https://imqueue.com)",
   "license": "ISC",
   "dependencies": {
-    "@imqueue/core": "^1.3.17",
+    "@imqueue/core": "^1.3.18",
     "@types/acorn": "^4.0.3",
     "@types/node": "^11.9.4",
     "acorn": "^6.0.4",
@@ -63,7 +63,7 @@
     "sinon": "^7.1.1",
     "source-map-support": "^0.5.9",
     "ts-node": "^8.0.2",
-    "typedoc": "^0.14.2"
+    "typedoc": "^0.15.0"
   },
   "main": "index.js",
   "typescript": {

@@ -27,7 +27,7 @@ import {
     ICache,
     ServiceClassDescription,
     MethodsCollectionDescription,
-    DEFAULT_IMQ_SERVICE_OPTIONS
+    DEFAULT_IMQ_SERVICE_OPTIONS,
 } from '.';
 import * as cluster from 'cluster';
 import * as os from 'os';
