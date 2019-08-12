@@ -15,8 +15,8 @@
   "scripts": {
     "prepublish": "./node_modules/.bin/tsc",
     "test": "./node_modules/.bin/tsc && ./node_modules/.bin/nyc mocha && ./node_modules/.bin/nyc report --reporter=text-lcov && npm run test-coverage",
-    "test-fast": "./node_modules/.bin/tsc && ./node_modules/.bin/nyc mocha && /usr/bin/env node -e \"require('opn')('file://`pwd`/coverage/index.html', { wait: false })\"",
-    "test-local": "export COVERALLS_REPO_TOKEN=$IMQ_RPC_COVERALLS_TOKEN && npm test && /usr/bin/env node -e \"require('opn')('https://coveralls.io/github/imqueue/imq-rpc', { wait: false });\"",
+    "test-fast": "./node_modules/.bin/tsc && ./node_modules/.bin/nyc mocha && /usr/bin/env node -e \"require('open')('file://`pwd`/coverage/index.html', { wait: false })\"",
+    "test-local": "export COVERALLS_REPO_TOKEN=$IMQ_RPC_COVERALLS_TOKEN && npm test && /usr/bin/env node -e \"require('open')('https://coveralls.io/github/imqueue/imq-rpc', { wait: false });\"",
     "test-coverage": "cat ./coverage/lcov.info | CODECLIMATE_API_HOST=https://codebeat.co/webhooks/code_coverage CODECLIMATE_REPO_TOKEN=c2cc3954-6824-4cdf-8349-12bd9c31955a ./node_modules/.bin/codeclimate-test-reporter",
     "clean-typedefs": "find . -name '*.d.ts' -not -wholename '*node_modules*' -not -wholename '*generator*' -type f -delete",
     "clean-maps": "find . -name '*.js.map' -not -wholename '*node_modules*' -not -wholename '*generator*' -type f -delete",
@@ -25,7 +25,7 @@
     "clean-doc": "rm -rf docs",
     "clean-benchmark": "rm -rf benchmark-result",
     "clean": "npm run clean-tests && npm run clean-typedefs && npm run clean-maps && npm run clean-js && npm run clean-doc && npm run clean-benchmark",
-    "doc": "rm -rf docs && typedoc --excludePrivate --excludeExternals --hideGenerator --exclude \"**/+(debug|test|node_modules|docs|coverage|benchmark|.nyc_output)/**/*\" --mode file --out ./docs . && /usr/bin/env node -e \"require('opn')('file://`pwd`/docs/index.html', { wait: false });\""
+    "doc": "rm -rf docs && typedoc --excludePrivate --excludeExternals --hideGenerator --exclude \"**/+(debug|test|node_modules|docs|coverage|benchmark|.nyc_output)/**/*\" --mode file --out ./docs . && /usr/bin/env node -e \"require('open')('file://`pwd`/docs/index.html', { wait: false });\""
   },
   "repository": {
     "type": "git",
@@ -40,12 +40,12 @@
   "dependencies": {
     "@imqueue/core": "^1.3.18",
     "@types/acorn": "^4.0.3",
-    "@types/node": "^11.9.4",
+    "@types/node": "^12.7.1",
     "acorn": "^6.0.4",
     "murmurhash-native": "^3.3.0",
     "node-machine-id": "^1.1.10",
     "reflect-metadata": "^0.1.13",
-    "typescript": "^3.3.3"
+    "typescript": "^3.5.3"
   },
   "devDependencies": {
     "@types/chai": "^4.1.2",
@@ -55,11 +55,11 @@
     "chai": "^4.1.2",
     "codeclimate-test-reporter": "^0.5.0",
     "coveralls": "^3.0.0",
-    "mocha": "^5.0.1",
+    "mocha": "^6.2.0",
     "mocha-lcov-reporter": "^1.3.0",
     "mock-require": "^3.0.1",
-    "nyc": "^13.0.1",
-    "opn": "^5.2.0",
+    "nyc": "^14.1.1",
+    "open": "^6.4.0",
     "sinon": "^7.1.1",
     "source-map-support": "^0.5.9",
     "ts-node": "^8.0.2",
