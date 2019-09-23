@@ -28,16 +28,15 @@ export function remote() {
     return function(
         target: any,
         methodName: string,
-        descriptor: TypedPropertyDescriptor<(...args: any[]) => any>
+        descriptor: TypedPropertyDescriptor<(...args: any[]) => any>,
     ) {
-        const original = descriptor.value ||
-            // istanbul ignore next
-            (() => {});
+        const original = descriptor.value;
 
         descriptor.value = function(...args: any[]) {
             args.push(methodName);
 
-            return original.apply(this, args);
+            // istanbul ignore next
+            return (original ? original.apply(this, args) : undefined);
         };
     }
 }

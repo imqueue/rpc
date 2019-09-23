@@ -153,30 +153,29 @@ export abstract class IMQClient extends EventEmitter {
      */
     public async start() {
         this.imq.on('message', (message: IMQRPCResponse) => {
-            process.nextTick(() => {
-                // the following condition below is hard to test with the
-                // current redis mock, BTW it was tested manually on real
-                // redis run
-                // istanbul ignore if
-                if (!this.resolvers[message.to]) {
-                    // when there is no resolvers it means
-                    // we have massage in queue which was initiated
-                    // by some process which is broken. So we provide an
-                    // ability to handle enqueued messages via EventEmitter
-                    // interface
-                    this.emit(message.request.method, message);
-                }
+            // the following condition below is hard to test with the
+            // current redis mock, BTW it was tested manually on real
+            // redis run
+            // istanbul ignore if
+            if (!this.resolvers[message.to]) {
+                // when there is no resolvers it means
+                // we have massage in queue which was initiated
+                // by some process which is broken. So we provide an
+                // ability to handle enqueued messages via EventEmitter
+                // interface
+                this.emit(message.request.method, message);
+            }
 
-                const [ resolve, reject ] = this.resolvers[message.to] ||
-                    // istanbul ignore next
-                    [ undefined, undefined ];
+            const [ resolve, reject ] = this.resolvers[message.to];
 
-                if (message.error) {
-                    return reject && reject(message.error);
-                }
+            // make sure no memory leaking
+            delete this.resolvers[message.to];
 
-                resolve && resolve(message.data);
-            });
+            if (message.error) {
+                return reject && reject(message.error);
+            }
+
+            resolve && resolve(message.data);
         });
 
         await this.imq.start();

@@ -33,11 +33,9 @@ export function lock(enabled: boolean = true) {
     return function(
         target: any,
         methodName: string | symbol,
-        descriptor: TypedPropertyDescriptor<(...args: any[]) => any>
+        descriptor: TypedPropertyDescriptor<(...args: any[]) => any>,
     ) {
-        const original = descriptor.value ||
-            // istanbul ignore next
-            (() => {});
+        const original = descriptor.value;
         const className = typeof target === 'function'
             ? target.name              // static
             : target.constructor.name; // dynamic
@@ -59,7 +57,10 @@ export function lock(enabled: boolean = true) {
             }
 
             try {
-                let result: any = original.apply(this, args);
+                // istanbul ignore next
+                let result: any = original
+                    ? original.apply(this, args)
+                    : undefined;
 
                 if (result && result.then) {
                     result = await result;
