@@ -20,7 +20,7 @@ import * as acorn from 'acorn';
 import {
     ArgDescription,
     ReturnValueDescription,
-    IMQRPCDescription
+    IMQRPCDescription,
 } from '..';
 
 const TS_TYPES = [
@@ -29,7 +29,7 @@ const TS_TYPES = [
     'number',
     'boolean',
     'null',
-    'undefined'
+    'undefined',
 ];
 
 type CommentMetadata = {
@@ -93,7 +93,7 @@ function parseComment(src: string): CommentMetadata {
         returns: {
             description: '',
             type: '',
-            tsType: ''
+            tsType: '',
         }
     };
     let match, tags = [];
@@ -139,7 +139,7 @@ function parseComment(src: string): CommentMetadata {
                     name,
                     tsType,
                     type,
-                    isOptional
+                    isOptional,
                 });
                 break;
             }
@@ -240,15 +240,15 @@ function parseDescriptions(name: string, src: string) {
                 continue;
             }
 
-            const index = methods.indexOf(method);
-            const prev = index && methods[index - 1];
+            const index: number = methods.indexOf(method);
+            const prev: any = index && methods[index - 1];
             const prevBeforeComment = !prev
                 || (prev && prev.range && prev.range[1] <= foundBlock.start);
 
             if (prevBeforeComment) {
                 // it's a method comment block!!!!
                 descriptions[name][methodName] = {
-                    comment: parseComment(foundBlock.value)
+                    comment: parseComment(foundBlock.value),
                 };
             }
         }
@@ -319,10 +319,10 @@ function cast(type: string) {
  * ) => void} - decorator function
  */
 export function expose(): (...args: any[]) => any {
-    return function(
+    return function exposeDecorator(
         target: any,
         methodName: string,
-        descriptor: TypedPropertyDescriptor<(...args: any[]) => any>
+        descriptor: TypedPropertyDescriptor<(...args: any[]) => any>,
     ) {
         let className: string = target.constructor.name;
         let argNames: string[] = argumentNames(
@@ -365,7 +365,7 @@ export function expose(): (...args: any[]) => any {
         Reflect.getMetadata(
             'design:paramtypes',
             target,
-            methodName
+            methodName,
         ).forEach((typeConstructor: any, i: number) => {
             args[i].type = args[i].type || typeConstructor.name;
             args[i].tsType = args[i].tsType || cast(args[i].type);

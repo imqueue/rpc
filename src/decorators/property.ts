@@ -128,7 +128,7 @@ export function property(
 
         IMQRPCDescription.typesDescription[typeName].properties[propertyKey] = {
             type: typeDef as string,
-            isOptional
+            isOptional,
         };
     };
 }

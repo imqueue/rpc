@@ -39,7 +39,7 @@ export const cache: CacheDecorator = function(options?: CacheDecoratorOptions) {
     return function(
         target: any,
         methodName: string | symbol,
-        descriptor: TypedPropertyDescriptor<(...args: any[]) => any>
+        descriptor: TypedPropertyDescriptor<(...args: any[]) => any>,
     ) {
         const original: (...args: any[]) => any = descriptor.value as any;
 
@@ -87,7 +87,7 @@ export const cache: CacheDecorator = function(options?: CacheDecoratorOptions) {
                         key,
                         result,
                         cacheOptions.ttl,
-                        !!cacheOptions.nx
+                        !!cacheOptions.nx,
                     );
                 }
 
@@ -98,7 +98,7 @@ export const cache: CacheDecorator = function(options?: CacheDecoratorOptions) {
                 // istanbul ignore next
                 (this.logger || context.cache.logger).warn(
                     'cache: Error fetching cached value for %s.%s(), args: %s!',
-                    className, methodName, JSON.stringify(args), err
+                    className, methodName, JSON.stringify(args), err,
                 );
 
                 // istanbul ignore next
