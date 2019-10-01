@@ -19,3 +19,4 @@ export * from './lock';
 export * from './cache';
 export * from './property';
 export * from './indexed';
+export * from './logged';
