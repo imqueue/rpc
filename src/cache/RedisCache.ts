@@ -82,13 +82,13 @@ export class RedisCache implements ICache {
                     this.name,
                     this.options.host,
                     this.options.port,
-                    process.pid
+                    process.pid,
                 );
 
                 await RedisCache.redis.client(
                     'setname',
                     `${this.options.prefix}:${this.name
-                    }:pid:${process.pid}:host:${os.hostname()}`
+                        }:pid:${process.pid}:host:${os.hostname()}`
                 );
 
                 this.ready = true;
@@ -178,6 +178,29 @@ export class RedisCache implements ICache {
      */
     public async del(key: string): Promise<boolean> {
         return await RedisCache.redis.del(this.key(key));
+    }
+
+    /**
+     * Purges all keys from cache by a given wildcard mask
+     *
+     * @param {string} keyMask
+     * @return {boolean}
+     */
+    public async purge(keyMask: string): Promise<boolean> {
+        try {
+            await RedisCache.redis.eval(
+                `"for _,k in ipairs(redis.call('keys','${
+                    keyMask
+                }')) do redis.call('del',k) end"`,
+                0,
+            );
+
+            return true;
+        } catch (e) {
+            this.logger.error(e);
+
+            return false;
+        }
     }
 
     /**
