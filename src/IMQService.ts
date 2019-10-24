@@ -265,7 +265,6 @@ export abstract class IMQService {
      *
      * @returns {Promise<Description>}
      */
-    @profile()
     @expose()
     public describe(): Description {
         if (!serviceDescription) {
