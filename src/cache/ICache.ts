@@ -28,6 +28,7 @@ export interface ICache {
     get(key: string): Promise<any>;
     set(key: string, value: any, ttl?: number): Promise<boolean>;
     del(key: string): Promise<boolean>;
+    purge(keyMask: string): Promise<boolean>;
 
 }
 
