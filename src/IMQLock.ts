@@ -164,7 +164,7 @@ export class IMQLock {
         const processor = err ? 1 : 0;
         const arg = err ? err : value;
 
-        while (task = queue.shift()) {
+        while ((task = queue.shift())) {
             task[processor](arg);
         }
     }

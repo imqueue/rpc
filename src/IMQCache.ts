@@ -15,7 +15,7 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { ICache, ICacheAdapter } from '.';
+import { ICache, ICacheAdapter, ICacheConstructor } from '.';
 
 /**
  * Generic cache registry
@@ -32,7 +32,7 @@ export class IMQCache {
      * @param {any} options - adapter specific options
      * @returns {IMQCache}
      */
-    public static register(adapter: ICacheAdapter, options?: any) {
+    public static register(adapter: ICacheAdapter | string, options?: any) {
         const self = IMQCache;
 
         if (typeof adapter === 'string') {
@@ -46,13 +46,15 @@ export class IMQCache {
 
         else {
             // istanbul ignore else
-            if (!self.adapters[adapter.name]) {
+            if (!self.adapters[(adapter as ICacheConstructor).name]) {
                 if (typeof adapter === 'function') {
-                    self.adapters[(<any>adapter).name] = new (<any>adapter)();
+                    self.adapters[(adapter as ICacheConstructor).name] =
+                        new (<any>adapter)();
                 }
 
                 else {
-                    self.adapters[adapter.name] = adapter;
+                    self.adapters[(adapter as ICache).name] =
+                        adapter as any as ICache;
                 }
             }
         }
@@ -65,18 +67,20 @@ export class IMQCache {
     /**
      * Overrides existing adapter options with the given
      *
-     * @param { ICache | string} adapter - adapter to apply options to
+     * @param {ICache | string} adapter - adapter to apply options to
      * @param {any} options - adapter specific options
      * @returns {IMQCache}
      */
-    public static apply(adapter: ICacheAdapter, options: any) {
+    public static apply(adapter: ICacheAdapter | string, options: any) {
         const self = IMQCache;
 
         if (!options) {
             return self;
         }
 
-        const name = typeof adapter === 'string' ? adapter : adapter.name;
+        const name = typeof adapter === 'string'
+            ? adapter
+            : (adapter as ICache).name;
 
         let opts = self.options[name] || {};
 
@@ -118,7 +122,9 @@ export class IMQCache {
      */
     public static get(adapter: ICacheAdapter): ICache {
         return IMQCache.adapters[
-            typeof adapter === 'string' ? adapter : adapter.name
+            typeof adapter === 'string'
+                ? adapter
+                : (adapter as ICache).name
         ];
     }
 

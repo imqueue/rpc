@@ -27,16 +27,19 @@ export interface IMQRPCError extends IJson {
     stack: string;
     method: string;
     args: string;
+    original?: any;
 }
 
 // istanbul ignore next
 /**
+ * Builds JSON representation of IMQ Error
  *
- * @param {string} code
- * @param {string} message
- * @param {string} stack
- * @param {string} method
- * @param {any} args
+ * @param {string} code    - error code
+ * @param {string} message - error message
+ * @param {string} stack   - error stack
+ * @param {string} method  - IMQ service method called, which produced an error
+ * @param {any} args       - IMQ service method call args passed
+ * @param {any} [original] - Original error thrown (JSON'ified) if any
  * @return {IMQRPCError}
  */
 export function IMQError(
@@ -44,13 +47,21 @@ export function IMQError(
     message: string,
     stack: any,
     method: any,
-    args: any
+    args: any,
+    original?: any,
 ): IMQRPCError {
     return {
         code,
         message,
         stack: stack || '',
         method: method || '',
-        args: JSON.stringify(args, null, 2)
+        args: JSON.stringify(args, null, 2),
+        original: (() => {
+            try {
+                return JSON.stringify(original);
+            } catch (err) {
+                return undefined;
+            }
+        })(),
     };
 }
