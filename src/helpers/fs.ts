@@ -28,7 +28,7 @@ export function fileExists(path: string) {
 }
 
 /**
- * Promisable mkdir
+ * Async mkdir
  *
  * @param {string} path
  * @return {Promise<any>}
@@ -40,7 +40,7 @@ export function mkdir(path: string) {
 }
 
 /**
- * Promisable writeFile
+ * Async writeFile
  *
  * @param {string} path
  * @param {string} content
@@ -57,7 +57,7 @@ export function writeFile(path: string, content: string) {
 
 /**
  * Constructs and return callback which will resolve promise using
- * given resolver and rejector
+ * given resolver and reject'or
  *
  * @param {() => void} resolve
  * @param {(err: Error) => void} reject

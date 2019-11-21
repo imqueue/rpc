@@ -98,7 +98,7 @@ export function property(
         let typeDef: any;
 
         if (typeof type === 'function' && !(type as Function).name) {
-            type = type();
+            type = (type as () => any)();
         }
 
         typeDef = type;

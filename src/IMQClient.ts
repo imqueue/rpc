@@ -119,6 +119,7 @@ export abstract class IMQClient extends EventEmitter {
         let delay: number = 0;
 
         if (args[args.length - 1] instanceof IMQDelay) {
+            // noinspection TypeScriptUnresolvedVariable
             delay = args.pop().ms;
 
             // istanbul ignore if
@@ -474,7 +475,11 @@ function toComment(typedef: string, promised: boolean = false): string {
  * @param {IMQClientOptions} options
  * @returns {any}
  */
-async function compile(name: string, src: string, options: IMQClientOptions): Promise<any> {
+async function compile(
+    name: string,
+    src: string,
+    options: IMQClientOptions,
+): Promise<any> {
     const path = options.path;
     const srcFile = `${path}/${name}.ts`;
     const jsFile = `${path}/${name}.js`;

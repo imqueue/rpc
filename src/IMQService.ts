@@ -181,7 +181,7 @@ export abstract class IMQService {
 
         catch (err) {
             response.error = IMQError(err.code || 'IMQ_RPC_CALL_ERROR',
-                err.message, err.stack, method, args);
+                err.message, err.stack, method, args, err);
         }
 
         return await this.imq.send(msg.from, response);
