@@ -15,11 +15,7 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import IMQ, {
-    IMessageQueue,
-    IMQOptions,
-    ILogger
-} from '@imqueue/core';
+import IMQ, { IMessageQueue, IMQOptions, ILogger, IJson } from '@imqueue/core';
 import {
     pid,
     forgetPid,
@@ -39,6 +35,7 @@ import {
 import * as ts from 'typescript';
 import { EventEmitter } from 'events';
 import * as vm from 'vm';
+import { CompilerOptions } from 'typescript';
 
 process.setMaxListeners(10000);
 
@@ -147,6 +144,27 @@ export abstract class IMQClient extends EventEmitter {
         }) as Promise<T>;
     }
 
+    // noinspection JSUnusedGlobalSymbols
+    /**
+     * Adds subscription to service event channel
+     *
+     * @param {(data: IJson) => any} handler
+     * @return {Promise<void>}
+     */
+    public async subscribe(handler: (data: IJson) => any): Promise<void> {
+        return this.imq.subscribe(this.serviceName, handler);
+    }
+
+    // noinspection JSUnusedGlobalSymbols
+    /**
+     * Destroys subscription channel to service
+     *
+     * @return {Promise<void>}
+     */
+    public async unsubscribe(): Promise<void> {
+        return this.imq.unsubscribe();
+    }
+
     /**
      * Initializes client work
      *
@@ -198,6 +216,7 @@ export abstract class IMQClient extends EventEmitter {
      * @returns {Promise<void>}
      */
     public async destroy() {
+        await this.imq.unsubscribe();
         forgetPid(this.baseName, this.id, this.logger);
         this.removeAllListeners();
         await this.imq.destroy();
@@ -483,8 +502,8 @@ async function compile(
     const path = options.path;
     const srcFile = `${path}/${name}.ts`;
     const jsFile = `${path}/${name}.js`;
+    const js = ts.transpile(src, tsOptions as CompilerOptions | undefined);
 
-    const js = ts.transpile(src, tsOptions);
     if (options.write) {
         // istanbul ignore else
         if (!await fileExists(path)) {
