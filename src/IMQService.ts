@@ -15,7 +15,7 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import IMQ, { ILogger, IMessageQueue, profile } from '@imqueue/core';
+import IMQ, { IJson, ILogger, IMessageQueue, profile } from '@imqueue/core';
 import {
     TypesDescription,
     IMQRPCDescription,
@@ -220,7 +220,7 @@ export abstract class IMQService {
                 this.logger.info(
                     '%s: worker pid %s died, exiting',
                     this.name,
-                    worker.process.pid
+                    worker.process.pid,
                 );
                 process.exit(1);
             });
@@ -231,13 +231,23 @@ export abstract class IMQService {
                 '%s: worker #%s started, pid %s',
                 this.name,
                 process.env['workerId'],
-                process.pid
+                process.pid,
             );
 
             this.describe();
 
             return this.imq.start();
         }
+    }
+
+    // noinspection JSUnusedGlobalSymbols
+    /**
+     * Sends given data to service subscription channel
+     *
+     * @param {IJson} data
+     */
+    public async publish(data: IJson) {
+        await this.imq.publish(data);
     }
 
     /**
@@ -257,6 +267,7 @@ export abstract class IMQService {
      */
     @profile()
     public async destroy() {
+        await this.imq.unsubscribe();
         await this.imq.destroy();
     }
 
