@@ -95,7 +95,7 @@ export abstract class IMQClient extends EventEmitter {
         const terminate = async () => {
             await this.destroy();
             // istanbul ignore next
-            process.nextTick(() => process.exit(0));
+            setTimeout(() => process.exit(0), 1000);
         };
 
         SIGNALS.forEach((signal: any) => process.on(signal, terminate));
