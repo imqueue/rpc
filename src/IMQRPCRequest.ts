@@ -16,6 +16,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 import { IJson } from '@imqueue/core';
+import { IMQMetadata } from './IMQMetadata';
 
 /**
  * Request message data structure expected to be handled by a service
@@ -24,4 +25,5 @@ export interface IMQRPCRequest extends IJson {
     from: string;
     method: string;
     args: any[];
+    metadata?: IMQMetadata;
 }

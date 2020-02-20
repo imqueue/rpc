@@ -134,12 +134,17 @@ export abstract class IMQService {
         const method = msg.method;
         const description = await this.describe();
         const args = msg.args;
+        const metadata = msg.metadata;
         let response: IMQRPCResponse = {
             to: id,
             data: null,
             error: null,
-            request: msg
+            request: msg,
         };
+
+        if (metadata && typeof this.options.traceHandler === 'function') {
+            this.options.traceHandler(metadata);
+        }
 
         if (!this[method]) {
             response.error = IMQError(
