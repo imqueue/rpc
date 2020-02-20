@@ -30,7 +30,7 @@ import {
     Description,
     fileExists,
     mkdir,
-    writeFile,
+    writeFile, IMQMetadata,
 } from '.';
 import * as ts from 'typescript';
 import { EventEmitter } from 'events';
@@ -114,6 +114,7 @@ export abstract class IMQClient extends EventEmitter {
         const from = this.name;
         const to = this.serviceName;
         let delay: number = 0;
+        let metadata: IMQMetadata;
 
         if (args[args.length - 1] instanceof IMQDelay) {
             // noinspection TypeScriptUnresolvedVariable
@@ -125,12 +126,21 @@ export abstract class IMQClient extends EventEmitter {
             }
         }
 
+        if (args[args.length - 1] instanceof IMQMetadata) {
+            metadata = args.pop();
+
+            if (metadata && typeof this.options.traceHandler === 'function') {
+                this.options.traceHandler(metadata);
+            }
+        }
+
         return new Promise<T>(async (resolve, reject) => {
             try {
                 const message: IMQRPCRequest = {
                     from,
                     method,
                     args,
+                    metadata,
                 } as IMQRPCRequest;
                 const id = await this.imq.send(to, message, delay, reject);
 

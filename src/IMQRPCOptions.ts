@@ -16,10 +16,16 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 import { DEFAULT_IMQ_OPTIONS, IMQOptions } from '@imqueue/core';
+import { IMQMetadata } from './IMQMetadata';
+
+export interface IMQTraceHandler<T> {
+    (this: T, metadata: IMQMetadata): Promise<void>;
+}
 
 export interface IMQServiceOptions extends IMQOptions {
     multiProcess: boolean;
     childrenPerCore: number;
+    traceHandler?: IMQTraceHandler<any>;
 }
 
 export interface IMQClientOptions extends IMQOptions {
@@ -27,6 +33,7 @@ export interface IMQClientOptions extends IMQOptions {
     compile: boolean;
     timeout: number;
     write: boolean;
+    traceHandler?: IMQTraceHandler<any>;
 }
 
 /**
