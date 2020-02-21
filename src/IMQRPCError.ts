@@ -15,13 +15,13 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { IJson } from '@imqueue/core';
+import { JsonObject } from '@imqueue/core';
 
 /**
  * Response error data structure, which service returns if error
  * occurred during service method execution.
  */
-export interface IMQRPCError extends IJson {
+export interface IMQRPCError extends JsonObject {
     code: string;
     message: string;
     stack: string;

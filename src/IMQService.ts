@@ -15,7 +15,12 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import IMQ, { IJson, ILogger, IMessageQueue, profile } from '@imqueue/core';
+import IMQ, {
+    JsonObject,
+    ILogger,
+    IMessageQueue,
+    profile,
+} from '@imqueue/core';
 import {
     TypesDescription,
     IMQRPCDescription,
@@ -249,9 +254,9 @@ export abstract class IMQService {
     /**
      * Sends given data to service subscription channel
      *
-     * @param {IJson} data
+     * @param {JsonObject} data
      */
-    public async publish(data: IJson) {
+    public async publish(data: JsonObject) {
         await this.imq.publish(data);
     }
 

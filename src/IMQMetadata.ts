@@ -15,12 +15,12 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { IJson } from '@imqueue/core';
+import { AnyJson, JsonObject } from '@imqueue/core';
 
 export class IMQMetadata {
-    [property: string]: IJson;
+    [property: string]: AnyJson;
 
-    constructor(metadata: IJson) {
+    constructor(metadata: JsonObject) {
         for (const property of Object.keys(metadata)) {
             this[property] = metadata[property];
         }
