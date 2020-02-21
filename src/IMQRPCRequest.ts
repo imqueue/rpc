@@ -15,13 +15,13 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { IJson } from '@imqueue/core';
+import { JsonObject } from '@imqueue/core';
 import { IMQMetadata } from './IMQMetadata';
 
 /**
  * Request message data structure expected to be handled by a service
  */
-export interface IMQRPCRequest extends IJson {
+export interface IMQRPCRequest extends JsonObject {
     from: string;
     method: string;
     args: any[];

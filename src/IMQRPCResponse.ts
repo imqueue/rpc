@@ -15,16 +15,16 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { IJson } from '@imqueue/core';
+import { JsonObject } from '@imqueue/core';
 import { IMQRPCError, IMQRPCRequest } from '.';
 
 /**
  * Response message data structure, which service replies to handled
  * requests.
  */
-export interface IMQRPCResponse extends IJson {
+export interface IMQRPCResponse extends JsonObject {
     to: string;
-    data: IJson | null;
+    data: JsonObject | null;
     error: IMQRPCError | null;
     request: IMQRPCRequest
 }

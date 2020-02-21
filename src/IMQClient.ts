@@ -15,7 +15,12 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import IMQ, { IMessageQueue, IMQOptions, ILogger, IJson } from '@imqueue/core';
+import IMQ, {
+    IMessageQueue,
+    IMQOptions,
+    ILogger,
+    JsonObject,
+} from '@imqueue/core';
 import {
     pid,
     forgetPid,
@@ -36,6 +41,7 @@ import * as ts from 'typescript';
 import { EventEmitter } from 'events';
 import * as vm from 'vm';
 import { CompilerOptions } from 'typescript';
+import { AnyJson } from '@imqueue/core/src/IMessageQueue';
 
 process.setMaxListeners(10000);
 
@@ -158,10 +164,10 @@ export abstract class IMQClient extends EventEmitter {
     /**
      * Adds subscription to service event channel
      *
-     * @param {(data: IJson) => any} handler
+     * @param {(data: JsonObject) => any} handler
      * @return {Promise<void>}
      */
-    public async subscribe(handler: (data: IJson) => any): Promise<void> {
+    public async subscribe(handler: (data: JsonObject) => any): Promise<void> {
         return this.imq.subscribe(this.serviceName, handler);
     }
 
