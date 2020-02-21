@@ -41,7 +41,6 @@ import * as ts from 'typescript';
 import { EventEmitter } from 'events';
 import * as vm from 'vm';
 import { CompilerOptions } from 'typescript';
-import { AnyJson } from '@imqueue/core/src/IMessageQueue';
 
 process.setMaxListeners(10000);
 
@@ -389,23 +388,32 @@ export namespace ${namespaceName} {\n`;
         const args = methods[methodName].arguments;
         const description = methods[methodName].description;
         const ret = methods[methodName].returns;
-        let retType = ret.tsType
-            .replace(/\r?\n/g, ' ')
-            .replace(/\s{2,}/g, ' ');
+        const addArgs = [{
+            description: 'if passed, will deliver given metadata to ' +
+                'service, and will initiate trace handler calls',
+            name: 'imqMetadata',
+            type: 'IMQMetadata',
+            tsType: 'IMQMetadata',
+            isOptional: true,
+        }, {
+            description: 'if passed the method will be called with ' +
+                'the specified delay over message queue',
+            name: 'imqDelay',
+            type: 'IMQDelay',
+            tsType: 'IMQDelay',
+            isOptional: true
+        }];
+        let retType = ret.tsType.replace(/\r?\n/g, ' ').replace(/\s{2,}/g, ' ');
 
-        // make sure each method allows optional delay argument
-        const lastArg = args[args.length - 1];
+        for (let i = 1; i <= 2; i++) {
+            const arg = args[args.length - i];
 
-        if (lastArg && lastArg.type !== 'IMQDelay') {
-            args.push({
-                description: 'if passed the method will be called with ' +
-                             'the specified delay over message queue',
-                name: 'delay',
-                type: 'IMQDelay',
-                tsType: 'IMQDelay',
-                isOptional: true
-            });
+            if (arg && ~['IMQDelay', 'IMQMetadata'].indexOf(arg.type)) {
+                args.pop(); // remove it
+            }
         }
+
+        args.push(...addArgs); // make sure client expect them
 
         // istanbul ignore if
         if (retType === 'Promise') {
