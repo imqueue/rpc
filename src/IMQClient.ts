@@ -344,7 +344,13 @@ async function generator(
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { IMQClient, IMQDelay, remote, profile } from '@imqueue/rpc';
+import {
+    IMQClient,
+    IMQDelay,
+    IMQMetadata,
+    remote,
+    profile,
+} from '@imqueue/rpc';
 
 export namespace ${namespaceName} {\n`;
 
