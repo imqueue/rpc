@@ -17,6 +17,9 @@
  */
 import { JsonObject } from '@imqueue/core';
 
+export const BEFORE_HOOK_ERROR = 'Before call hook error:';
+export const AFTER_HOOK_ERROR = 'After call hook error:';
+
 /**
  * Response error data structure, which service returns if error
  * occurred during service method execution.

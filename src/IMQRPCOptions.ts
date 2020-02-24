@@ -16,16 +16,22 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 import { DEFAULT_IMQ_OPTIONS, IMQOptions } from '@imqueue/core';
-import { IMQMetadata } from './IMQMetadata';
+import { IMQRPCRequest } from './IMQRPCRequest';
+import { IMQRPCResponse } from './IMQRPCResponse';
 
-export interface IMQTraceHandler<T> {
-    (this: T, metadata: IMQMetadata): Promise<void>;
+export interface IMQBeforeCall {
+    (req?: IMQRPCRequest, res?: IMQRPCResponse): Promise<void>;
+}
+
+export interface IMQAfterCall {
+    (req: IMQRPCRequest, res: IMQRPCResponse): Promise<void>;
 }
 
 export interface IMQServiceOptions extends IMQOptions {
     multiProcess: boolean;
     childrenPerCore: number;
-    traceHandler?: IMQTraceHandler<any>;
+    beforeCall?: IMQBeforeCall;
+    afterCall?: IMQAfterCall;
 }
 
 export interface IMQClientOptions extends IMQOptions {
@@ -33,7 +39,8 @@ export interface IMQClientOptions extends IMQOptions {
     compile: boolean;
     timeout: number;
     write: boolean;
-    traceHandler?: IMQTraceHandler<any>;
+    beforeCall?: IMQBeforeCall;
+    afterCall?: IMQAfterCall;
 }
 
 /**

@@ -33,6 +33,8 @@ import {
     ServiceClassDescription,
     MethodsCollectionDescription,
     DEFAULT_IMQ_SERVICE_OPTIONS,
+    AFTER_HOOK_ERROR,
+    BEFORE_HOOK_ERROR,
 } from '.';
 import * as cluster from 'cluster';
 import * as os from 'os';
@@ -131,24 +133,28 @@ export abstract class IMQService {
      * Handles incoming request and produces corresponding response
      *
      * @access private
-     * @param {IMQRPCRequest} msg - request message
+     * @param {IMQRPCRequest} req - request message
      * @param {string} id - message unique identifier
      * @return {Promise<string>}
      */
-    private async handleRequest(msg: IMQRPCRequest, id: string) {
-        const method = msg.method;
+    private async handleRequest(req: IMQRPCRequest, id: string) {
+        const logger = this.options.logger || console;
+        const method = req.method;
         const description = await this.describe();
-        const args = msg.args;
-        const metadata = msg.metadata;
+        const args = req.args;
         let response: IMQRPCResponse = {
             to: id,
             data: null,
             error: null,
-            request: msg,
+            request: req,
         };
 
-        if (metadata && typeof this.options.traceHandler === 'function') {
-            this.options.traceHandler(metadata);
+        if (typeof this.options.beforeCall === 'function') {
+            try {
+                this.options.beforeCall(req, response);
+            } catch (err) {
+                logger.warn(BEFORE_HOOK_ERROR, err);
+            }
         }
 
         if (!this[method]) {
@@ -177,7 +183,8 @@ export abstract class IMQService {
 
         if (response.error) {
             this.logger.warn(response.error);
-            return await this.imq.send(msg.from, response);
+
+            return await imqSend(this.imq, this.options, req.from, response);
         }
 
         try {
@@ -194,7 +201,7 @@ export abstract class IMQService {
                 err.message, err.stack, method, args, err);
         }
 
-        return await this.imq.send(msg.from, response);
+        return await imqSend(this.imq, this.options, req.from, response);
     }
 
     /**
@@ -301,4 +308,33 @@ export abstract class IMQService {
         return serviceDescription;
     }
 
+}
+
+/**
+ * Sends IMQ response with support of after call optional hook
+ *
+ * @param {IMessageQueue} imq - message queue instance
+ * @param {IMQServiceOptions} options - service options
+ * @param {string} from - from message identifier
+ * @param {IMQRPCResponse} response - response to send
+ * @return {Promise<string>} - send result message identifier
+ */
+export async function imqSend(
+    imq: IMessageQueue,
+    options: IMQServiceOptions,
+    from: string,
+    response: IMQRPCResponse,
+): Promise<string> {
+    const logger = options.logger || console;
+    const id = await imq.send(from, response);
+
+    if (typeof options.afterCall === 'function') {
+        try {
+            options.afterCall(response.request, response);
+        } catch (err) {
+            logger.warn(AFTER_HOOK_ERROR, err);
+        }
+    }
+
+    return id;
 }
