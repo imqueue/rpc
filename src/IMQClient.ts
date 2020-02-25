@@ -148,7 +148,7 @@ export abstract class IMQClient extends EventEmitter {
 
         if (typeof this.options.beforeCall === 'function') {
             try {
-                this.options.beforeCall(request);
+                await this.options.beforeCall(request);
             } catch (err) {
                 logger.warn(BEFORE_HOOK_ERROR, err);
             }
@@ -295,14 +295,14 @@ export function imqCallResolver(
     options: IMQClientOptions,
     req: IMQRPCRequest,
 ): (data: any, res: IMQRPCResponse) => void {
-    return (data: any, res: IMQRPCResponse) => {
+    return async (data: any, res: IMQRPCResponse) => {
         const logger = options.logger || console;
 
         resolve(data);
 
         if (typeof options.afterCall === 'function') {
             try {
-                options.afterCall(req, res);
+                await options.afterCall(req, res);
             } catch (err) {
                 logger.warn(AFTER_HOOK_ERROR, err);
             }
@@ -323,14 +323,14 @@ export function imqCallRejector(
     options: IMQClientOptions,
     req: IMQRPCRequest,
 ): (err: any, res?: IMQRPCResponse) => void {
-    return (err: any, res: IMQRPCResponse) => {
+    return async (err: any, res: IMQRPCResponse) => {
         const logger = options.logger || console;
 
         reject(err);
 
         if (typeof options.afterCall === 'function') {
             try {
-                options.afterCall(req, res);
+                await options.afterCall(req, res);
             } catch (err) {
                 logger.warn(AFTER_HOOK_ERROR, err);
             }
