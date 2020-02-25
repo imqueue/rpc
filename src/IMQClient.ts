@@ -311,7 +311,7 @@ export function imqCallResolver(
 
         if (typeof options.afterCall === 'function') {
             const afterCall: IMQAfterCall<IMQClient> = (
-                this.options.afterCall as IMQAfterCall<IMQClient>
+                options.afterCall as IMQAfterCall<IMQClient>
             ).bind(client);
 
             try {
@@ -345,7 +345,7 @@ export function imqCallRejector(
 
         if (typeof options.afterCall === 'function') {
             const afterCall: IMQAfterCall<IMQClient> = (
-                this.options.afterCall as IMQAfterCall<IMQClient>
+                options.afterCall as IMQAfterCall<IMQClient>
             ).bind(client);
 
             try {

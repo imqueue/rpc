@@ -190,7 +190,7 @@ export abstract class IMQService {
         if (response.error) {
             this.logger.warn(response.error);
 
-            return await send(this.imq, this.options, req.from, response, this);
+            return await send(req.from, response, this);
         }
 
         try {
@@ -207,7 +207,7 @@ export abstract class IMQService {
                 err.message, err.stack, method, args, err);
         }
 
-        return await send(this.imq, this.options, req.from, response, this);
+        return await send(req.from, response, this);
     }
 
     /**
@@ -319,26 +319,22 @@ export abstract class IMQService {
 /**
  * Sends IMQ response with support of after call optional hook
  *
- * @param {IMessageQueue} imq - message queue instance
- * @param {IMQServiceOptions} options - service options
  * @param {string} from - from message identifier
  * @param {IMQRPCResponse} response - response to send
  * @param {IMQService} service - imq service to bind
  * @return {Promise<string>} - send result message identifier
  */
 export async function send(
-    imq: IMessageQueue,
-    options: IMQServiceOptions,
     from: string,
     response: IMQRPCResponse,
     service: IMQService,
 ): Promise<string> {
-    const logger = options.logger || console;
-    const id = await imq.send(from, response);
+    const logger = service.options.logger || console;
+    const id = await (service as any).imq.send(from, response);
 
-    if (typeof options.afterCall === 'function') {
+    if (typeof service.options.afterCall === 'function') {
         const afterCall: IMQAfterCall<IMQService> = (
-            this.options.afterCall as IMQAfterCall<IMQService>
+            service.options.afterCall as IMQAfterCall<IMQService>
         ).bind(service);
 
         try {
