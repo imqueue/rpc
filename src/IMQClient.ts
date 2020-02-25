@@ -60,10 +60,11 @@ export abstract class IMQClient extends EventEmitter {
 
     public readonly options: IMQClientOptions;
     public readonly id: number;
+    public readonly name: string;
+    public readonly serviceName: string;
+
     private readonly baseName: string;
     private imq: IMessageQueue;
-    public readonly name: string;
-    private readonly serviceName: string;
     private readonly logger: ILogger;
     private resolvers: { [id: string]: [
         (data: AnyJson, res: IMQRPCResponse) => void,
