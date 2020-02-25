@@ -18,20 +18,22 @@
 import { DEFAULT_IMQ_OPTIONS, IMQOptions } from '@imqueue/core';
 import { IMQRPCRequest } from './IMQRPCRequest';
 import { IMQRPCResponse } from './IMQRPCResponse';
+import { IMQService } from './IMQService';
+import { IMQClient } from './IMQClient';
 
-export interface IMQBeforeCall {
+export interface IMQBeforeCall<T> {
     (req?: IMQRPCRequest, res?: IMQRPCResponse): Promise<void>;
 }
 
-export interface IMQAfterCall {
+export interface IMQAfterCall<T> {
     (req: IMQRPCRequest, res?: IMQRPCResponse): Promise<void>;
 }
 
 export interface IMQServiceOptions extends IMQOptions {
     multiProcess: boolean;
     childrenPerCore: number;
-    beforeCall?: IMQBeforeCall;
-    afterCall?: IMQAfterCall;
+    beforeCall?: IMQBeforeCall<IMQService>;
+    afterCall?: IMQAfterCall<IMQService>;
 }
 
 export interface IMQClientOptions extends IMQOptions {
@@ -39,8 +41,8 @@ export interface IMQClientOptions extends IMQOptions {
     compile: boolean;
     timeout: number;
     write: boolean;
-    beforeCall?: IMQBeforeCall;
-    afterCall?: IMQAfterCall;
+    beforeCall?: IMQBeforeCall<IMQClient>;
+    afterCall?: IMQAfterCall<IMQClient>;
 }
 
 /**
