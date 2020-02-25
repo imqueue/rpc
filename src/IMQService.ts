@@ -35,12 +35,11 @@ import {
     DEFAULT_IMQ_SERVICE_OPTIONS,
     AFTER_HOOK_ERROR,
     BEFORE_HOOK_ERROR,
-    IMQBeforeCall,
-    IMQAfterCall,
 } from '.';
 import * as cluster from 'cluster';
 import * as os from 'os';
-import { ArgDescription } from "./IMQRPCDescription";
+import { ArgDescription } from './IMQRPCDescription';
+import { IMQBeforeCall, IMQAfterCall } from './IMQRPCOptions';
 
 export class Description {
     service: {
