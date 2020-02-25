@@ -24,7 +24,7 @@ export interface IMQBeforeCall {
 }
 
 export interface IMQAfterCall {
-    (req: IMQRPCRequest, res: IMQRPCResponse): Promise<void>;
+    (req: IMQRPCRequest, res?: IMQRPCResponse): Promise<void>;
 }
 
 export interface IMQServiceOptions extends IMQOptions {

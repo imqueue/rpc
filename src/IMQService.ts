@@ -151,7 +151,7 @@ export abstract class IMQService {
 
         if (typeof this.options.beforeCall === 'function') {
             try {
-                this.options.beforeCall(req, response);
+                await this.options.beforeCall(req, response);
             } catch (err) {
                 logger.warn(BEFORE_HOOK_ERROR, err);
             }
@@ -330,7 +330,7 @@ export async function imqSend(
 
     if (typeof options.afterCall === 'function') {
         try {
-            options.afterCall(response.request, response);
+            await options.afterCall(response.request, response);
         } catch (err) {
             logger.warn(AFTER_HOOK_ERROR, err);
         }
