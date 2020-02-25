@@ -39,6 +39,8 @@ import {
     IMQMetadata,
     BEFORE_HOOK_ERROR,
     AFTER_HOOK_ERROR,
+    IMQBeforeCall,
+    IMQAfterCall,
 } from '.';
 import * as ts from 'typescript';
 import { EventEmitter } from 'events';
@@ -147,8 +149,12 @@ export abstract class IMQClient extends EventEmitter {
         } as IMQRPCRequest;
 
         if (typeof this.options.beforeCall === 'function') {
+            const beforeCall: IMQBeforeCall<IMQClient> = (
+                this.options.beforeCall as IMQBeforeCall<IMQClient>
+            ).bind(this);
+
             try {
-                await this.options.beforeCall(request);
+                await beforeCall(request);
             } catch (err) {
                 logger.warn(BEFORE_HOOK_ERROR, err);
             }
@@ -159,14 +165,14 @@ export abstract class IMQClient extends EventEmitter {
                 const id = await this.imq.send(to, request, delay, reject);
 
                 this.resolvers[id] = [
-                    imqCallResolver(resolve, this.options, request),
-                    imqCallRejector(reject, this.options, request),
+                    imqCallResolver(resolve, this.options, request, this),
+                    imqCallRejector(reject, this.options, request, this),
                 ];
             }
 
             catch (err) {
                 // istanbul ignore next
-                imqCallRejector(reject, this.options, request)(err);
+                imqCallRejector(reject, this.options, request, this)(err);
             }
         }) as Promise<T>;
     }
@@ -288,12 +294,14 @@ export abstract class IMQClient extends EventEmitter {
  * @param {(...args: any[]) => void} resolve - source promise like resolver
  * @param {IMQClientOptions} options - client options
  * @param {IMQRPCRequest} req  - request message
+ * @param {IMQClient} client - imq client
  * @return {(data: any, res: IMQRPCResponse) => void} - hook-supported resolve
  */
 export function imqCallResolver(
     resolve: (data: any) => void,
     options: IMQClientOptions,
     req: IMQRPCRequest,
+    client: IMQClient,
 ): (data: any, res: IMQRPCResponse) => void {
     return async (data: any, res: IMQRPCResponse) => {
         const logger = options.logger || console;
@@ -301,8 +309,12 @@ export function imqCallResolver(
         resolve(data);
 
         if (typeof options.afterCall === 'function') {
+            const afterCall: IMQAfterCall<IMQClient> = (
+                this.options.afterCall as IMQAfterCall<IMQClient>
+            ).bind(client);
+
             try {
-                await options.afterCall(req, res);
+                await afterCall(req, res);
             } catch (err) {
                 logger.warn(AFTER_HOOK_ERROR, err);
             }
@@ -316,12 +328,14 @@ export function imqCallResolver(
  * @param {(err: any) => void} reject - source promise like rejector
  * @param {IMQClientOptions} options - client options
  * @param {IMQRPCRequest} req - call request
+ * @param {IMQClient} client - imq client
  * @return {(err: any) => void} - hook-supported reject
  */
 export function imqCallRejector(
     reject: (err: any) => void,
     options: IMQClientOptions,
     req: IMQRPCRequest,
+    client: IMQClient,
 ): (err: any, res?: IMQRPCResponse) => void {
     return async (err: any, res: IMQRPCResponse) => {
         const logger = options.logger || console;
@@ -329,8 +343,12 @@ export function imqCallRejector(
         reject(err);
 
         if (typeof options.afterCall === 'function') {
+            const afterCall: IMQAfterCall<IMQClient> = (
+                this.options.afterCall as IMQAfterCall<IMQClient>
+            ).bind(client);
+
             try {
-                await options.afterCall(req, res);
+                await afterCall(req, res);
             } catch (err) {
                 logger.warn(AFTER_HOOK_ERROR, err);
             }

@@ -35,6 +35,8 @@ import {
     DEFAULT_IMQ_SERVICE_OPTIONS,
     AFTER_HOOK_ERROR,
     BEFORE_HOOK_ERROR,
+    IMQBeforeCall,
+    IMQAfterCall,
 } from '.';
 import * as cluster from 'cluster';
 import * as os from 'os';
@@ -150,8 +152,12 @@ export abstract class IMQService {
         };
 
         if (typeof this.options.beforeCall === 'function') {
+            const beforeCall: IMQBeforeCall<IMQService> = (
+                this.options.beforeCall as IMQBeforeCall<IMQService>
+            ).bind(this);
+
             try {
-                await this.options.beforeCall(req, response);
+                await beforeCall(req, response);
             } catch (err) {
                 logger.warn(BEFORE_HOOK_ERROR, err);
             }
@@ -184,7 +190,7 @@ export abstract class IMQService {
         if (response.error) {
             this.logger.warn(response.error);
 
-            return await imqSend(this.imq, this.options, req.from, response);
+            return await send(this.imq, this.options, req.from, response, this);
         }
 
         try {
@@ -201,7 +207,7 @@ export abstract class IMQService {
                 err.message, err.stack, method, args, err);
         }
 
-        return await imqSend(this.imq, this.options, req.from, response);
+        return await send(this.imq, this.options, req.from, response, this);
     }
 
     /**
@@ -317,20 +323,26 @@ export abstract class IMQService {
  * @param {IMQServiceOptions} options - service options
  * @param {string} from - from message identifier
  * @param {IMQRPCResponse} response - response to send
+ * @param {IMQService} service - imq service to bind
  * @return {Promise<string>} - send result message identifier
  */
-export async function imqSend(
+export async function send(
     imq: IMessageQueue,
     options: IMQServiceOptions,
     from: string,
     response: IMQRPCResponse,
+    service: IMQService,
 ): Promise<string> {
     const logger = options.logger || console;
     const id = await imq.send(from, response);
 
     if (typeof options.afterCall === 'function') {
+        const afterCall: IMQAfterCall<IMQService> = (
+            this.options.afterCall as IMQAfterCall<IMQService>
+        ).bind(service);
+
         try {
-            await options.afterCall(response.request, response);
+            await afterCall(response.request, response);
         } catch (err) {
             logger.warn(AFTER_HOOK_ERROR, err);
         }
