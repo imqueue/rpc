@@ -189,9 +189,9 @@ export class RedisCache implements ICache {
     public async purge(keyMask: string): Promise<boolean> {
         try {
             await RedisCache.redis.eval(
-                `"for _,k in ipairs(redis.call('keys','${
+                `for _,k in ipairs(redis.call('keys','${
                     keyMask
-                }')) do redis.call('del',k) end"`,
+                }')) do redis.call('del',k) end`,
                 0,
             );
 
