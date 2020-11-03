@@ -18,6 +18,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { ILogger } from '@imqueue/core';
+import { BaseEncodingOptions } from 'fs';
 
 export const IMQ_TMP_DIR = process.env.TMPDIR ||
     // istanbul ignore next
@@ -37,7 +38,10 @@ export function pid(
     path: string = IMQ_PID_DIR
 ): number {
     const pidFile = `${path}/${name}`;
-    const pidOpts = { encoding: 'utf8', flag: 'wx' };
+    const pidOpts: BaseEncodingOptions & {
+        mode?: string | number | undefined;
+        flag?: string | undefined;
+    } = { encoding: 'utf8', flag: 'wx' };
 
     if (!fs.existsSync(path)) {
         fs.mkdirSync(path);
@@ -48,7 +52,7 @@ export function pid(
 
     while (!done) {
         try {
-            fs.writeFileSync(`${pidFile}-${id}.pid`, process.pid, pidOpts);
+            fs.writeFileSync(`${pidFile}-${id}.pid`, process.pid + '', pidOpts);
             done = true;
         }
 

@@ -34,11 +34,13 @@ export const DEFAULT_REDIS_CACHE_OPTIONS = {
     prefix: 'imq-cache',
 };
 
+export const REDIS_CLIENT_INIT_ERROR = 'Redis client is not initialized!';
+
 /**
  * Class RedisCache. Implements cache engine over redis.
  */
 export class RedisCache implements ICache {
-    private static redis: IRedisClient;
+    private static redis?: IRedisClient;
     private logger: ILogger;
     public options: IRedisCacheOptions;
     public name: string = RedisCache.name;
@@ -85,7 +87,7 @@ export class RedisCache implements ICache {
                     process.pid,
                 );
 
-                await RedisCache.redis.client(
+                await (RedisCache.redis as IRedisClient).client(
                     'setname',
                     `${this.options.prefix}:${this.name
                         }:pid:${process.pid}:host:${os.hostname()}`
@@ -126,6 +128,10 @@ export class RedisCache implements ICache {
      * @returns {Promise<any>}
      */
     public async get(key: string): Promise<any> {
+        if (!RedisCache.redis) {
+            throw new TypeError(REDIS_CLIENT_INIT_ERROR);
+        }
+
         const data = <any>await RedisCache.redis.get(this.key(key));
 
         if (data) {
@@ -154,6 +160,10 @@ export class RedisCache implements ICache {
         ttl?: number,
         nx: boolean = false
     ): Promise<boolean> {
+        if (!RedisCache.redis) {
+            throw new TypeError(REDIS_CLIENT_INIT_ERROR);
+        }
+
         const args: any[] = [
             this.key(key),
             JSON.stringify(value && value.then ? await value : value)
@@ -177,6 +187,10 @@ export class RedisCache implements ICache {
      * @returns {Promise<boolean>}
      */
     public async del(key: string): Promise<boolean> {
+        if (!RedisCache.redis) {
+            throw new TypeError(REDIS_CLIENT_INIT_ERROR);
+        }
+
         return await RedisCache.redis.del(this.key(key));
     }
 
@@ -187,6 +201,10 @@ export class RedisCache implements ICache {
      * @return {boolean}
      */
     public async purge(keyMask: string): Promise<boolean> {
+        if (!RedisCache.redis) {
+            throw new TypeError(REDIS_CLIENT_INIT_ERROR);
+        }
+
         try {
             await RedisCache.redis.eval(
                 `for _,k in ipairs(redis.call('keys','${
