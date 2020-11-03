@@ -94,10 +94,14 @@ describe('IMQClient', () => {
     let client: TestServiceClient;
 
     before(async () => {
-        service = new TestService({ logger });
-        await service.start();
-        client = new TestServiceClient({ logger });
-        await client.start();
+        try {
+            service = new TestService({ logger });
+            await service.start();
+            client = new TestServiceClient({ logger });
+            await client.start();
+        } catch (err) {
+            console.error(err);
+        }
     });
 
     after(async () => {
