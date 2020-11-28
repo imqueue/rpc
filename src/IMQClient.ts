@@ -200,6 +200,18 @@ export abstract class IMQClient extends EventEmitter {
         return this.imq.unsubscribe();
     }
 
+    // noinspection JSUnusedGlobalSymbols
+    /**
+     * Broadcasts given payload to all other service clients subscribed.
+     * So this is like client-to-clients publishing.
+     *
+     * @param {JsonObject} payload
+     * @return {Promise<void>}
+     */
+    public async broadcast(payload: JsonObject): Promise<void> {
+        return this.imq.publish(payload, this.serviceName);
+    }
+
     /**
      * Initializes client work
      *
