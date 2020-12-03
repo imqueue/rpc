@@ -17,6 +17,14 @@
  */
 import { ILogger } from '@imqueue/core';
 
+export type LoggedLogLevel = 'info' | 'log' | 'warn' | 'error';
+
+export interface LoggedDecoratorOptions {
+    level?: LoggedLogLevel;
+    logger?: ILogger;
+    doNotThrow?: boolean;
+}
+
 // noinspection JSUnusedGlobalSymbols
 /**
  * Logger decorator factory for class methods. Will try, catch and log errors
@@ -24,26 +32,40 @@ import { ILogger } from '@imqueue/core';
  * will try to use logger defined on class dynamically or statically or will
  * fallback to console.
  *
- * @param {ILogger} [logger] - some special logger to use, otherwise will
- *                             try to utilize thisObject.logger or
- *                             ObjectClass.logger or fallback to console
+ * @param {ILogger | LoggedDecoratorOptions} [options] - custom logger or
+ *                                                       logged decorator
+ *                                                       options
  * @return {Function} - decorator function
  */
-export function logged(logger?: ILogger) {
+export function logged(options?: ILogger | LoggedDecoratorOptions) {
     return (
         target: any,
         methodName: string | symbol,
         descriptor: TypedPropertyDescriptor<(...args: any[]) => any>,
     ) => {
         const original = descriptor.value;
+        const logger = options && (options as LoggedDecoratorOptions).logger
+            ? (options as LoggedDecoratorOptions).logger
+            : options && (options as ILogger).error ? options :
+                this.logger || target.logger || console;
+        const level: LoggedLogLevel = (
+            options &&
+            (options as LoggedDecoratorOptions).level
+        )
+            ? (options as LoggedDecoratorOptions).level as LoggedLogLevel
+            : 'error';
+        const doThrow = !options ||
+            !(options as LoggedDecoratorOptions).doNotThrow;
 
         descriptor.value = async function<T>(...args: any[]): Promise<T|void> {
             try {
                 return original && await original.apply(this, args);
             } catch (err) {
-                (logger || this.logger || target.logger || console).error(err);
+                logger[level](err);
 
-                throw err;
+                if (doThrow) {
+                    throw err;
+                }
             }
         };
     };
