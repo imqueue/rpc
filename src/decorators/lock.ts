@@ -36,7 +36,7 @@ export function lock(enabled: boolean = true) {
         descriptor: TypedPropertyDescriptor<(...args: any[]) => any>,
     ) {
         const original = descriptor.value;
-        const className = typeof target === 'function'
+        const className: string = typeof target === 'function'
             ? target.name              // static
             : target.constructor.name; // dynamic
 
@@ -49,7 +49,11 @@ export function lock(enabled: boolean = true) {
 
             if (withLocks) {
                 sig = signature(className, methodName, args);
-                lock = await IMQLock.acquire<T>(sig);
+                lock = await IMQLock.acquire<T>(sig, undefined, {
+                    className,
+                    methodName,
+                    args,
+                });
 
                 if (!IMQLock.locked(sig)) {
                     return <T>lock;
@@ -62,7 +66,9 @@ export function lock(enabled: boolean = true) {
                     ? original.apply(this, args)
                     : undefined;
 
-                if (result && result.then) {
+                if (result && result.then &&
+                    typeof result.then === 'function'
+                ) {
                     result = await result;
                 }
 
@@ -71,9 +77,7 @@ export function lock(enabled: boolean = true) {
                 }
 
                 return result;
-            }
-
-            catch (err) {
+            } catch (err) {
                 // istanbul ignore next
                 if (withLocks) {
                     IMQLock.release(sig, null, err);
