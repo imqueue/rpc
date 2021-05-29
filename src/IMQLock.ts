@@ -21,6 +21,14 @@ import { ILogger } from '@imqueue/core';
 export type AcquiredLock<T> = T | boolean;
 export type IMQLockTask = [(...args: any[]) => any, (...args: any[]) => any];
 export type IMQLockQueue  = Array<IMQLockTask>;
+export interface IMQLockMetadataItem {
+    className: string;
+    methodName: string | symbol;
+    args: any[];
+}
+export interface IMQLockMetadata {
+    [key: string]: IMQLockMetadataItem;
+}
 
 /**
  * Class IMQLock.
@@ -67,6 +75,7 @@ export class IMQLock {
 
     private static acquiredLocks: { [key: string]: boolean } = {};
     private static queues: { [key: string]: IMQLockQueue } = {};
+    private static metadata: IMQLockMetadata = {};
 
     /**
      * Deadlock timeout in milliseconds
@@ -86,14 +95,20 @@ export class IMQLock {
      * Acquires a lock for a given key
      *
      * @param {string} key
-     * @param {(...args: any[]) => any} callback
+     * @param {(...args: any[]) => any} [callback]
+     * @param {IMQLockMetadataItem} [metadata]
      * @returns {AcquiredLock}
      */
     public static async acquire<T>(
         key: string,
-        callback?: (...args: any[]) => any
+        callback?: (...args: any[]) => any,
+        metadata?: IMQLockMetadataItem,
     ): Promise<AcquiredLock<T>> {
         IMQLock.queues[key] = IMQLock.queues[key] || [];
+
+        if (metadata) {
+            IMQLock.metadata[key] = metadata;
+        }
 
         if (IMQLock.locked(key)) {
             return new Promise<T>((resolve, reject) => {
@@ -103,8 +118,11 @@ export class IMQLock {
                 if (IMQLock.deadlockTimeout) {
                     // avoid dead-locks using timeouts
                     timer = setTimeout(() => {
-                        const err = new Error(
-                            `Lock timeout, "${key}" call rejected`);
+                        const err = new Error(`Lock timeout, "${
+                            key
+                        }" call rejected, metadata: ${
+                            JSON.stringify(IMQLock.metadata[key])
+                        }`);
 
                         clearTimeout(timer);
                         timer = null;
@@ -159,6 +177,7 @@ export class IMQLock {
 
         IMQLock.queues[key] = [];
         delete IMQLock.acquiredLocks[key];
+        delete IMQLock.metadata[key];
 
         let task: IMQLockTask | undefined;
         const processor = err ? 1 : 0;
