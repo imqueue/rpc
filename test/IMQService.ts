@@ -18,9 +18,10 @@
 import { logger } from './mocks';
 import { expect } from 'chai';
 import * as sinon from 'sinon';
-import * as cluster from 'cluster';
 import { IMQService, IMQRPCRequest, Description, expose } from '..';
 import { uuid } from '@imqueue/core';
+
+const cluster: any = require('cluster');
 
 class TestService extends IMQService {
 
