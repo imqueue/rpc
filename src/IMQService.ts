@@ -36,10 +36,11 @@ import {
     AFTER_HOOK_ERROR,
     BEFORE_HOOK_ERROR,
 } from '.';
-import * as cluster from 'cluster';
 import * as os from 'os';
 import { ArgDescription } from './IMQRPCDescription';
 import { IMQBeforeCall, IMQAfterCall } from './IMQRPCOptions';
+
+const cluster: any = require('cluster');
 
 export class Description {
     service: {
