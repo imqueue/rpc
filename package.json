@@ -38,7 +38,7 @@
   "author": "imqueue.com <support@imqueue.com> (https://imqueue.com)",
   "license": "ISC",
   "dependencies": {
-    "@imqueue/core": "^1.11.8",
+    "@imqueue/core": "^1.11.9",
     "@types/acorn": "^4.0.6",
     "@types/node": "^16.11.6",
     "acorn": "^8.5.0",
