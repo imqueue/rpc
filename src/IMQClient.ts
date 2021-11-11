@@ -229,10 +229,10 @@ export abstract class IMQClient extends EventEmitter {
                 // by some process which is broken. So we provide an
                 // ability to handle enqueued messages via EventEmitter
                 // interface
-                return this.emit(message.request.method, message);
+                this.emit(message.request.method, message);
             }
 
-            const [ resolve, reject ] = this.resolvers[message.to];
+            const [ resolve, reject ] = this.resolvers[message.to] || [];
 
             // make sure no memory leaking
             delete this.resolvers[message.to];
