@@ -87,11 +87,18 @@ export class RedisCache implements ICache {
                     process.pid,
                 );
 
-                await (RedisCache.redis as IRedisClient).client(
-                    'setname',
-                    `${this.options.prefix}:${this.name
-                        }:pid:${process.pid}:host:${os.hostname()}`
-                );
+                try {
+                    await ((RedisCache.redis as IRedisClient).client(
+                        'setname', `${
+                            this.options.prefix}:${
+                            this.name }:pid:${
+                            process.pid }:host:${
+                            os.hostname()
+                        }`,
+                    ) as unknown as Promise<void>);
+                } catch (err) {
+                    this.logger.warn('Redis client command error:', err);
+                }
 
                 this.ready = true;
 
@@ -132,6 +139,7 @@ export class RedisCache implements ICache {
             throw new TypeError(REDIS_CLIENT_INIT_ERROR);
         }
 
+        // noinspection ES6RedundantAwait
         const data = <any>await RedisCache.redis.get(this.key(key));
 
         if (data) {
@@ -145,7 +153,7 @@ export class RedisCache implements ICache {
      * Stores in cache given value under given key. If TTL is specified,
      * cached value will expire in a given number of milliseconds. If NX
      * argument set to true will create key:value in cache only if it does
-     * not exists yet. Given value could be any JSON-compatible object and
+     * not exist yet. Given value could be any JSON-compatible object and
      * will be serialized automatically.
      *
      * @param {string} key
@@ -206,6 +214,7 @@ export class RedisCache implements ICache {
         }
 
         try {
+            // noinspection SpellCheckingInspection
             await RedisCache.redis.eval(
                 `for _,k in ipairs(redis.call('keys','${
                     keyMask
