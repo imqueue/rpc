@@ -19,7 +19,8 @@ import IMQ, {
     IMessageQueue,
     IMQOptions,
     ILogger,
-    JsonObject, AnyJson,
+    JsonObject,
+    AnyJson,
 } from '@imqueue/core';
 import {
     pid,
