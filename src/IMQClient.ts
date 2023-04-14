@@ -104,14 +104,11 @@ export abstract class IMQClient extends EventEmitter {
         this.serviceName = serviceName || baseName.replace(/Client$/, '');
         this.imq = IMQ.create(this.name, this.options);
 
-        const terminate = async () => {
+        SIGNALS.forEach((signal: any) => process.on(signal, async () => {
             this.destroy().catch(this.logger.error);
             // istanbul ignore next
             setTimeout(() => process.exit(0), IMQ_SHUTDOWN_TIMEOUT);
-        };
-
-        SIGNALS.forEach((signal: any) => process.on(signal, terminate));
-        process.on('exit', terminate);
+        }));
     }
 
     /**
