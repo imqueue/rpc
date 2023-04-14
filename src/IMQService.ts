@@ -20,6 +20,7 @@ import IMQ, {
     ILogger,
     IMessageQueue,
     profile,
+    IMQ_SHUTDOWN_TIMEOUT,
 } from '@imqueue/core';
 import {
     TypesDescription,
@@ -35,6 +36,7 @@ import {
     DEFAULT_IMQ_SERVICE_OPTIONS,
     AFTER_HOOK_ERROR,
     BEFORE_HOOK_ERROR,
+    SIGNALS,
 } from '.';
 import * as os from 'os';
 import { ArgDescription } from './IMQRPCDescription';
@@ -127,6 +129,15 @@ export abstract class IMQService {
         this.imq = IMQ.create(this.name, this.options);
 
         this.handleRequest = this.handleRequest.bind(this);
+
+        const terminate = async () => {
+            this.destroy().catch(this.logger.error);
+            // istanbul ignore next
+            setTimeout(() => process.exit(0), IMQ_SHUTDOWN_TIMEOUT);
+        };
+
+        SIGNALS.forEach((signal: any) => process.on(signal, terminate));
+        process.on('exit', terminate);
 
         this.imq.on('message', this.handleRequest);
     }

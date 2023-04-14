@@ -19,6 +19,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { ILogger } from '@imqueue/core';
 
+export const SIGNALS: string[] = ['SIGTERM', 'SIGINT', 'SIGHUP', 'SIGBREAK'];
 export const IMQ_TMP_DIR = process.env.TMPDIR ||
     // istanbul ignore next
     '/tmp';

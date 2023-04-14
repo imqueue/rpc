@@ -41,6 +41,7 @@ import {
     IMQMetadata,
     BEFORE_HOOK_ERROR,
     AFTER_HOOK_ERROR,
+    SIGNALS,
 } from '.';
 import * as ts from 'typescript';
 import { EventEmitter } from 'events';
@@ -51,7 +52,6 @@ import { IMQBeforeCall, IMQAfterCall } from './IMQRPCOptions';
 process.setMaxListeners(10000);
 
 const tsOptions = require('../tsconfig.json').compilerOptions;
-const SIGNALS: string[] = ['SIGTERM', 'SIGINT', 'SIGHUP', 'SIGBREAK'];
 const RX_SEMICOLON: RegExp = /;+$/g;
 
 /**
