@@ -130,14 +130,11 @@ export abstract class IMQService {
 
         this.handleRequest = this.handleRequest.bind(this);
 
-        const terminate = async () => {
+        SIGNALS.forEach((signal: any) => process.on(signal, async () => {
             this.destroy().catch(this.logger.error);
             // istanbul ignore next
             setTimeout(() => process.exit(0), IMQ_SHUTDOWN_TIMEOUT);
-        };
-
-        SIGNALS.forEach((signal: any) => process.on(signal, terminate));
-        process.on('exit', terminate);
+        }));
 
         this.imq.on('message', this.handleRequest);
     }
