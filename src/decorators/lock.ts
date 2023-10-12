@@ -17,24 +17,36 @@
  */
 import { IMQLock, AcquiredLock, signature } from '..';
 
+export interface LockOptions {
+    disabled?: boolean;
+    skipArgs?: number[];
+}
+
 /**
  * \@lock() decorator implementation
  * Will make all simultaneous similar method calls locked to be resolved with
  * the first obtained values. Similarity is identified by a bypassed method
  * argument values.
  *
+ * @param {boolean|LockOptions} enabledOrOptions - whether to enable locks or not
  * @return {(
  *  target: any,
  *  methodName: (string),
  *  descriptor: TypedPropertyDescriptor<(...args: any[]) => any>
  * ) => void}
  */
-export function lock(enabled: boolean = true) {
+export function lock(enabledOrOptions: boolean | LockOptions = true) {
     return function(
         target: any,
         methodName: string | symbol,
         descriptor: TypedPropertyDescriptor<(...args: any[]) => any>,
     ) {
+        const enabled = typeof enabledOrOptions === 'boolean'
+            ? enabledOrOptions
+            : !enabledOrOptions.disabled;
+        const skipArgs = typeof enabledOrOptions === 'boolean'
+            ? undefined
+            : enabledOrOptions.skipArgs;
         const original = descriptor.value;
         const className: string = typeof target === 'function'
             ? target.name              // static
@@ -48,7 +60,13 @@ export function lock(enabled: boolean = true) {
             let sig: string = '';
 
             if (withLocks) {
-                sig = signature(className, methodName, args);
+                sig = signature(
+                    className,
+                    methodName,
+                    skipArgs ? args.filter((_, index) =>
+                        !~skipArgs.indexOf(index)
+                    ) : args,
+                );
                 lock = await IMQLock.acquire<T>(sig, undefined, {
                     className,
                     methodName,
