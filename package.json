@@ -15,8 +15,8 @@
   "scripts": {
     "prepublishOnly": "./node_modules/.bin/tsc",
     "test": "./node_modules/.bin/tsc && ./node_modules/.bin/nyc mocha && ./node_modules/.bin/nyc report --reporter=text-lcov && npm run test-coverage",
-    "test-fast": "./node_modules/.bin/tsc && ./node_modules/.bin/nyc mocha && /usr/bin/env node -e \"require('open')('file://`pwd`/coverage/index.html', { wait: false })\"",
-    "test-local": "export COVERALLS_REPO_TOKEN=$IMQ_RPC_COVERALLS_TOKEN && npm test && /usr/bin/env node -e \"require('open')('https://coveralls.io/github/imqueue/imq-rpc', { wait: false });\"",
+    "test-fast": "./node_modules/.bin/tsc && ./node_modules/.bin/nyc mocha && /usr/bin/env node -e \"import('open').then(open => open.default('file://`pwd`/coverage/index.html', { wait: false }))\"",
+    "test-local": "export COVERALLS_REPO_TOKEN=$IMQ_RPC_COVERALLS_TOKEN && npm test && /usr/bin/env node -e \"import('open').then(open => open.default('https://coveralls.io/github/imqueue/imq-rpc', { wait: false }));\"",
     "test-coverage": "cat ./coverage/lcov.info | CODECLIMATE_API_HOST=https://codebeat.co/webhooks/code_coverage CODECLIMATE_REPO_TOKEN=c2cc3954-6824-4cdf-8349-12bd9c31955a ./node_modules/.bin/codeclimate-test-reporter",
     "clean-typedefs": "find . -name '*.d.ts' -not -wholename '*node_modules*' -not -wholename '*generator*' -type f -delete",
     "clean-maps": "find . -name '*.js.map' -not -wholename '*node_modules*' -not -wholename '*generator*' -type f -delete",
@@ -25,7 +25,7 @@
     "clean-doc": "rm -rf docs",
     "clean-benchmark": "rm -rf benchmark-result",
     "clean": "npm run clean-tests && npm run clean-typedefs && npm run clean-maps && npm run clean-js && npm run clean-doc && npm run clean-benchmark",
-    "doc": "rm -rf docs && typedoc --excludePrivate --excludeExternals --hideGenerator --exclude \"**/+(debug|test|node_modules|docs|coverage|benchmark|.nyc_output)/**/*\" --mode file --out ./docs . && /usr/bin/env node -e \"require('open')('file://`pwd`/docs/index.html', { wait: false });\""
+    "doc": "rm -rf docs && typedoc --excludePrivate --excludeExternals --hideGenerator --exclude \"**/+(debug|test|node_modules|docs|coverage|benchmark|.nyc_output)/**/*\" --mode file --out ./docs . && /usr/bin/env node -e \"import('open').then(open => open.default('file://`pwd`/docs/index.html', { wait: false }));\""
   },
   "repository": {
     "type": "git",
@@ -38,20 +38,20 @@
   "author": "imqueue.com <support@imqueue.com> (https://imqueue.com)",
   "license": "ISC",
   "dependencies": {
-    "@imqueue/core": "^1.12.0",
-    "@types/node": "^20.1.4",
-    "acorn": "^8.8.2",
+    "@imqueue/core": "^1.13.0",
+    "@types/node": "^20.9.0",
+    "acorn": "^8.11.2",
     "murmurhash-native": "^3.5.0",
     "node-machine-id": "^1.1.12",
     "reflect-metadata": "^0.1.13",
-    "typescript": "^5.0.4"
+    "typescript": "^5.2.2"
   },
   "devDependencies": {
-    "@types/chai": "^4.3.5",
-    "@types/mocha": "^10.0.1",
-    "@types/mock-require": "^2.0.1",
-    "@types/sinon": "^10.0.15",
-    "chai": "^4.3.7",
+    "@types/chai": "^4.3.10",
+    "@types/mocha": "^10.0.4",
+    "@types/mock-require": "^2.0.3",
+    "@types/sinon": "^17.0.1",
+    "chai": "^4.3.10",
     "codeclimate-test-reporter": "^0.5.1",
     "coveralls": "^3.1.1",
     "minimist": "^1.2.8",
@@ -60,10 +60,10 @@
     "mock-require": "^3.0.3",
     "nyc": "^15.1.0",
     "open": "^9.1.0",
-    "sinon": "^15.0.4",
+    "sinon": "^17.0.1",
     "source-map-support": "^0.5.21",
     "ts-node": "^10.9.1",
-    "typedoc": "^0.24.7"
+    "typedoc": "^0.25.3"
   },
   "main": "index.js",
   "typescript": {
