@@ -1,6 +1,6 @@
 {
   "name": "@imqueue/rpc",
-  "version": "1.14.1",
+  "version": "1.15.0",
   "description": "RPC-like client-service implementation over messaging queue",
   "keywords": [
     "redis",
