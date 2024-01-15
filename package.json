@@ -38,7 +38,7 @@
   "author": "imqueue.com <support@imqueue.com> (https://imqueue.com)",
   "license": "ISC",
   "dependencies": {
-    "@imqueue/core": "^1.13.0",
+    "@imqueue/core": "^1.13.1",
     "@types/node": "^20.9.0",
     "acorn": "^8.11.2",
     "murmurhash-native": "^3.5.0",
