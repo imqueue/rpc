@@ -15,7 +15,7 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import * as farmhash from 'farmhash';
+import { fingerprint64 } from 'farmhash';
 
 /**
  * Constructs and returns hash string for a given set of className, methodName
@@ -32,6 +32,6 @@ export function signature(
     args: any[]
 ): string {
     const data = JSON.stringify([className, methodName, args]);
-    const hashBigInt = farmhash.fingerprint64(data);
+    const hashBigInt = fingerprint64(data);
     return hashBigInt.toString(16);
 }
