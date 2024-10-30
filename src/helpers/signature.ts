@@ -15,7 +15,7 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { murmurHash64 } from 'murmurhash-native';
+import { fingerprint64 } from 'farmhash';
 
 /**
  * Constructs and returns hash string for a given set of className, methodName
@@ -31,7 +31,7 @@ export function signature(
     methodName: string | symbol,
     args: any[]
 ): string {
-    return murmurHash64(JSON.stringify([
-        className, methodName, args
-    ]));
+    const data = JSON.stringify([className, methodName, args]);
+    const hashBigInt = fingerprint64(data);
+    return hashBigInt.toString(16);
 }
