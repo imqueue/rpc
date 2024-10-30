@@ -41,7 +41,7 @@
     "@imqueue/core": "^1.13.2",
     "@types/node": "^20.9.0",
     "acorn": "^8.11.2",
-    "murmurhash-native": "^3.5.0",
+    "farmhash": "^4.0.1",
     "node-machine-id": "^1.1.12",
     "reflect-metadata": "^0.1.13",
     "typescript": "^5.2.2"
