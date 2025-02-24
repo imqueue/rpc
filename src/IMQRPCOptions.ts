@@ -43,6 +43,7 @@ export interface IMQClientOptions extends IMQOptions {
     write: boolean;
     beforeCall?: IMQBeforeCall<IMQClient>;
     afterCall?: IMQAfterCall<IMQClient>;
+    singleQueue?: boolean;
 }
 
 /**
