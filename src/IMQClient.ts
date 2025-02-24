@@ -28,7 +28,6 @@ import {
     forgetPid,
     osUuid,
     DEFAULT_IMQ_CLIENT_OPTIONS,
-    IMQServiceOptions,
     IMQClientOptions,
     IMQRPCResponse,
     IMQRPCRequest,
@@ -62,10 +61,13 @@ export abstract class IMQClient extends EventEmitter {
     public readonly options: IMQClientOptions;
     public readonly id: number;
     public readonly name: string;
+    public readonly hostName: string;
     public readonly serviceName: string;
+    public readonly queueName: string;
 
     private readonly baseName: string;
     private imq: IMessageQueue;
+    private static singleImq: IMessageQueue;
     private readonly logger: ILogger;
     private resolvers: { [id: string]: [
         (data: AnyJson, res: IMQRPCResponse) => void,
@@ -100,15 +102,29 @@ export abstract class IMQClient extends EventEmitter {
         this.options = { ...DEFAULT_IMQ_CLIENT_OPTIONS, ...options };
         this.id = pid(baseName);
         this.logger = this.options.logger || /* istanbul ignore next */ console;
-        this.name = `${baseName}-${osUuid()}-${this.id}:client`;
+        this.hostName = `${osUuid()}-${1 || this.id}:client`;
+        this.name = `${baseName}-${this.hostName}`;
         this.serviceName = serviceName || baseName.replace(/Client$/, '');
-        this.imq = IMQ.create(this.name, this.options);
+        this.queueName = this.options.singleQueue ? this.hostName : this.name;
+        this.imq = this.createImq();
 
         SIGNALS.forEach((signal: any) => process.on(signal, async () => {
             this.destroy().catch(this.logger.error);
             // istanbul ignore next
             setTimeout(() => process.exit(0), IMQ_SHUTDOWN_TIMEOUT);
         }));
+    }
+
+    private createImq(): IMessageQueue {
+        if (!this.options.singleQueue) {
+            return IMQ.create(this.queueName, this.options);
+        }
+
+        if (!IMQClient.singleImq) {
+            IMQClient.singleImq = IMQ.create(this.queueName, this.options);
+        }
+
+        return IMQClient.singleImq;
     }
 
     /**
@@ -121,7 +137,7 @@ export abstract class IMQClient extends EventEmitter {
     protected async remoteCall<T>(...args: any[]): Promise<T> {
         const logger = this.options.logger || console;
         const method = args.pop();
-        const from = this.name;
+        const from = this.queueName;
         const to = this.serviceName;
         let delay: number = 0;
         let metadata: IMQMetadata | undefined;
@@ -184,7 +200,7 @@ export abstract class IMQClient extends EventEmitter {
      * @return {Promise<void>}
      */
     public async subscribe(handler: (data: JsonObject) => any): Promise<void> {
-        return this.imq.subscribe(this.serviceName, handler);
+        return this.imq.subscribe(this.queueName, handler);
     }
 
     // noinspection JSUnusedGlobalSymbols
@@ -206,7 +222,7 @@ export abstract class IMQClient extends EventEmitter {
      * @return {Promise<void>}
      */
     public async broadcast(payload: JsonObject): Promise<void> {
-        return this.imq.publish(payload, this.serviceName);
+        return this.imq.publish(payload, this.queueName);
     }
 
     /**
