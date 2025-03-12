@@ -15,7 +15,7 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
-import { redis, logger } from '../mocks';
+import { Redis, logger } from '../mocks';
 import { expect } from 'chai';
 import { RedisCache } from '../..';
 import { uuid } from '@imqueue/core';
@@ -55,7 +55,7 @@ describe('cache/RedisCache', () => {
         });
 
         it('should use connection from options if passed', async () => {
-            const conn = redis.createClient();
+            const conn = new Redis();
             const cache = new RedisCache();
 
             await cache.init({ conn, logger });

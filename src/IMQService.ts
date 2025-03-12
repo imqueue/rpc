@@ -85,7 +85,7 @@ function getClassMethods(className: string): MethodsCollectionDescription {
  * @param {any[]} args
  * @returns {boolean}
  */
-function isValidArgsCount(argsInfo: ArgDescription[], args: any[]) {
+function isValidArgsCount(argsInfo: ArgDescription[], args: any[]): boolean {
     // istanbul ignore next
     return (argsInfo.some(argInfo => argInfo.isOptional)
         ? argsInfo.length >= args.length
@@ -147,7 +147,10 @@ export abstract class IMQService {
      * @param {string} id - message unique identifier
      * @return {Promise<string>}
      */
-    private async handleRequest(request: IMQRPCRequest, id: string) {
+    private async handleRequest(
+        request: IMQRPCRequest,
+        id: string,
+    ): Promise<string> {
         const logger = this.options.logger || console;
         const method = request.method;
         const description = await this.describe();
@@ -222,10 +225,10 @@ export abstract class IMQService {
      * Initializes this instance of service and starts handling request
      * messages.
      *
-     * @return {Promise<IMessageQueue>}
+     * @return {Promise<IMessageQueue | undefined>}
      */
     @profile()
-    public async start() {
+    public async start(): Promise<IMessageQueue | undefined> {
         if (!this.options.multiProcess) {
             this.logger.info(
                 '%s: starting single-worker, pid %s',
@@ -287,7 +290,7 @@ export abstract class IMQService {
      * @return {Promise<void>}
      */
     @profile()
-    public async stop() {
+    public async stop(): Promise<void> {
         await this.imq.stop();
     }
 
@@ -297,7 +300,7 @@ export abstract class IMQService {
      * @return {Promise<void>}
      */
     @profile()
-    public async destroy() {
+    public async destroy(): Promise<void> {
         await this.imq.unsubscribe();
         await this.imq.destroy();
     }

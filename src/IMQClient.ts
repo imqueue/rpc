@@ -17,7 +17,6 @@
  */
 import IMQ, {
     IMessageQueue,
-    IMQOptions,
     ILogger,
     JsonObject,
     AnyJson,
@@ -79,7 +78,7 @@ export abstract class IMQClient extends EventEmitter {
      * Class constructor
      *
      * @constructor
-     * @param {Partial<IMQOptions>} options
+     * @param {Partial<IMQClientOptions>} options
      * @param {string} serviceName
      * @param {string} name
      */
@@ -132,6 +131,7 @@ export abstract class IMQClient extends EventEmitter {
      *
      * @access protected
      * @param {...any[]} args
+     * @template T
      * @returns {Promise<T>}
      */
     protected async remoteCall<T>(...args: any[]): Promise<T> {
@@ -230,7 +230,7 @@ export abstract class IMQClient extends EventEmitter {
      *
      * @returns {Promise<void>}
      */
-    public async start() {
+    public async start(): Promise<void> {
         this.imq.on('message', (message: IMQRPCResponse) => {
             // the following condition below is hard to test with the
             // current redis mock, BTW it was tested manually on real
@@ -238,7 +238,7 @@ export abstract class IMQClient extends EventEmitter {
             // istanbul ignore if
             if (!this.resolvers[message.to]) {
                 // when there is no resolvers it means
-                // we have massage in queue which was initiated
+                // we have message in queue which was initiated
                 // by some process which is broken. So we provide an
                 // ability to handle enqueued messages via EventEmitter
                 // interface
@@ -266,7 +266,7 @@ export abstract class IMQClient extends EventEmitter {
      *
      * @returns {Promise<void>}
      */
-    public async stop() {
+    public async stop(): Promise<void> {
         await this.imq.stop();
     }
 
@@ -275,13 +275,12 @@ export abstract class IMQClient extends EventEmitter {
      *
      * @returns {Promise<void>}
      */
-    public async destroy() {
+    public async destroy(): Promise<void> {
         await this.imq.unsubscribe();
         forgetPid(this.baseName, this.id, this.logger);
         this.removeAllListeners();
         await this.imq.destroy();
     }
-
 
     /**
      * Returns service description metadata.
