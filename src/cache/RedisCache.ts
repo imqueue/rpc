@@ -19,9 +19,9 @@ import { ICache } from '.';
 import {
     ILogger,
     DEFAULT_IMQ_OPTIONS,
-    redis,
     IRedisClient,
-    IMQOptions
+    IMQOptions,
+    Redis,
 } from '@imqueue/core';
 import * as os from 'os';
 
@@ -68,15 +68,27 @@ export class RedisCache implements ICache {
 
         if (this.options.conn) {
             this.logger.info('Re-using given connection for cache.');
+
             RedisCache.redis = this.options.conn;
+
             return this;
         }
 
         return new Promise<RedisCache>((resolve, reject) => {
-            RedisCache.redis = <IRedisClient>redis.createClient(
-                Number(this.options.port),
-                String(this.options.host)
-            );
+            const connectionName = `${
+                this.options.prefix}:${
+                this.name }:pid:${
+                process.pid }:host:${
+                os.hostname()
+            }`;
+
+            RedisCache.redis = new Redis({
+                port: Number(this.options.port),
+                host: String(this.options.host),
+                username: this.options.username,
+                password: this.options.password,
+                connectionName,
+            });
 
             RedisCache.redis.on('ready', async () => {
                 this.logger.info(
@@ -86,19 +98,6 @@ export class RedisCache implements ICache {
                     this.options.port,
                     process.pid,
                 );
-
-                try {
-                    await ((RedisCache.redis as IRedisClient).client(
-                        'setname', `${
-                            this.options.prefix}:${
-                            this.name }:pid:${
-                            process.pid }:host:${
-                            os.hostname()
-                        }`,
-                    ) as unknown as Promise<void>);
-                } catch (err) {
-                    this.logger.warn('Redis client command error:', err);
-                }
 
                 this.ready = true;
 
@@ -124,7 +123,7 @@ export class RedisCache implements ICache {
      * @param {string} key
      * @returns {string}
      */
-    private key(key: string) {
+    private key(key: string): string {
         return `${this.options.prefix}:${this.name}:${key}`;
     }
 
@@ -199,7 +198,7 @@ export class RedisCache implements ICache {
             throw new TypeError(REDIS_CLIENT_INIT_ERROR);
         }
 
-        return await RedisCache.redis.del(this.key(key));
+        return !!await RedisCache.redis.del(this.key(key));
     }
 
     /**
@@ -235,13 +234,13 @@ export class RedisCache implements ICache {
      *
      * @returns {Promise<void>}
      */
-    public static async destroy() {
+    public static async destroy(): Promise<void> {
         try {
             // istanbul ignore else
             if (RedisCache.redis) {
                 RedisCache.redis.removeAllListeners();
-                RedisCache.redis.end(false);
-                RedisCache.redis.unref();
+                RedisCache.redis.disconnect(false);
+                RedisCache.redis.quit();
                 delete RedisCache.redis;
             }
         }
