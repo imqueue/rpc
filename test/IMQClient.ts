@@ -24,7 +24,7 @@ import {
     IMQDelay,
     Description,
     expose,
-    remote
+    remote,
 } from '..';
 import * as sinon from 'sinon';
 import * as fs from 'fs';
@@ -132,6 +132,24 @@ describe('IMQClient', () => {
         it('should use given name if provided', () => {
             expect(new TestServiceClient({}, undefined, 'TestClient').name)
                 .to.contain('TestClient');
+        });
+
+        it('should re-use existing redis connection if singleQueue option '
+            + 'enabled', () => {
+            const options = { logger, singleQueue: true };
+            const client1: any = new TestServiceClient(options);
+            const client2: any = new TestServiceClient(options);
+
+            expect(client1.imq).to.equal(client2.imq);
+        });
+
+        it('should not re-use existing redis connection if singleQueue option '
+            + 'disabled', () => {
+            const options = { logger, singleQueue: false };
+            const client1: any = new TestServiceClient(options);
+            const client2: any = new TestServiceClient(options);
+
+            expect(client1.imq).to.not.equal(client2.imq);
         });
     });
 

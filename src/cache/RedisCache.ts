@@ -26,7 +26,7 @@ import {
 import * as os from 'os';
 
 export interface IRedisCacheOptions extends Partial<IMQOptions> {
-    conn?: IRedisClient
+    conn?: IRedisClient;
 }
 
 export const DEFAULT_REDIS_CACHE_OPTIONS = {

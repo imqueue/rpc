@@ -18,7 +18,7 @@
 import { Redis, logger } from '../mocks';
 import { expect } from 'chai';
 import { RedisCache } from '../..';
-import { uuid } from '@imqueue/core';
+import { IRedisClient, uuid } from '@imqueue/core';
 
 describe('cache/RedisCache', () => {
     it('should be a class', () => {
@@ -55,7 +55,7 @@ describe('cache/RedisCache', () => {
         });
 
         it('should use connection from options if passed', async () => {
-            const conn = new Redis();
+            const conn = new Redis() as unknown as IRedisClient;
             const cache = new RedisCache();
 
             await cache.init({ conn, logger });
@@ -73,7 +73,6 @@ describe('cache/RedisCache', () => {
         });
 
         after(async () => RedisCache.destroy());
-
 
         it('should return undefined if nothing found', async () => {
             expect(await cache.get(uuid())).to.be.undefined;
