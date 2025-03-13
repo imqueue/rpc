@@ -65,8 +65,9 @@ export abstract class IMQClient extends EventEmitter {
     public readonly queueName: string;
 
     private readonly baseName: string;
-    private imq: IMessageQueue;
-    private static singleImq: IMessageQueue;
+    private readonly imq: IMessageQueue;
+    private readonly subscriptionImq: IMessageQueue;
+    private static singleImq: IMessageQueue & { name?: string};
     private readonly logger: ILogger;
     private resolvers: { [id: string]: [
         (data: AnyJson, res: IMQRPCResponse) => void,
@@ -101,11 +102,13 @@ export abstract class IMQClient extends EventEmitter {
         this.options = { ...DEFAULT_IMQ_CLIENT_OPTIONS, ...options };
         this.id = pid(baseName);
         this.logger = this.options.logger || /* istanbul ignore next */ console;
-        this.hostName = `${osUuid()}-${this.id}:client`;
+        this.hostName = IMQClient.singleImq?.name ||
+            `${osUuid()}-${this.id}:client`;
         this.name = `${baseName}-${this.hostName}`;
         this.serviceName = serviceName || baseName.replace(/Client$/, '');
         this.queueName = this.options.singleQueue ? this.hostName : this.name;
         this.imq = this.createImq();
+        this.subscriptionImq = this.createSubscriptionImq();
 
         SIGNALS.forEach((signal: any) => process.on(signal, async () => {
             this.destroy().catch(this.logger.error);
@@ -124,6 +127,14 @@ export abstract class IMQClient extends EventEmitter {
         }
 
         return IMQClient.singleImq;
+    }
+
+    private createSubscriptionImq(): IMessageQueue {
+        if (!this.options.singleQueue) {
+            return this.imq;
+        }
+
+        return IMQ.create(this.name, this.options);
     }
 
     /**
@@ -200,7 +211,7 @@ export abstract class IMQClient extends EventEmitter {
      * @return {Promise<void>}
      */
     public async subscribe(handler: (data: JsonObject) => any): Promise<void> {
-        return this.imq.subscribe(this.queueName, handler);
+        return this.subscriptionImq.subscribe(this.name, handler);
     }
 
     // noinspection JSUnusedGlobalSymbols
@@ -210,7 +221,7 @@ export abstract class IMQClient extends EventEmitter {
      * @return {Promise<void>}
      */
     public async unsubscribe(): Promise<void> {
-        return this.imq.unsubscribe();
+        return this.subscriptionImq.unsubscribe();
     }
 
     // noinspection JSUnusedGlobalSymbols
@@ -257,7 +268,9 @@ export abstract class IMQClient extends EventEmitter {
             resolve && resolve(message.data, message);
         });
 
-        await this.imq.start();
+        if (this.imq) {
+            await this.imq.start();
+        }
     }
 
     // noinspection JSUnusedGlobalSymbols
