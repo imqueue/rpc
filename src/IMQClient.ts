@@ -101,7 +101,7 @@ export abstract class IMQClient extends EventEmitter {
         this.options = { ...DEFAULT_IMQ_CLIENT_OPTIONS, ...options };
         this.id = pid(baseName);
         this.logger = this.options.logger || /* istanbul ignore next */ console;
-        this.hostName = `${osUuid()}-${1 || this.id}:client`;
+        this.hostName = `${osUuid()}-${this.id}:client`;
         this.name = `${baseName}-${this.hostName}`;
         this.serviceName = serviceName || baseName.replace(/Client$/, '');
         this.queueName = this.options.singleQueue ? this.hostName : this.name;

@@ -53,7 +53,6 @@ describe('IMQCache', () => {
 
             expect(IMQCache.adapters['RedisCache'])
                 .to.be.instanceOf(RedisCache);
-
         });
     });
 

@@ -53,11 +53,39 @@ export class RedisClientMock extends EventEmitter {
     public quit() {}
 
     // noinspection JSMethodCanBeStatic
-    public set(...args: any[]): number {
-        const [key, val] = args;
+    public async set(...args: any[]): Promise<boolean> {
+        let [key, val, units, expire, nx] = args;
+
+        if (
+            (units === 'NX' || nx === 'NX') &&
+            RedisClientMock.__keys[key] !== undefined
+        ) {
+            const cb = args.pop();
+            typeof cb === 'function' && cb(null, 0);
+            return true;
+        }
+
         RedisClientMock.__keys[key] = val;
-        this.cbExecute(args.pop(), null, 1);
-        return 1;
+
+        if (typeof units === 'string' && typeof expire === 'number') {
+            if (units === 'EX') {
+                expire *= 1000;
+            }
+            setTimeout(() => { delete RedisClientMock.__keys[key] }, expire);
+        }
+
+        const cb = args.pop();
+        typeof cb === 'function' && cb(null, 1);
+        return true;
+    }
+
+    // noinspection JSUnusedGlobalSymbols,JSMethodCanBeStatic
+    public async get(...args: any[]): Promise<string> {
+        const [key] = args;
+        const val = RedisClientMock.__keys[key];
+        const cb = args.pop();
+        typeof cb === 'function' && cb(null, val);
+        return val;
     }
 
     // noinspection JSUnusedGlobalSymbols,JSMethodCanBeStatic
@@ -288,12 +316,13 @@ export class RedisClientMock extends EventEmitter {
     }
 }
 
-mock('ioredis', {
-    default: RedisClientMock,
-    Redis: RedisClientMock,
-});
+const Redis = RedisClientMock;
+
+mock('ioredis', { Redis, default: Redis });
 
 // @ts-ignore
-export * as Redis from 'ioredis';
+export * from 'ioredis';
 
-export default { Redis: RedisClientMock };
+export { Redis };
+
+export default Redis;
