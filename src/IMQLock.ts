@@ -118,11 +118,17 @@ export class IMQLock {
                 if (IMQLock.deadlockTimeout) {
                     // avoid dead-locks using timeouts
                     timer = setTimeout(() => {
+                        let dumpStr = '';
+
+                        try {
+                            dumpStr =  JSON.stringify(IMQLock.metadata[key]);
+                        } catch (err) {
+                            dumpStr = 'Unable to stringify metadata';
+                        }
+
                         const err = new Error(`Lock timeout, "${
                             key
-                        }" call rejected, metadata: ${
-                            JSON.stringify(IMQLock.metadata[key])
-                        }`);
+                        }" call rejected, metadata: ${ dumpStr }`);
 
                         clearTimeout(timer);
                         timer = null;
