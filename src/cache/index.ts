@@ -1,6 +1,4 @@
 /*!
- * Copyright (c) 2018, imqueue.com <support@imqueue.com>
- *
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>
  *
  * This program is free software: you can redistribute it and/or modify
