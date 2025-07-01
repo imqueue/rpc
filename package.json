@@ -36,7 +36,7 @@
   },
   "homepage": "https://imqueue.com/",
   "author": "imqueue.com <support@imqueue.com> (https://imqueue.com)",
-  "license": "ISC",
+  "license": "GPL-3.0-only",
   "dependencies": {
     "@imqueue/core": "^1.15.0",
     "@types/node": "^24.0.8",
