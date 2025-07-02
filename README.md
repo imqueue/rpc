@@ -192,4 +192,4 @@ a first build then re-used each new build to make it work consistently.
 ## License
 
 This project is licensed under the GNU General Public License v3.0.
-See the [LICENSE](https://www.gnu.org/licenses/gpl-3.0.txt)
+See the [LICENSE](LICENSE)
