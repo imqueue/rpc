@@ -31,6 +31,9 @@ function sha1(str: string) {
     return sha.digest('hex');
 }
 
+/**
+ * @implements {Redis}
+ */
 export class RedisClientMock extends EventEmitter {
     private static __queues__: any = {};
     private static __clientList: any = {};
@@ -40,6 +43,7 @@ export class RedisClientMock extends EventEmitter {
     private __name: string = '';
     // noinspection JSUnusedGlobalSymbols
     public connected: boolean = true;
+    public status = 'ready';
 
     constructor(options: any = {}) {
         super();
@@ -85,7 +89,6 @@ export class RedisClientMock extends EventEmitter {
         return true;
     }
 
-    // noinspection JSUnusedGlobalSymbols,JSMethodCanBeStatic
     public async get(...args: any[]): Promise<string> {
         const [key] = args;
         const val = RedisClientMock.__keys[key];
@@ -230,8 +233,8 @@ export class RedisClientMock extends EventEmitter {
 
         if (cmd === 'LIST') {
             const result = Object.keys(self.__clientList)
-                .map((name: string, id: number) => `id=${id} name=${name}`)
-                .join('\n');
+            .map((name: string, id: number) => `id=${id} name=${name}`)
+            .join('\n');
 
             this.cbExecute(cb, null, result);
             return result;
@@ -255,11 +258,6 @@ export class RedisClientMock extends EventEmitter {
 
     // noinspection JSUnusedGlobalSymbols,JSMethodCanBeStatic
     public psubscribe(...args: any[]): number {
-        this.cbExecute(args.pop(), null, 1);
-        return 1;
-    }
-
-    public punsubscribe(...args: any[]): number {
         this.cbExecute(args.pop(), null, 1);
         return 1;
     }
