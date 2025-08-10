@@ -50,10 +50,6 @@ export function logged(options?: ILogger | LoggedDecoratorOptions) {
         descriptor: TypedPropertyDescriptor<(...args: any[]) => any>,
     ) => {
         const original = descriptor.value;
-        const logger = options && (options as LoggedDecoratorOptions).logger
-            ? (options as LoggedDecoratorOptions).logger
-            : options && (options as ILogger).error ? options :
-                this?.logger || target?.logger || console;
         const level: LoggedLogLevel = (
             options &&
             (options as LoggedDecoratorOptions).level
@@ -67,7 +63,17 @@ export function logged(options?: ILogger | LoggedDecoratorOptions) {
             try {
                 return original && await original.apply(this || target, args);
             } catch (err) {
-                logger[level](err);
+                const logger: ILogger = (options && (options as LoggedDecoratorOptions).logger)
+                    ? (options as LoggedDecoratorOptions).logger as ILogger
+                    : (options && (options as any).error)
+                        ? options as ILogger
+                        : (this && (this as any).logger)
+                            ? (this as any).logger as ILogger
+                            : (target && (target as any).logger)
+                                ? (target as any).logger as ILogger
+                                : console;
+
+                (logger as any)[level](err);
 
                 if (doThrow) {
                     throw err;
