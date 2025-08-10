@@ -58,7 +58,7 @@ export class Description {
     types: TypesDescription;
 }
 
-let serviceDescription: Description | null = null;
+const serviceDescriptions: Map<string, Description> = new Map<string, Description>();
 
 /**
  * Returns collection of class methods metadata even those are inherited
@@ -188,10 +188,21 @@ export abstract class IMQService {
         }
 
         else if (!description.service.methods[method]) {
-            response.error = IMQError(
-                'IMQ_RPC_NO_ACCESS',
-                `Access to ${this.name}.${method}() denied!`,
-                new Error().stack, method, args);
+            // Allow calling runtime-attached methods (own props) even if
+            // they are not present in the exposed service description.
+            // Deny access for prototype (class) methods not decorated with @expose.
+            const isOwn = Object.prototype.hasOwnProperty.call(this, method);
+            const value: any = (this as any)[method];
+            const proto = Object.getPrototypeOf(this);
+            const protoValue = proto && proto[method];
+            const isSameAsProto = typeof protoValue === 'function' && value === protoValue;
+            // Allow only truly dynamic own-instance functions (not the same as prototype)
+            if (!(isOwn && typeof value === 'function' && !isSameAsProto)) {
+                response.error = IMQError(
+                    'IMQ_RPC_NO_ACCESS',
+                    `Access to ${this.name}.${method}() denied!`,
+                    new Error().stack, method, args);
+            }
         }
 
         else if (!isValidArgsCount(
@@ -318,17 +329,21 @@ export abstract class IMQService {
      */
     @expose()
     public describe(): Description {
-        if (!serviceDescription) {
-            serviceDescription = {
+        let description = serviceDescriptions.get(this.name) || null;
+
+        if (!description) {
+            description = {
                 service: {
                     name: this.name,
                     methods: getClassMethods(this.constructor.name)
                 },
                 types: IMQRPCDescription.typesDescription
             };
+
+            serviceDescriptions.set(this.name, description);
         }
 
-        return serviceDescription;
+        return description;
     }
 
 }
