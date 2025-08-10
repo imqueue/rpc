@@ -16,7 +16,7 @@ class GenTrailingService extends IMQService {
 
 // We don't need a manual client; the generator will create it dynamically.
 
-describe.skip('IMQClient.generator trailing args removal (IMQDelay/IMQMetadata)', function () {
+describe('IMQClient.generator trailing args removal (IMQDelay/IMQMetadata)', function () {
   this.timeout(10000);
   let service: GenTrailingService;
 
