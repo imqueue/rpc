@@ -84,6 +84,48 @@ describe('decorators/logged()', () => {
         }
     });
 
+    it('should use instance logger when present and rethrow', async () => {
+        const error = new Error('inst-logger');
+        const myLogger = {
+            error: sinon.stub(),
+        } as any;
+        class E {
+            public logger = myLogger;
+            // @ts-ignore
+            @logged()
+            public fail() {
+                throw error;
+            }
+        }
+        try {
+            await new E().fail();
+            expect.fail('should throw');
+        } catch (e) {
+            expect(e).to.equal(error);
+            expect(myLogger.error.calledOnce).to.equal(true);
+            expect(myLogger.error.firstCall.args[0]).to.equal(error);
+        }
+    });
+
+    it('should use target logger when present on prototype for instance method', async () => {
+        const error = new Error('proto-logger');
+        const protologger = { error: sinon.stub() } as any;
+        class F {
+            // @ts-ignore
+            @logged()
+            public fail() { throw error; }
+        }
+        (F.prototype as any).logger = protologger;
+        try {
+            await new F().fail();
+            expect.fail('should throw');
+        } catch (e) {
+            expect(e).to.equal(error);
+            expect(protologger.error.calledOnce).to.equal(true);
+            expect(protologger.error.firstCall.args[0]).to.equal(error);
+        }
+    });
+
     it('should pass through successful return value', async () => {
         class D {
             // @ts-ignore
