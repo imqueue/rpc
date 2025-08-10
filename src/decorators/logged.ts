@@ -61,7 +61,13 @@ export function logged(options?: ILogger | LoggedDecoratorOptions) {
 
         descriptor.value = async function<T>(...args: any[]): Promise<T|void> {
             try {
-                return original && await original.apply(this || target, args);
+                const ctx = (typeof this !== 'undefined' && this !== null)
+                    ? this
+                    : target;
+
+                if (original) {
+                    return await original.apply(ctx, args);
+                }
             } catch (err) {
                 const logger: ILogger = (options && (options as LoggedDecoratorOptions).logger)
                     ? (options as LoggedDecoratorOptions).logger as ILogger
