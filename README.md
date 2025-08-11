@@ -1,9 +1,5 @@
 # I Message Queue RPC (@imqueue/rpc)
 
-[![Build Status](https://travis-ci.org/imqueue/rpc.svg?branch=master)](https://travis-ci.org/imqueue/rpc)
-[![codebeat badge](https://codebeat.co/badges/77983b75-d869-4ba5-9526-5f1dea6f7294)](https://codebeat.co/projects/github-com-imqueue-rpc-master)
-[![Coverage Status](https://coveralls.io/repos/github/imqueue/rpc/badge.svg?branch=master)](https://coveralls.io/github/imqueue/rpc?branch=master)
-[![Known Vulnerabilities](https://snyk.io/test/github/imqueue/rpc/badge.svg?targetFile=package.json)](https://snyk.io/test/github/imqueue/rpc?targetFile=package.json)
 [![License](https://img.shields.io/badge/license-GPL-blue.svg)](https://rawgit.com/imqueue/rpc/master/LICENSE)
 
 RPC-like client-service implementation over messaging queue. This module
