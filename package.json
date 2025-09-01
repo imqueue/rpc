@@ -37,8 +37,8 @@
   "author": "imqueue.com <support@imqueue.com> (https://imqueue.com)",
   "license": "GPL-3.0-only",
   "dependencies": {
-    "@imqueue/core": "^2.0.8",
-    "@types/node": "^24.2.1",
+    "@imqueue/core": "^2.0.9",
+    "@types/node": "^24.3.0",
     "acorn": "^8.15.0",
     "farmhash": "^4.0.2",
     "node-machine-id": "^1.1.12",
@@ -50,7 +50,7 @@
     "@types/mocha": "^10.0.10",
     "@types/mock-require": "^3.0.0",
     "@types/sinon": "^17.0.4",
-    "chai": "^5.2.0",
+    "chai": "^6.0.1",
     "coveralls-next": "^5.0.0",
     "minimist": "^1.2.8",
     "mocha": "^11.7.1",
@@ -61,7 +61,7 @@
     "sinon": "^21.0.0",
     "source-map-support": "^0.5.21",
     "ts-node": "^10.9.2",
-    "typedoc": "^0.28.10"
+    "typedoc": "^0.28.12"
   },
   "main": "index.js",
   "typescript": {
