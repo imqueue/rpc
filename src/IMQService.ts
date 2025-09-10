@@ -42,11 +42,12 @@ import {
     DEFAULT_IMQ_SERVICE_OPTIONS,
     AFTER_HOOK_ERROR,
     BEFORE_HOOK_ERROR,
-    SIGNALS,
+    SIGNALS, DEFAULT_IMQ_METRICS_SERVER_OPTIONS,
 } from '.';
 import * as os from 'os';
 import { ArgDescription } from './IMQRPCDescription';
 import { IMQBeforeCall, IMQAfterCall } from './IMQRPCOptions';
+import * as http from 'node:http';
 
 const cluster: any = require('cluster');
 
@@ -85,7 +86,7 @@ function getClassMethods(className: string): MethodsCollectionDescription {
 }
 
 /**
- * Checks if given args match given args description at least by args count
+ * Checks if given args match the given args description at least by args count
  *
  * @param {ArgDescription[]} argsInfo
  * @param {any[]} args
@@ -110,6 +111,7 @@ export abstract class IMQService {
     protected imq: IMessageQueue;
     protected logger: ILogger;
     protected cache: ICache;
+    protected metricsServer?: http.Server<any, any>;
 
     public name: string;
     public options: IMQServiceOptions;
@@ -130,7 +132,14 @@ export abstract class IMQService {
                 'be instantiated directly!');
         }
 
-        this.options = { ...DEFAULT_IMQ_SERVICE_OPTIONS, ...options };
+        this.options = {
+            ...DEFAULT_IMQ_SERVICE_OPTIONS,
+            ...options,
+            metricsServer: {
+                ...DEFAULT_IMQ_METRICS_SERVER_OPTIONS,
+                ...(options?.metricsServer || {}),
+            },
+        };
         this.logger = this.options.logger || /* istanbul ignore next */ console;
         this.imq = IMQ.create(this.name, this.options);
 
@@ -138,6 +147,11 @@ export abstract class IMQService {
 
         SIGNALS.forEach((signal: any) => process.on(signal, async () => {
             this.destroy().catch(this.logger.error);
+
+            if (this.metricsServer) {
+                this.metricsServer.close();
+            }
+
             // istanbul ignore next
             setTimeout(() => process.exit(0), IMQ_SHUTDOWN_TIMEOUT);
         }));
@@ -254,7 +268,7 @@ export abstract class IMQService {
 
             this.describe();
 
-            return this.imq.start();
+            return this.startWithMetricsServer();
         }
 
         if (cluster.isMaster) {
@@ -287,8 +301,10 @@ export abstract class IMQService {
 
             this.describe();
 
-            return this.imq.start();
+            return this.startWithMetricsServer();
         }
+
+        return this.startWithMetricsServer();
     }
 
     // noinspection JSUnusedGlobalSymbols
@@ -346,6 +362,48 @@ export abstract class IMQService {
         return description;
     }
 
+    private async startWithMetricsServer(): Promise<IMessageQueue | undefined> {
+        const service = this.imq.start();
+        const metricServerOptions = this.options.metricsServer;
+
+        if (!(metricServerOptions && metricServerOptions.enabled)) {
+            return service;
+        }
+
+        this.logger.log('Starting metrics server...');
+
+        this.metricsServer = http.createServer(async (req, res) => {
+            if (req.url === '/metrics') {
+                const length = await this.imq.queueLength();
+                const content = metricServerOptions.queueLengthFormatter?.(
+                    length, 'queue_length',
+                ) || String(length);
+
+                res.setHeader('Content-Type', 'plain/text');
+                res.setHeader('Content-Length', Buffer.byteLength(content));
+                res.writeHead(200);
+                res.end(content);
+
+                return;
+            }
+
+            res.writeHead(404);
+            res.end();
+        });
+        this.metricsServer.listen(
+            metricServerOptions.port,
+            '0.0.0.0',
+            () => {
+                this.logger.info(
+                    '%s: metrics server started on port %s',
+                    this.name,
+                    metricServerOptions.port,
+                );
+            },
+        );
+
+        return service;
+    }
 }
 
 /**
