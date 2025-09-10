@@ -35,9 +35,16 @@ export interface IMQAfterCall<T> {
     (req: IMQRPCRequest, res?: IMQRPCResponse): Promise<void>;
 }
 
+export interface IMQMetricsServerOptions {
+    enabled?: boolean;
+    port?: number;
+    queueLengthFormatter?: (length: number, metricName: string) => string,
+}
+
 export interface IMQServiceOptions extends IMQOptions {
     multiProcess: boolean;
     childrenPerCore: number;
+    metricsServer?: IMQMetricsServerOptions;
     beforeCall?: IMQBeforeCall<IMQService>;
     afterCall?: IMQAfterCall<IMQService>;
 }
@@ -63,6 +70,20 @@ export const DEFAULT_IMQ_SERVICE_OPTIONS: IMQServiceOptions = {
     cleanupFilter: '*:client',
     multiProcess: false,
     childrenPerCore: 1,
+};
+
+/**
+ * Default metric server options
+ *
+ * @type {NonNullable<IMQMetricsServerOptions>}
+ */
+export const DEFAULT_IMQ_METRICS_SERVER_OPTIONS: NonNullable<
+    IMQMetricsServerOptions
+> = {
+    enabled: false,
+    port: 9090,
+    queueLengthFormatter: (length, metricName) =>
+        `${ metricName } {} ${ length }`,
 };
 
 /**
