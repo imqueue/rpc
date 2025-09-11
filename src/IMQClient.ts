@@ -217,7 +217,7 @@ export abstract class IMQClient extends EventEmitter {
      * @return {Promise<void>}
      */
     public async subscribe(handler: (data: JsonObject) => any): Promise<void> {
-        return this.subscriptionImq.subscribe(this.name, handler);
+        return this.subscriptionImq.subscribe(this.serviceName, handler);
     }
 
     // noinspection JSUnusedGlobalSymbols
