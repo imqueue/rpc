@@ -23,14 +23,14 @@ describe('IMQClient methods', () => {
         sinon.restore();
     });
 
-    it('should delegate subscribe() to subscriptionImq with client name', async () => {
+    it('should delegate subscribe() to subscriptionImq with service name', async () => {
         client = new MethodsClient({ logger });
         const subImq: any = (client as any).subscriptionImq;
         const spy = sinon.stub(subImq, 'subscribe').resolves();
         const handler = sinon.spy();
         await client.subscribe(handler as any);
         expect(spy.calledOnce).to.equal(true);
-        expect(spy.firstCall.args[0]).to.equal(client.name);
+        expect(spy.firstCall.args[0]).to.equal(client.serviceName);
         expect(spy.firstCall.args[1]).to.equal(handler);
     });
 
