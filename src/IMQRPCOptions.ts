@@ -83,7 +83,7 @@ export const DEFAULT_IMQ_METRICS_SERVER_OPTIONS: NonNullable<
     enabled: false,
     port: 9090,
     queueLengthFormatter: (length, metricName) =>
-        `${ metricName } {} ${ length }`,
+        `${ metricName }{} ${ length }`,
 };
 
 /**
