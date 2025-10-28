@@ -37,13 +37,13 @@
   "author": "imqueue.com <support@imqueue.com> (https://imqueue.com)",
   "license": "GPL-3.0-only",
   "dependencies": {
-    "@imqueue/core": "^2.0.16",
-    "@types/node": "^24.3.0",
+    "@imqueue/core": "^2.0.17",
+    "@types/node": "^24.9.1",
     "acorn": "^8.15.0",
-    "farmhash": "^4.0.2",
+    "farmhash": "^5.0.1",
     "node-machine-id": "^1.1.12",
     "reflect-metadata": "^0.2.2",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.3"
   },
   "devDependencies": {
     "@types/chai": "^5.2.2",
