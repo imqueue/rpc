@@ -37,7 +37,7 @@
   "author": "imqueue.com <support@imqueue.com> (https://imqueue.com)",
   "license": "GPL-3.0-only",
   "dependencies": {
-    "@imqueue/core": "^2.0.22",
+    "@imqueue/core": "^2.0.24",
     "@types/node": "^24.9.1",
     "acorn": "^8.15.0",
     "farmhash": "^5.0.1",
