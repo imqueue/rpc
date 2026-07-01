@@ -47,6 +47,7 @@ import {
 import * as os from 'os';
 import { ArgDescription } from './IMQRPCDescription';
 import { IMQBeforeCall, IMQAfterCall } from './IMQRPCOptions';
+import { runWithRequest } from './IMQRequestContext';
 import * as http from 'node:http';
 
 const cluster: any = require('cluster');
@@ -168,6 +169,13 @@ export abstract class IMQService {
      * @return {Promise<string>}
      */
     private async handleRequest(
+        request: IMQRPCRequest,
+        id: string,
+    ): Promise<string> {
+        return runWithRequest(request, () => this.processRequest(request, id));
+    }
+
+    private async processRequest(
         request: IMQRPCRequest,
         id: string,
     ): Promise<string> {
