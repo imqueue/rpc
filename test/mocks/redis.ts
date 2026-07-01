@@ -58,9 +58,15 @@ export class RedisClientMock extends EventEmitter {
     }
 
     // noinspection JSUnusedGlobalSymbols
+    public async connect(): Promise<void> {
+        this.connected = true;
+        this.status = 'ready';
+    }
+
+    // noinspection JSUnusedGlobalSymbols
     public end() {}
     // noinspection JSUnusedGlobalSymbols
-    public quit() {}
+    public async quit(): Promise<void> {}
 
     // noinspection JSMethodCanBeStatic
     public async set(...args: any[]): Promise<boolean> {
@@ -257,7 +263,7 @@ export class RedisClientMock extends EventEmitter {
     }
 
     // noinspection JSUnusedGlobalSymbols,JSMethodCanBeStatic
-    public psubscribe(...args: any[]): number {
+    public async psubscribe(...args: any[]): Promise<number> {
         this.cbExecute(args.pop(), null, 1);
         return 1;
     }
@@ -269,7 +275,7 @@ export class RedisClientMock extends EventEmitter {
     }
 
     // noinspection JSUnusedGlobalSymbols,JSMethodCanBeStatic
-    public del(...args: any[]): number {
+    public async del(...args: any[]): Promise<number> {
         const self = RedisClientMock;
         let count = 0;
         for (let key of args) {
@@ -309,7 +315,7 @@ export class RedisClientMock extends EventEmitter {
     }
 
     // noinspection JSUnusedGlobalSymbols,JSMethodCanBeStatic
-    public config(): boolean {
+    public async config(): Promise<boolean> {
         return true;
     }
 
