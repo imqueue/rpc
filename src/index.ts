@@ -33,3 +33,4 @@ export * from './IMQLock';
 export * from './IMQService';
 export * from './IMQClient';
 export * from './IMQMetadata';
+export * from './IMQRequestContext';
