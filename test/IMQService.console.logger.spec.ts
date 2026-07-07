@@ -54,9 +54,10 @@ describe('IMQService handleRequest logger fallback to console', () => {
             setTimeout(() => {
                 try {
                     assert.equal(warnStub.mock.callCount() > 0, true);
-                    const hasBefore = warnStub
-                        .mock.calls
-                        .some((c: any) => c.arguments && c.arguments[0] === BEFORE_HOOK_ERROR);
+                    const hasBefore = warnStub.mock.calls.some(
+                        (c: any) =>
+                            c.arguments && c.arguments[0] === BEFORE_HOOK_ERROR,
+                    );
                     assert.equal(hasBefore, true);
                     assert.equal(sendSpy.mock.callCount() > 0, true);
                     resolve(undefined);
@@ -90,9 +91,10 @@ describe('IMQService handleRequest logger fallback to console', () => {
             setTimeout(() => {
                 try {
                     assert.equal(warnStub.mock.callCount() > 0, true);
-                    const hasAfter = warnStub
-                        .mock.calls
-                        .some((c: any) => c.arguments && c.arguments[0] === AFTER_HOOK_ERROR);
+                    const hasAfter = warnStub.mock.calls.some(
+                        (c: any) =>
+                            c.arguments && c.arguments[0] === AFTER_HOOK_ERROR,
+                    );
                     assert.equal(hasAfter, true);
                     resolve(undefined);
                 } catch (e) {

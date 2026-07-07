@@ -32,33 +32,27 @@ export interface LoggedDecoratorOptions {
 }
 
 /**
- * Logger decorator factory for class methods. Will try, catch and log errors
- * during method calls. If logger is bypassed, will use given logger, otherwise
- * will try to use logger defined on class dynamically or statically or will
- * fallback to console.
+ * Creates a `@logged()` method decorator that wraps the decorated method in a
+ * try/catch and logs any error it throws. The logger is resolved in this
+ * order: an explicitly passed logger, then a `logger` defined on the instance
+ * or on the class, and finally the global `console`. By default the error is
+ * re-thrown after being logged; pass `{ doNotThrow: true }` to swallow it. The
+ * returned decorator is dual-mode: it works both as a standard (TC39) and as a
+ * legacy method decorator.
  *
- * @param {ILogger | LoggedDecoratorOptions} [options] - custom logger or
- *                                                       logged decorator
- *                                                       options
- * @return {Function} - decorator function
+ * @param {ILogger | LoggedDecoratorOptions} [options] - a logger to use, or the
+ *  logged-decorator options
+ * @return {Function} - a dual-mode method decorator
  */
-export function logged(options?: ILogger | LoggedDecoratorOptions) {
-    return (
-        value: (...args: any[]) => any,
-        context: ClassMethodDecoratorContext,
-    ): ((...args: any[]) => any) => {
-        const original = value;
-        const level: LoggedLogLevel =
-            options && (options as LoggedDecoratorOptions).level
-                ? ((options as LoggedDecoratorOptions).level as LoggedLogLevel)
-                : 'error';
-        const doThrow =
-            !options || !(options as LoggedDecoratorOptions).doNotThrow;
+export function logged(options?: ILogger | LoggedDecoratorOptions): any {
+    const level: LoggedLogLevel =
+        options && (options as LoggedDecoratorOptions).level
+            ? ((options as LoggedDecoratorOptions).level as LoggedLogLevel)
+            : 'error';
+    const doThrow = !options || !(options as LoggedDecoratorOptions).doNotThrow;
 
-        return async function <T>(
-            this: any,
-            ...args: any[]
-        ): Promise<T | void> {
+    const wrap = (original: (...args: any[]) => any) =>
+        async function <T>(this: any, ...args: any[]): Promise<T | void> {
             try {
                 if (original) {
                     return await original.apply(this, args);
@@ -85,5 +79,18 @@ export function logged(options?: ILogger | LoggedDecoratorOptions) {
                 }
             }
         };
+
+    // Dual-mode: works as both a standard (TC39) and a legacy
+    // (experimentalDecorators) method decorator. Standard invocations pass a
+    // context object with a `kind` property; legacy ones pass
+    // (target, propertyKey, descriptor).
+    return function (target: any, context: any, descriptor?: any): any {
+        if (context && typeof context === 'object' && 'kind' in context) {
+            return wrap(target);
+        }
+
+        descriptor.value = wrap(descriptor.value);
+
+        return descriptor;
     };
 }

@@ -203,29 +203,51 @@ export function property(
         return;
     }
 
-    return function (
-        _value: undefined,
-        context: ClassFieldDecoratorContext,
-    ): void {
-        const metadata = context.metadata as any;
+    // Dual-mode: standard (TC39) field decorators pass a context object with a
+    // `kind` property; legacy ones pass (prototype, propertyKey).
+    return function (target: any, context: any): any {
+        if (context && typeof context === 'object' && 'kind' in context) {
+            const metadata = context.metadata as any;
 
-        // each class keeps its OWN property bag (metadata prototype-inherits
-        // from a base class, so we must not mutate the inherited one)
-        if (!Object.prototype.hasOwnProperty.call(metadata, PROPERTIES)) {
-            Object.defineProperty(metadata, PROPERTIES, {
-                value: {},
-                enumerable: false,
-                writable: true,
-                configurable: true,
-            });
+            // each class keeps its OWN property bag (metadata prototype-
+            // inherits from a base class, so we must not mutate the inherited
+            // one)
+            if (!Object.prototype.hasOwnProperty.call(metadata, PROPERTIES)) {
+                Object.defineProperty(metadata, PROPERTIES, {
+                    value: {},
+                    enumerable: false,
+                    writable: true,
+                    configurable: true,
+                });
+            }
+
+            // store the raw type; resolution is deferred to first read (see
+            // registerType) to avoid touching not-yet-initialized bindings
+            (metadata[PROPERTIES] as Record<string, CollectedProperty>)[
+                String(context.name)
+            ] = {
+                rawType: type,
+                isOptional,
+            };
+
+            return;
         }
 
-        // store the raw type; resolution is deferred to first read (see
-        // registerType) to avoid touching not-yet-initialized class bindings
-        (metadata[PROPERTIES] as Record<string, CollectedProperty>)[
-            String(context.name)
+        // legacy: the class is available at decoration time, so write the
+        // property straight into the RPC type description (no @classType flush
+        // is required in this mode)
+        const typeName = target.constructor.name;
+
+        IMQRPCDescription.typesDescription[typeName] = IMQRPCDescription
+            .typesDescription[typeName] || {
+            properties: {},
+            inherits: Object.getPrototypeOf(target.constructor).name,
+        };
+
+        IMQRPCDescription.typesDescription[typeName].properties[
+            String(context)
         ] = {
-            rawType: type,
+            type: resolveTypeDef(type),
             isOptional,
         };
     };

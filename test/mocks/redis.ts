@@ -41,11 +41,14 @@ export class RedisClientMock extends EventEmitter {
     private static __keys: any = {};
     private static __scripts: any = {};
     private __name: string = '';
+    // total number of mock connections constructed (used by race tests)
+    public static __constructed: number = 0;
     public connected: boolean = true;
     public status = 'ready';
 
     constructor(options: any = {}) {
         super();
+        RedisClientMock.__constructed++;
         setTimeout(() => {
             this.emit('ready', this);
         });

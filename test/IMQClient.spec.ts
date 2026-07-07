@@ -126,15 +126,19 @@ describe('IMQClient', () => {
         });
 
         it('should use constructor name by default', () => {
-            assert.ok((new TestServiceClient().name).includes(
-                'TestServiceClient',
-            ));
+            assert.ok(
+                new TestServiceClient().name.includes('TestServiceClient'),
+            );
         });
 
         it('should use given name if provided', () => {
-            assert.ok((
-                new TestServiceClient({}, undefined, 'TestClient').name
-            ).includes('TestClient'));
+            assert.ok(
+                new TestServiceClient(
+                    {},
+                    undefined,
+                    'TestClient',
+                ).name.includes('TestClient'),
+            );
         });
 
         it(
@@ -179,7 +183,7 @@ describe('IMQClient', () => {
             );
             const time = Date.now() - start;
 
-            assert.ok((time) >= (100));
+            assert.ok(time >= 100);
             assert.notEqual(description.service, undefined);
             assert.notEqual(description.types, undefined);
             assert.notEqual(description.service.methods.exposed, undefined);
@@ -211,10 +215,7 @@ describe('IMQClient', () => {
                 const notExists = await new Promise(resolve =>
                     fs.access(`${CLIENTS_PATH}/TestService.ts`, resolve),
                 );
-                assert.equal(!notExists,
-                    true,
-                    'TestService.ts does not exit',
-                );
+                assert.equal(!notExists, true, 'TestService.ts does not exit');
 
                 cli.destroy();
                 rmdirr(CLIENTS_PATH);
@@ -254,7 +255,9 @@ describe('IMQClient', () => {
                     timeout: 200,
                 });
             } catch (err: any) {
-                assert.ok((err.message).includes('service remote call timed-out'));
+                assert.ok(
+                    err.message.includes('service remote call timed-out'),
+                );
             }
         });
     });

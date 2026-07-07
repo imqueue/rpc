@@ -25,8 +25,8 @@ import { IMQCache, ICache, RedisCache, ICacheConstructor, signature } from '..';
 
 export interface CacheDecoratorOptions {
     adapter?: string | ICache | ICacheConstructor;
-    ttl?: number; // milliseconds
-    nx?: boolean; // rewrite only if not exists in cache
+    ttl?: number; // time-to-live, in milliseconds
+    nx?: boolean; // write only if the key does not already exist in the cache
 }
 
 export interface CacheDecorator {
@@ -34,6 +34,18 @@ export interface CacheDecorator {
     globalOptions?: CacheDecoratorOptions;
 }
 
+/**
+ * Creates a `@cache()` method decorator that memoizes the decorated method's
+ * result in a cache adapter (RedisCache by default). On each call the cache is
+ * checked first; on a miss the method runs, and its result is stored under a
+ * key derived from the class name, method name, and arguments. The returned
+ * decorator is dual-mode: it works both as a standard (TC39) and as a legacy
+ * method decorator.
+ *
+ * @param {CacheDecoratorOptions} [options] - per-method cache options (adapter,
+ *  ttl, nx); merged over `cache.globalOptions`
+ * @return {Function} - a dual-mode method decorator
+ */
 export const cache: CacheDecorator = function (
     options?: CacheDecoratorOptions,
 ) {
@@ -43,14 +55,11 @@ export const cache: CacheDecorator = function (
     };
     let Adapter: any = cacheOptions.adapter || RedisCache;
 
-    return function (
-        value: (...args: any[]) => any,
-        context: ClassMethodDecoratorContext,
-    ): (...args: any[]) => any {
-        const original: (...args: any[]) => any = value;
-        const methodName = context.name;
-
-        return async function (this: any, ...args: any[]) {
+    const wrap = (
+        original: (...args: any[]) => any,
+        methodName: string | symbol,
+    ) =>
+        async function (this: any, ...args: any[]) {
             const className = this.constructor.name;
 
             if (!this.cache) {
@@ -106,6 +115,17 @@ export const cache: CacheDecorator = function (
                 return original.apply(this, args);
             }
         };
+
+    // Dual-mode: standard (TC39) invocations pass a context object with a
+    // `kind` property; legacy ones pass (target, propertyKey, descriptor).
+    return function (target: any, context: any, descriptor?: any): any {
+        if (context && typeof context === 'object' && 'kind' in context) {
+            return wrap(target, context.name);
+        }
+
+        descriptor.value = wrap(descriptor.value, context);
+
+        return descriptor;
     };
 };
 

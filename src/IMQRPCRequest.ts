@@ -25,7 +25,7 @@ import { JsonObject } from '@imqueue/core';
 import { IMQMetadata } from './IMQMetadata';
 
 /**
- * Request message data structure expected to be handled by a service
+ * Request message data structure to be handled by a service.
  */
 export interface IMQRPCRequest extends JsonObject {
     from: string;

@@ -45,20 +45,19 @@ import {
     SIGNALS,
     DEFAULT_IMQ_METRICS_SERVER_OPTIONS,
 } from '.';
-import * as os from 'os';
+import { cpus } from 'node:os';
+import cluster, { type Worker } from 'node:cluster';
 import { ArgDescription } from './IMQRPCDescription';
 import { IMQBeforeCall, IMQAfterCall } from './IMQRPCOptions';
 import { runWithRequest } from './IMQRequestContext';
-import * as http from 'node:http';
-
-const cluster: any = require('cluster');
+import { createServer, type Server } from 'node:http';
 
 export class Description {
-    service: {
+    service!: {
         name: string;
         methods: MethodsCollectionDescription;
     };
-    types: TypesDescription;
+    types!: TypesDescription;
 }
 
 const serviceDescriptions: Map<string, Description> = new Map<
@@ -112,8 +111,10 @@ export abstract class IMQService {
 
     protected imq: IMessageQueue;
     protected logger: ILogger;
-    protected cache: ICache;
-    protected metricsServer?: http.Server<any, any>;
+    protected cache!: ICache;
+    protected metricsServer?: Server<any, any>;
+    private readonly signalHandlers: Array<[string, (...args: any[]) => void]> =
+        [];
 
     public name: string;
     public options: IMQServiceOptions;
@@ -147,8 +148,8 @@ export abstract class IMQService {
 
         this.handleRequest = this.handleRequest.bind(this);
 
-        SIGNALS.forEach((signal: any) =>
-            process.on(signal, async () => {
+        SIGNALS.forEach((signal: string) => {
+            const handler = (): void => {
                 this.destroy().catch(this.logger.error);
 
                 if (this.metricsServer) {
@@ -156,10 +157,26 @@ export abstract class IMQService {
                 }
 
                 setTimeout(() => process.exit(0), IMQ_SHUTDOWN_TIMEOUT);
-            }),
-        );
+            };
 
-        this.imq.on('message', this.handleRequest as any);
+            // tracked so destroy() can unregister them (see below)
+            this.signalHandlers.push([signal, handler]);
+            process.on(signal, handler);
+        });
+
+        // guard the async handler: a failure while processing or publishing
+        // the response (e.g. the broker went away mid-reply) must be logged,
+        // not surface as an unhandled rejection and crash the process
+        this.imq.on(
+            'message',
+            ((request: IMQRPCRequest, id: string): Promise<string | void> =>
+                this.handleRequest(request, id).catch(err =>
+                    this.logger.error(
+                        `${this.name}: error handling request:`,
+                        err,
+                    ),
+                )) as any,
+        );
     }
 
     /**
@@ -293,7 +310,7 @@ export abstract class IMQService {
         }
 
         if (cluster.isMaster) {
-            const numCpus = os.cpus().length;
+            const numCpus = cpus().length;
             const numWorkers = numCpus * this.options.childrenPerCore;
 
             for (let i = 0; i < numWorkers; i++) {
@@ -301,7 +318,7 @@ export abstract class IMQService {
                 cluster.fork({ workerId: i });
             }
 
-            cluster.on('exit', (worker: any) => {
+            cluster.on('exit', (worker: Worker) => {
                 this.logger.info(
                     '%s: worker pid %s died, exiting',
                     this.name,
@@ -351,6 +368,13 @@ export abstract class IMQService {
      */
     @profile()
     public async destroy(): Promise<void> {
+        // unregister this instance's process signal handlers so destroyed
+        // services do not leak process-level listeners
+        for (const [signal, handler] of this.signalHandlers) {
+            process.removeListener(signal, handler);
+        }
+        this.signalHandlers.length = 0;
+
         await this.imq.unsubscribe();
         await this.imq.destroy();
     }
@@ -389,7 +413,7 @@ export abstract class IMQService {
 
         this.logger.log('Starting metrics server...');
 
-        this.metricsServer = http.createServer(async (req, res) => {
+        this.metricsServer = createServer(async (req, res) => {
             if (req.url === '/metrics') {
                 const length = await this.imq.queueLength();
                 const content =

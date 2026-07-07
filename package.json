@@ -14,7 +14,8 @@
   ],
   "scripts": {
     "clean-compiled": "npm run clean-js && npm run clean-typedefs && npm run clean-maps",
-    "build": "npm run clean-compiled && tsc",
+    "build:deps": "if [ -f ../core/package.json ]; then npm run build --prefix ../core; fi",
+    "build": "npm run build:deps && npm run clean-compiled && tsc",
     "prepublishOnly": "npm run build",
     "lint": "oxlint",
     "format": "oxfmt \"index.ts\" \"debug.ts\" \"src/**/*.ts\" \"test/**/*.ts\"",

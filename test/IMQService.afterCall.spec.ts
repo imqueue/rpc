@@ -91,12 +91,10 @@ describe('IMQService hooks (afterCall) and promise branch', () => {
             setTimeout(() => {
                 try {
                     assert.equal(warnSpy.mock.callCount() > 0, true);
-                    const hasAfter = warnSpy
-                        .mock.calls
-                        .some(
-                            (c: any) =>
-                                c.arguments && c.arguments[0] === AFTER_HOOK_ERROR,
-                        );
+                    const hasAfter = warnSpy.mock.calls.some(
+                        (c: any) =>
+                            c.arguments && c.arguments[0] === AFTER_HOOK_ERROR,
+                    );
                     assert.equal(hasAfter, true);
                     resolve(undefined);
                 } catch (err) {
@@ -125,7 +123,9 @@ describe('IMQService hooks (afterCall) and promise branch', () => {
 
         // stub to assert when send() is actually called, after promise resolved
         const done = new Promise<void>((resolve, reject) => {
-            mock.method(service.imq, 'send', 
+            mock.method(
+                service.imq,
+                'send',
                 async (_to: string, response: any) => {
                     try {
                         assert.equal(response.data, 'Hello, IMQ!');

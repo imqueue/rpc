@@ -47,7 +47,9 @@ describe('IMQClient (extra branches without service)', () => {
         });
         await client.start();
         const imq: any = (client as any).imq;
-        mock.method(imq, 'send', 
+        mock.method(
+            imq,
+            'send',
             async (to: string, request: any, delay?: number) => {
                 const id = 'ID1';
                 setImmediate(() =>
@@ -59,7 +61,9 @@ describe('IMQClient (extra branches without service)', () => {
         const res = await client.greet('imq');
         assert.equal(res, 'ok');
         assert.equal(warn.mock.callCount() > 0, true);
-        assert.ok((String(warn.mock.calls[0].arguments[0])).includes(BEFORE_HOOK_ERROR));
+        assert.ok(
+            String(warn.mock.calls[0].arguments[0]).includes(BEFORE_HOOK_ERROR),
+        );
     });
 
     it('should warn on AFTER_HOOK_ERROR for resolve and reject paths', async () => {
@@ -73,15 +77,15 @@ describe('IMQClient (extra branches without service)', () => {
         await client.start();
         const imq: any = (client as any).imq;
         const send = mock.method(imq, 'send', () => {});
-        // success path
+        // success path (first call)
         send.mock.mockImplementationOnce(async (to: string, request: any) => {
             const id = 'ID2';
             setImmediate(() =>
                 imq.emit('message', { to: id, request, data: 'success' }),
             );
             return id;
-        });
-        // reject path
+        }, 0);
+        // reject path (second call)
         send.mock.mockImplementationOnce(async (to: string, request: any) => {
             const id = 'ID3';
             setImmediate(() =>
@@ -92,7 +96,7 @@ describe('IMQClient (extra branches without service)', () => {
                 }),
             );
             return id;
-        });
+        }, 1);
         const ok = await client.greet('ok');
         assert.equal(ok, 'success');
         try {
@@ -101,13 +105,13 @@ describe('IMQClient (extra branches without service)', () => {
             /* expected */
         }
         // both paths should warn due to afterCall throwing
-        assert.ok((warn.mock.callCount()) > (0));
-        assert.ok((
-            warn
-                .mock.calls
+        assert.ok(warn.mock.callCount() > 0);
+        assert.ok(
+            warn.mock.calls
                 .map((c: any) => String(c.arguments[0]))
                 .join(' ')
-        ).includes(AFTER_HOOK_ERROR));
+                .includes(AFTER_HOOK_ERROR),
+        );
     });
 
     it('should emit event when resolver is missing', async () => {
@@ -127,10 +131,12 @@ describe('IMQClient (extra branches without service)', () => {
         client = new ExtraClient({ logger });
         await client.start();
         const imq: any = (client as any).imq;
-        const sendStub = mock.method(imq, 'send', 
+        const sendStub = mock.method(
+            imq,
+            'send',
             async (to: string, request: any, delay?: number) => {
                 assert.equal(delay, 0);
-                assert.ok((request.metadata) instanceof IMQMetadata);
+                assert.ok(request.metadata instanceof IMQMetadata);
                 const id = 'ID4';
                 setImmediate(() =>
                     imq.emit('message', { to: id, request, data: 'x' }),

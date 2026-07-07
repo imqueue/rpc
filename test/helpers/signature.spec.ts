@@ -51,4 +51,48 @@ describe('helpers/signature()', () => {
         assert.notEqual(hashTwo, hashThree);
         assert.notEqual(hashOne, hashThree);
     });
+
+    it('should be insensitive to object key insertion order', () => {
+        const hashOne = signature('A', 'a', [
+            { a: 1, b: 2, c: { x: 1, y: 2 } },
+        ]);
+        const hashTwo = signature('A', 'a', [
+            { c: { y: 2, x: 1 }, b: 2, a: 1 },
+        ]);
+
+        assert.equal(hashOne, hashTwo);
+    });
+
+    it('should not throw on circular arguments and stay deterministic', () => {
+        const one: any = { name: 'one' };
+        one.self = one;
+
+        const two: any = { name: 'one' };
+        two.self = two;
+
+        let hashOne = '';
+        let hashTwo = '';
+
+        assert.doesNotThrow(() => {
+            hashOne = signature('A', 'a', [one]);
+            hashTwo = signature('A', 'a', [two]);
+        });
+        assert.equal(hashOne, hashTwo);
+    });
+
+    it('should not treat repeated (non-circular) references as circular', () => {
+        const shared = { v: 1 };
+        const repeated = signature('A', 'a', [shared, shared]);
+        const explicit = signature('A', 'a', [{ v: 1 }, { v: 1 }]);
+
+        assert.equal(repeated, explicit);
+    });
+
+    it('should serialize dates the same way JSON does', () => {
+        const date = new Date('2026-01-01T00:00:00.000Z');
+        const viaDate = signature('A', 'a', [date]);
+        const viaString = signature('A', 'a', [date.toJSON()]);
+
+        assert.equal(viaDate, viaString);
+    });
 });

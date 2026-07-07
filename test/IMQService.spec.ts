@@ -164,14 +164,21 @@ describe('IMQService', () => {
 
             service.imq.emit('message', request, id);
 
-            assert.ok(reqSpy.mock.calls.some((c: any) => c.arguments[0] === request && c.arguments[1] === id));
+            assert.ok(
+                reqSpy.mock.calls.some(
+                    (c: any) =>
+                        c.arguments[0] === request && c.arguments[1] === id,
+                ),
+            );
 
             // we need to defer here because emit is not async but
             // it calls send asynchronously
             await new Promise((resolve, reject) =>
                 setTimeout(() => {
                     try {
-                        resolve(assert.equal(imqSpy.mock.callCount() > 0, true));
+                        resolve(
+                            assert.equal(imqSpy.mock.callCount() > 0, true),
+                        );
                     } catch (err) {
                         reject(err);
                     }
@@ -199,7 +206,9 @@ describe('IMQService', () => {
                 setTimeout(() => {
                     try {
                         resolve(
-                            assert.equal(imqSpy.mock.calls.at(-1).arguments[1].error.code,
+                            assert.equal(
+                                imqSpy.mock.calls.at(-1).arguments[1].error
+                                    .code,
                                 'IMQ_RPC_NO_METHOD',
                             ),
                         );
@@ -229,7 +238,9 @@ describe('IMQService', () => {
                 setTimeout(() => {
                     try {
                         resolve(
-                            assert.equal(imqSpy.mock.calls.at(-1).arguments[1].error.code,
+                            assert.equal(
+                                imqSpy.mock.calls.at(-1).arguments[1].error
+                                    .code,
                                 'IMQ_RPC_NO_ACCESS',
                             ),
                         );
@@ -263,7 +274,10 @@ describe('IMQService', () => {
                         try {
                             resolve(
                                 assert.equal(
-                                    imqSpy.mock.calls.at(-1).arguments[1].error.code, 'IMQ_RPC_INVALID_ARGS_COUNT'),
+                                    imqSpy.mock.calls.at(-1).arguments[1].error
+                                        .code,
+                                    'IMQ_RPC_INVALID_ARGS_COUNT',
+                                ),
                             );
                         } catch (err) {
                             reject(err);
@@ -296,7 +310,10 @@ describe('IMQService', () => {
                         try {
                             resolve(
                                 assert.equal(
-                                    imqSpy.mock.calls.at(-1).arguments[1].error.code, 'IMQ_RPC_CALL_ERROR'),
+                                    imqSpy.mock.calls.at(-1).arguments[1].error
+                                        .code,
+                                    'IMQ_RPC_CALL_ERROR',
+                                ),
                             );
                         } catch (err) {
                             reject(err);

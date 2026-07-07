@@ -37,6 +37,7 @@ import {
     IMQRPCResponse,
     IMQRPCRequest,
     IMQDelay,
+    IMQError,
     remote,
     Description,
     fileExists,
@@ -47,15 +48,15 @@ import {
     AFTER_HOOK_ERROR,
     SIGNALS,
 } from '.';
-import * as ts from 'typescript';
-import { EventEmitter } from 'events';
-import * as vm from 'vm';
-import { CompilerOptions } from 'typescript';
+import { transpile, type CompilerOptions } from 'typescript';
+import { EventEmitter } from 'node:events';
+import { Script } from 'node:vm';
 import { IMQBeforeCall, IMQAfterCall } from './IMQRPCOptions';
 
-process.setMaxListeners(10000);
-
-const tsOptions = require('../tsconfig.json').compilerOptions;
+// Loaded via require (not a static import) so that consumers which type-check
+// this source through a file: link do not need `resolveJsonModule` enabled.
+const tsOptions = require('../tsconfig.json')
+    .compilerOptions as CompilerOptions;
 const RX_SEMICOLON: RegExp = /;+$/g;
 
 /**
@@ -72,7 +73,12 @@ export abstract class IMQClient extends EventEmitter {
     private readonly baseName: string;
     private readonly imq: IMessageQueue;
     private readonly subscriptionImq: IMessageQueue;
-    private static singleImq: IMessageQueue & { name?: string };
+    private static singleImq?: IMessageQueue & { name?: string };
+    private static singleImqRefs: number = 0;
+    private static maxListenersBumped: boolean = false;
+    private destroyed: boolean = false;
+    private readonly signalHandlers: Array<[string, (...args: any[]) => void]> =
+        [];
     private readonly logger: ILogger;
     private resolvers: {
         [id: string]: [
@@ -117,12 +123,23 @@ export abstract class IMQClient extends EventEmitter {
         this.imq = this.createImq();
         this.subscriptionImq = this.createSubscriptionImq();
 
-        SIGNALS.forEach((signal: any) =>
-            process.on(signal, async () => {
+        // raise the process listener limit on first use (many clients may
+        // coexist, each registering its own signal handlers)
+        if (!IMQClient.maxListenersBumped) {
+            IMQClient.maxListenersBumped = true;
+            process.setMaxListeners(10000);
+        }
+
+        SIGNALS.forEach((signal: string) => {
+            const handler = (): void => {
                 this.destroy().catch(this.logger.error);
                 setTimeout(() => process.exit(0), IMQ_SHUTDOWN_TIMEOUT);
-            }),
-        );
+            };
+
+            // tracked so destroy() can unregister them (see below)
+            this.signalHandlers.push([signal, handler]);
+            process.on(signal, handler);
+        });
     }
 
     private createImq(): IMessageQueue {
@@ -133,6 +150,10 @@ export abstract class IMQClient extends EventEmitter {
         if (!IMQClient.singleImq) {
             IMQClient.singleImq = IMQ.create(this.queueName, this.options);
         }
+
+        // the shared queue is reference-counted so that destroying one client
+        // does not tear the transport down under the others
+        IMQClient.singleImqRefs++;
 
         return IMQClient.singleImq;
     }
@@ -191,17 +212,61 @@ export abstract class IMQClient extends EventEmitter {
             }
         }
 
+        const callTimeout = this.options.callTimeout;
+
         return new Promise<T>((resolve, reject) => {
+            let timer: NodeJS.Timeout | null = null;
+            const clearTimer = (): void => {
+                if (timer) {
+                    clearTimeout(timer);
+                    timer = null;
+                }
+            };
+            const doResolve = (data: T): void => {
+                clearTimer();
+                resolve(data);
+            };
+            const doReject = (err: any): void => {
+                clearTimer();
+                reject(err);
+            };
+
             void (async () => {
                 try {
-                    const id = await this.imq.send(to, request, delay, reject);
+                    const id = await this.imq.send(
+                        to,
+                        request,
+                        delay,
+                        doReject,
+                    );
 
                     this.resolvers[id] = [
-                        imqCallResolver(resolve, request, this),
-                        imqCallRejector(reject, request, this),
+                        imqCallResolver(doResolve, request, this),
+                        imqCallRejector(doReject, request, this),
                     ];
+
+                    if (callTimeout && callTimeout > 0) {
+                        // reject and release the pending resolver if no
+                        // response arrives in time; a requested delivery delay
+                        // extends the budget accordingly
+                        timer = setTimeout(() => {
+                            delete this.resolvers[id];
+                            doReject(
+                                IMQError(
+                                    'IMQ_RPC_CALL_TIMEOUT',
+                                    `Call to ${to}.${method}() timed out after ${
+                                        callTimeout
+                                    } ms.`,
+                                    new Error().stack,
+                                    method,
+                                    args,
+                                ),
+                            );
+                        }, callTimeout + delay);
+                        timer.unref?.();
+                    }
                 } catch (err) {
-                    imqCallRejector(reject, request, this)(err);
+                    imqCallRejector(doReject, request, this)(err);
                 }
             })();
         }) as Promise<T>;
@@ -288,10 +353,45 @@ export abstract class IMQClient extends EventEmitter {
      * @returns {Promise<void>}
      */
     public async destroy(): Promise<void> {
-        await this.imq.unsubscribe();
+        if (this.destroyed) {
+            return;
+        }
+
+        this.destroyed = true;
+
+        // unregister this instance's process signal handlers so destroyed
+        // clients do not leak process-level listeners
+        for (const [signal, handler] of this.signalHandlers) {
+            process.removeListener(signal, handler);
+        }
+        this.signalHandlers.length = 0;
+
+        await this.subscriptionImq.unsubscribe();
         forgetPid(this.baseName, this.id, this.logger);
         this.removeAllListeners();
-        await this.imq.destroy();
+
+        // in singleQueue mode the subscription queue is a separate,
+        // per-client instance and must be torn down with the client
+        if (this.subscriptionImq !== this.imq) {
+            await this.subscriptionImq.destroy();
+        }
+
+        if (!this.options.singleQueue) {
+            await this.imq.destroy();
+
+            return;
+        }
+
+        // shared queue: only the last client tears it down
+        if (--IMQClient.singleImqRefs <= 0) {
+            IMQClient.singleImqRefs = 0;
+
+            const singleImq = IMQClient.singleImq;
+
+            IMQClient.singleImq = undefined;
+
+            await singleImq?.destroy();
+        }
     }
 
     /**
@@ -326,12 +426,13 @@ export abstract class IMQClient extends EventEmitter {
 }
 
 /**
- * Builds and returns call resolver, which supports after call optional hook
+ * Builds a call resolver that resolves the pending promise and then runs the
+ * optional after-call hook.
  *
- * @param {(...args: any[]) => void} resolve - source promise like resolver
- * @param {IMQRPCRequest} req  - request message
- * @param {IMQClient} client - imq client
- * @return {(data: any, res: IMQRPCResponse) => void} - hook-supported resolve
+ * @param {(data: any) => void} resolve - the underlying promise resolver
+ * @param {IMQRPCRequest} req - the originating request message
+ * @param {IMQClient} client - the client the call belongs to
+ * @return {(data: any, res: IMQRPCResponse) => void} - a hook-aware resolver
  */
 export function imqCallResolver(
     resolve: (data: any) => void,
@@ -358,12 +459,13 @@ export function imqCallResolver(
 }
 
 /**
- * Builds and returns call rejector, which supports after call optional hook
+ * Builds a call rejector that rejects the pending promise and then runs the
+ * optional after-call hook.
  *
- * @param {(err: any) => void} reject - source promise like rejector
- * @param {IMQRPCRequest} req - call request
- * @param {IMQClient} client - imq client
- * @return {(err: any) => void} - hook-supported reject
+ * @param {(err: any) => void} reject - the underlying promise rejector
+ * @param {IMQRPCRequest} req - the originating request message
+ * @param {IMQClient} client - the client the call belongs to
+ * @return {(err: any, res?: IMQRPCResponse) => void} - a hook-aware rejector
  */
 export function imqCallRejector(
     reject: (err: any) => void,
@@ -665,7 +767,7 @@ async function compile(
     const path = options.path;
     const srcFile = `${path}/${name}.ts`;
     const jsFile = `${path}/${name}.js`;
-    const js = ts.transpile(src, tsOptions as CompilerOptions | undefined);
+    const js = transpile(src, tsOptions);
 
     if (options.write) {
         if (!(await fileExists(path))) {
@@ -676,7 +778,7 @@ async function compile(
     }
 
     if (options.compile) {
-        const script = new vm.Script(js);
+        const script = new Script(js);
         const context = { exports: {}, require };
 
         script.runInNewContext(context, { filename: jsFile });

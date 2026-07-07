@@ -21,8 +21,17 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
+/**
+ * Represents a delay expressed as a numeric timer value in a given time unit.
+ * Used to defer IMQ request processing.
+ */
 export class IMQDelay {
-    public get ms() {
+    /**
+     * Returns this delay converted to milliseconds.
+     *
+     * @return {number}
+     */
+    public get ms(): number {
         switch (this.unit) {
             case 'ms':
                 return this.timer;
@@ -37,6 +46,11 @@ export class IMQDelay {
         }
     }
 
+    /**
+     * @param {number} timer - delay value expressed in the given unit
+     * @param {'ms' | 's' | 'm' | 'h' | 'd'} unit - time unit of the timer
+     *                                              value, defaults to 'ms'
+     */
     constructor(
         public timer: number,
         public unit: 'ms' | 's' | 'm' | 'h' | 'd' = 'ms',

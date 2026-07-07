@@ -22,25 +22,32 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 /**
- * Implements '@remote' decorator factory
+ * Creates a `@remote()` method decorator for client classes. The decorated
+ * method has the remote method name appended to its arguments and is then
+ * forwarded to `remoteCall()`. The returned decorator is dual-mode: it works
+ * both as a standard (TC39) and as a legacy (experimentalDecorators) method
+ * decorator.
  *
- * @return {(
- *    value: (...args: any[]) => any,
- *    context: ClassMethodDecoratorContext
- * ) => (...args: any[]) => any}
+ * @return {Function} - a dual-mode method decorator
  */
-export function remote() {
-    return function (
-        value: (...args: any[]) => any,
-        context: ClassMethodDecoratorContext,
-    ): (...args: any[]) => any {
-        const methodName = String(context.name);
-
-        return function (this: any, ...args: any[]) {
+export function remote(): any {
+    const wrap = (original: (...args: any[]) => any, methodName: string) =>
+        function (this: any, ...args: any[]) {
             args.push(methodName);
 
             // istanbul ignore next
-            return value ? value.apply(this, args) : undefined;
+            return original ? original.apply(this, args) : undefined;
         };
+
+    // Dual-mode: standard (TC39) invocations pass a context object with a
+    // `kind` property; legacy ones pass (target, propertyKey, descriptor).
+    return function (target: any, context: any, descriptor?: any): any {
+        if (context && typeof context === 'object' && 'kind' in context) {
+            return wrap(target, String(context.name));
+        }
+
+        descriptor.value = wrap(descriptor.value, String(context));
+
+        return descriptor;
     };
 }

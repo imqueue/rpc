@@ -73,7 +73,7 @@ export interface ServiceDescription {
 }
 
 /**
- * Service type description
+ * Type property description
  */
 export interface PropertyDescription {
     type: string;
@@ -81,7 +81,7 @@ export interface PropertyDescription {
 }
 
 /**
- * Service types description
+ * Type properties collection description
  */
 export interface TypeDescription {
     [propertyName: string]: PropertyDescription;

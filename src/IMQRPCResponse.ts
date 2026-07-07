@@ -25,7 +25,7 @@ import { JsonObject } from '@imqueue/core';
 import { IMQRPCError, IMQRPCRequest } from '.';
 
 /**
- * Response message data structure, which service replies to handled
+ * Response message data structure that a service replies with to handled
  * requests.
  */
 export interface IMQRPCResponse extends JsonObject {

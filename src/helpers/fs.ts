@@ -21,40 +21,40 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import * as fs from 'fs';
+import { access, mkdir as fsMkdir, writeFile as fsWriteFile } from 'fs';
 
 /**
- * Checks if file exists at given path
+ * Checks whether a file exists at the given path.
  *
- * @param {string} path
- * @return {Promise<any>}
+ * @param {string} path - path to the file to check
+ * @return {Promise<boolean>} - true if the file exists, false otherwise
  */
-export function fileExists(path: string) {
-    return new Promise(resolve => fs.access(path, err => resolve(!err)));
+export function fileExists(path: string): Promise<boolean> {
+    return new Promise(resolve => access(path, err => resolve(!err)));
 }
 
 /**
- * Async mkdir
+ * Asynchronously creates a directory at the given path.
  *
- * @param {string} path
- * @return {Promise<any>}
+ * @param {string} path - path of the directory to create
+ * @return {Promise<void>}
  */
-export function mkdir(path: string) {
+export function mkdir(path: string): Promise<void> {
     return new Promise((resolve, reject) =>
-        fs.mkdir(path, generalCallback.bind(null, resolve, reject)),
+        fsMkdir(path, generalCallback.bind(null, resolve, reject)),
     );
 }
 
 /**
- * Async writeFile
+ * Asynchronously writes the given content to a file at the given path.
  *
- * @param {string} path
- * @param {string} content
- * @return {Promise<any>}
+ * @param {string} path - path of the file to write
+ * @param {string} content - content to write to the file
+ * @return {Promise<void>}
  */
-export function writeFile(path: string, content: string) {
+export function writeFile(path: string, content: string): Promise<void> {
     return new Promise((resolve, reject) =>
-        fs.writeFile(
+        fsWriteFile(
             path,
             content,
             { encoding: 'utf8' },
@@ -64,18 +64,18 @@ export function writeFile(path: string, content: string) {
 }
 
 /**
- * Constructs and return callback which will resolve promise using
- * given resolver and reject'or
+ * Constructs a callback that settles a promise using the given resolve and
+ * reject functions, rejecting when an error is provided.
  *
- * @param {() => void} resolve
- * @param {(err: Error) => void} reject
- * @param {Error} err
+ * @param {(value: void | PromiseLike<void>) => void} resolve - promise resolver
+ * @param {(reason?: unknown) => void} reject - promise rejecter
+ * @param {Error | null} [err] - error passed by the underlying fs operation
  */
 function generalCallback(
-    resolve: (value?: unknown) => void,
-    reject: (err?: unknown) => void,
+    resolve: (value: void | PromiseLike<void>) => void,
+    reject: (reason?: unknown) => void,
     err?: Error | null,
-) {
+): void {
     if (err) {
         reject(err);
     }

@@ -23,9 +23,17 @@
  */
 import { AnyJson, JsonObject } from '@imqueue/core';
 
+/**
+ * Arbitrary, JSON-serializable metadata bag carried alongside an IMQ request.
+ * Each property value must be a valid JSON value.
+ */
 export class IMQMetadata {
     [property: string]: AnyJson;
 
+    /**
+     * @param {JsonObject} metadata - source object whose own enumerable
+     *                                properties are copied into this instance
+     */
     constructor(metadata: JsonObject) {
         for (const property of Object.keys(metadata)) {
             this[property] = metadata[property];

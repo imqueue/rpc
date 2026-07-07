@@ -21,7 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { Thunk } from '..';
+import { Thunk, IMQRPCDescription } from '..';
 import { registerType } from './property';
 
 /**
@@ -42,9 +42,14 @@ import { registerType } from './property';
  * @return {(constructor: Function) => void}
  */
 export function indexed(indexTypedef: string | Thunk): any {
-    return function (value: Function, context: ClassDecoratorContext): void {
+    // Dual-mode: standard (TC39) class decorators pass a context object with a
+    // `kind` property; legacy ones pass only the constructor.
+    return function (value: any, context?: any): any {
+        const isStandard =
+            context && typeof context === 'object' && 'kind' in context;
+
         if (!indexTypedef) {
-            return; // nothing to do here
+            return isStandard ? undefined : value; // nothing to do here
         }
 
         if (typeof indexTypedef === 'function') {
@@ -55,7 +60,25 @@ export function indexed(indexTypedef: string | Thunk): any {
             indexTypedef = String(indexTypedef);
         }
 
-        // registers any @property fields on this class plus the index type
-        registerType(value, context.metadata, indexTypedef as string);
+        if (isStandard) {
+            // registers any @property fields on this class plus the index type
+            registerType(value, context.metadata, indexTypedef as string);
+
+            return;
+        }
+
+        // legacy: @property already registered the fields directly, so only
+        // the index type needs to be attached to the existing description
+        const typeName = value.name;
+
+        IMQRPCDescription.typesDescription[typeName] = IMQRPCDescription
+            .typesDescription[typeName] || {
+            properties: {},
+            inherits: Object.getPrototypeOf(value).name,
+        };
+        IMQRPCDescription.typesDescription[typeName].indexType =
+            indexTypedef as string;
+
+        return value;
     };
 }
