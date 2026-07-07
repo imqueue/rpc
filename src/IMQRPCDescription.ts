@@ -77,7 +77,7 @@ export interface ServiceDescription {
  */
 export interface PropertyDescription {
     type: string;
-    isOptional: boolean
+    isOptional: boolean;
 }
 
 /**
@@ -92,15 +92,13 @@ export interface TypeDescription {
  */
 export interface TypesDescription {
     [typeName: string]: {
-        properties: TypeDescription,
-        inherits: string,
-        indexType?: string,
+        properties: TypeDescription;
+        inherits: string;
+        indexType?: string;
     };
 }
 
 export class IMQRPCDescription {
-
     public static serviceDescription: ServiceDescription = {};
     public static typesDescription: TypesDescription = {};
-
 }

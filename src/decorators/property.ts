@@ -87,53 +87,145 @@ export interface Thunk {
  *    descriptor: TypedPropertyDescriptor<(...args: any[]) => any>
  * ) => void}
  */
+interface CollectedProperty {
+    rawType: string | Thunk | any;
+    isOptional: boolean;
+}
+
+/**
+ * Per-class store of collected @property definitions, keyed off the shared
+ * decorator metadata object. Standard field decorators cannot see their
+ * class at decoration time, so properties are stashed here and flushed to
+ * the RPC type description by a class-level decorator (@expose on a type,
+ * or @indexed) once the class name is available.
+ */
+const PROPERTIES = Symbol('@imqueue/rpc:properties');
+
+/**
+ * Resolves a @property type argument (string, constructor, thunk, or array
+ * form) to its RPC type-definition string.
+ *
+ * @param {string | Thunk | any} input
+ * @return {string}
+ */
+function resolveTypeDef(input: string | Thunk | any): string {
+    let type: any = input;
+
+    if (typeof type === 'function' && !(type as Function).name) {
+        type = (type as () => any)();
+    }
+
+    let typeDef: any = type;
+
+    if (Array.isArray(typeDef)) {
+        typeDef = typeDef[0];
+    }
+
+    if (typeDef && typeof typeDef !== 'string') {
+        typeDef = typeDef.name;
+    }
+
+    if (Array.isArray(type)) {
+        typeDef += '[]';
+    }
+
+    if (!typeDef) {
+        typeDef = String(type);
+    }
+
+    return typeDef as string;
+}
+
+/**
+ * Flushes @property definitions collected on a class into the RPC type
+ * description. Invoked by class-level decorators once the class (and hence
+ * its name) is available.
+ *
+ * @param {Function} ctor - the decorated class constructor
+ * @param {DecoratorMetadata | undefined} metadata - shared decorator metadata
+ * @param {string} [indexType] - optional index signature definition
+ */
+export function registerType(
+    ctor: Function,
+    metadata: DecoratorMetadata | undefined,
+    indexType?: string,
+): void {
+    const typeName = ctor.name;
+    const collected: Record<string, CollectedProperty> =
+        metadata && Object.prototype.hasOwnProperty.call(metadata, PROPERTIES)
+            ? (metadata as any)[PROPERTIES]
+            : {};
+
+    IMQRPCDescription.typesDescription[typeName] = IMQRPCDescription
+        .typesDescription[typeName] || {
+        properties: {},
+        inherits: Object.getPrototypeOf(ctor).name,
+    };
+
+    const description = IMQRPCDescription.typesDescription[typeName];
+
+    description.inherits = Object.getPrototypeOf(ctor).name;
+
+    for (const key of Object.keys(collected)) {
+        const { rawType, isOptional } = collected[key];
+        let resolved: string | undefined;
+
+        // resolve the type lazily on first read: standard decorators run
+        // before class bindings are initialized, so a thunk referencing the
+        // (self- or forward-referenced) type cannot be called during
+        // decoration — only once the description is actually consumed
+        Object.defineProperty(description.properties, key, {
+            enumerable: true,
+            configurable: true,
+            value: {
+                isOptional,
+                get type(): string {
+                    if (resolved === undefined) {
+                        resolved = resolveTypeDef(rawType);
+                    }
+
+                    return resolved;
+                },
+            },
+        });
+    }
+
+    if (indexType !== undefined) {
+        description.indexType = indexType;
+    }
+}
+
 export function property(
     type: string | Thunk | any,
     isOptional: boolean = false,
 ): any {
-    // istanbul ignore if
     if (!type) {
-        return ;
+        return;
     }
 
     return function (
-        target: any,
-        propertyKey: string,
-    ): any {
-        const typeName = target.constructor.name;
-        let typeDef: any;
+        _value: undefined,
+        context: ClassFieldDecoratorContext,
+    ): void {
+        const metadata = context.metadata as any;
 
-        if (typeof type === 'function' && !(type as Function).name) {
-            type = (type as () => any)();
+        // each class keeps its OWN property bag (metadata prototype-inherits
+        // from a base class, so we must not mutate the inherited one)
+        if (!Object.prototype.hasOwnProperty.call(metadata, PROPERTIES)) {
+            Object.defineProperty(metadata, PROPERTIES, {
+                value: {},
+                enumerable: false,
+                writable: true,
+                configurable: true,
+            });
         }
 
-        typeDef = type;
-
-        if (Array.isArray(typeDef)) {
-            typeDef = typeDef[0];
-        }
-
-        if (typeDef && typeof typeDef !== 'string') {
-            typeDef = typeDef.name;
-        }
-
-        if (Array.isArray(type)) {
-            typeDef += '[]';
-        }
-
-        // istanbul ignore if
-        if (!typeDef) {
-            typeDef = String(type);
-        }
-
-        IMQRPCDescription.typesDescription[typeName] =
-        IMQRPCDescription.typesDescription[typeName] || {
-            properties: {},
-            inherits: Object.getPrototypeOf(target.constructor).name,
-        };
-
-        IMQRPCDescription.typesDescription[typeName].properties[propertyKey] = {
-            type: typeDef as string,
+        // store the raw type; resolution is deferred to first read (see
+        // registerType) to avoid touching not-yet-initialized class bindings
+        (metadata[PROPERTIES] as Record<string, CollectedProperty>)[
+            String(context.name)
+        ] = {
+            rawType: type,
             isOptional,
         };
     };

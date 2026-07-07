@@ -21,38 +21,39 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import * as mock from 'mock-require';
-import { expect } from 'chai';
+import mockRequire from 'mock-require';
+import { describe, it, before, after, mock } from 'node:test';
+import assert from 'node:assert/strict';
 
 const fsMock = {
     access(path: string, cb: (err?: Error) => void) {
-         if (path === 'exist') {
+        if (path === 'exist') {
             cb();
-         }
-         if (path === 'unexist') {
-            cb(new Error);
-         }
+        }
+        if (path === 'unexist') {
+            cb(new Error());
+        }
     },
-    mkdir(path: string, cb: (err?: | Error) => void) {
-         if (path === 'done') {
+    mkdir(path: string, cb: (err?: Error) => void) {
+        if (path === 'done') {
             cb();
-         }
-         if (path === 'error') {
-            cb(new Error);
-         }
+        }
+        if (path === 'error') {
+            cb(new Error());
+        }
     },
     writeFile(
         path: string,
         content: string,
-        options: { [ key: string ]: string },
-        cb: (err?: Error) => void
-   ) {
-         if (path === 'done') {
+        options: { [key: string]: string },
+        cb: (err?: Error) => void,
+    ) {
+        if (path === 'done') {
             cb();
-         }
-         if (path === 'error') {
-            cb(new Error);
-         }
+        }
+        if (path === 'error') {
+            cb(new Error());
+        }
     },
 };
 
@@ -61,8 +62,8 @@ let mkdir: (path: string) => Promise<void>;
 let writeFile: (path: string, content: string) => Promise<void>;
 
 describe('fs helpers', () => {
-    before (function before() {
-        mock('fs', fsMock);
+    before(function before() {
+        mockRequire('fs', fsMock);
         delete require.cache[require.resolve('../../src/helpers/fs')];
         const fs = require('../../src/helpers/fs');
         fileExists = fs.fileExists;
@@ -70,23 +71,28 @@ describe('fs helpers', () => {
         writeFile = fs.writeFile;
     });
     after(() => {
-        mock.stop('fs');
+        mockRequire.stop('fs');
     });
 
     it('should check file existance', () =>
-        fileExists('exist').then((status: boolean) => expect(status).to.be.true));
+        fileExists('exist').then((status: boolean) =>
+            assert.equal(status, true),
+        ));
 
     it('should check file unexistance', () =>
-        fileExists('unexist').then((status: boolean) => expect(status).to.be.false));
+        fileExists('unexist').then((status: boolean) =>
+            assert.equal(status, false),
+        ));
 
     it('should mkdir', () => mkdir('done'));
 
     it('should mkdir with error', () =>
-        mkdir('error').catch((err: Error) => expect(err).to.be.an.instanceof(Error)));
+        mkdir('error').catch((err: Error) => assert.ok(err instanceof Error)));
 
     it('should write file', async () => writeFile('done', ''));
 
     it('should write file with error', () =>
-        writeFile('error', '').catch((err: Error) => expect(err).to.be.an.instanceof(Error)));
+        writeFile('error', '').catch((err: Error) =>
+            assert.ok(err instanceof Error),
+        ));
 });
-

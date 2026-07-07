@@ -21,7 +21,12 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
+// must load first: installs the Symbol.metadata polyfill required by the
+// standard-decorator metadata used across the decorators below
+import './metadata';
+
 export * from './expose';
+export * from './classType';
 export * from './remote';
 export * from './lock';
 export * from './cache';

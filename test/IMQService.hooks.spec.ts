@@ -21,16 +21,11 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { expect } from 'chai';
-import * as sinon from 'sinon';
-import { uuid } from '@imqueue/core';
+import { describe, it, mock } from 'node:test';
+import assert from 'node:assert/strict';
+import { randomUUID as uuid } from 'crypto';
 import { logger } from './mocks';
-import {
-    IMQService,
-    IMQRPCRequest,
-    expose,
-    BEFORE_HOOK_ERROR,
-} from '..';
+import { IMQService, IMQRPCRequest, expose, BEFORE_HOOK_ERROR } from '..';
 
 class HookTestService extends IMQService {
     @expose()
@@ -41,7 +36,7 @@ class HookTestService extends IMQService {
 
 describe('IMQService hooks (beforeCall)', () => {
     it('should execute beforeCall hook without error', async () => {
-        const beforeCall = sinon.spy(async () => {});
+        const beforeCall = mock.fn(async () => {});
         const service: any = new HookTestService({ logger, beforeCall });
         const request: IMQRPCRequest = {
             from: 'HookClient',
@@ -49,28 +44,32 @@ describe('IMQService hooks (beforeCall)', () => {
             args: [],
         };
         const id = uuid();
-        const sendSpy = sinon.spy(service.imq, 'send');
+        const sendSpy = mock.method(service.imq, 'send');
 
         await service.start();
         service.imq.emit('message', request, id);
 
         // wait for async send
-        await new Promise((resolve, reject) => setTimeout(() => {
-            try {
-                expect(beforeCall.calledOnce).to.be.true;
-                expect(sendSpy.called).to.be.true;
-                resolve(undefined);
-            } catch (err) {
-                reject(err);
-            }
-        }));
+        await new Promise((resolve, reject) =>
+            setTimeout(() => {
+                try {
+                    assert.equal(beforeCall.mock.callCount() === 1, true);
+                    assert.equal(sendSpy.mock.callCount() > 0, true);
+                    resolve(undefined);
+                } catch (err) {
+                    reject(err);
+                }
+            }),
+        );
 
         await service.destroy();
     });
 
     it('should catch beforeCall error and log BEFORE_HOOK_ERROR', async () => {
-        const warnSpy = sinon.spy(logger, 'warn');
-        const beforeCall = async () => { throw new Error('boom'); };
+        const warnSpy = mock.method(logger, 'warn');
+        const beforeCall = async () => {
+            throw new Error('boom');
+        };
         const service: any = new HookTestService({ logger, beforeCall });
         const request: IMQRPCRequest = {
             from: 'HookClient',
@@ -82,18 +81,25 @@ describe('IMQService hooks (beforeCall)', () => {
         await service.start();
         service.imq.emit('message', request, id);
 
-        await new Promise((resolve, reject) => setTimeout(() => {
-            try {
-                expect(warnSpy.called).to.be.true;
-                const calledWithBefore = warnSpy.getCalls().some((c: any) => c.args && c.args[0] === BEFORE_HOOK_ERROR);
-                expect(calledWithBefore).to.be.true;
-                resolve(undefined);
-            } catch (err) {
-                reject(err);
-            }
-        }));
+        await new Promise((resolve, reject) =>
+            setTimeout(() => {
+                try {
+                    assert.equal(warnSpy.mock.callCount() > 0, true);
+                    const calledWithBefore = warnSpy
+                        .mock.calls
+                        .some(
+                            (c: any) =>
+                                c.arguments && c.arguments[0] === BEFORE_HOOK_ERROR,
+                        );
+                    assert.equal(calledWithBefore, true);
+                    resolve(undefined);
+                } catch (err) {
+                    reject(err);
+                }
+            }),
+        );
 
-        warnSpy.restore();
+        warnSpy.mock.restore();
         await service.destroy();
     });
 });

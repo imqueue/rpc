@@ -25,15 +25,8 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { ILogger } from '@imqueue/core';
 
-export const SIGNALS: string[] = [
-    'SIGTERM',
-    'SIGINT',
-    'SIGHUP',
-    'SIGQUIT',
-];
-export const IMQ_TMP_DIR = process.env.TMPDIR ||
-    // istanbul ignore next
-    '/tmp';
+export const SIGNALS: string[] = ['SIGTERM', 'SIGINT', 'SIGHUP', 'SIGQUIT'];
+export const IMQ_TMP_DIR = process.env.TMPDIR || '/tmp';
 export const IMQ_PID_DIR = path.resolve(IMQ_TMP_DIR, '.imq-rpc');
 
 /**
@@ -43,11 +36,7 @@ export const IMQ_PID_DIR = path.resolve(IMQ_TMP_DIR, '.imq-rpc');
  * @param {string} path - directory to
  * @returns {number}
  */
-export function pid(
-    name: string,
-    // istanbul ignore next
-    path: string = IMQ_PID_DIR
-): number {
+export function pid(name: string, path: string = IMQ_PID_DIR): number {
     const pidFile = `${path}/${name}`;
     const pidOpts: {
         encoding: string;
@@ -70,15 +59,10 @@ export function pid(
                 pidOpts as any,
             );
             done = true;
-        }
-
-        catch (err) {
-            // istanbul ignore next
+        } catch (err: any) {
             if (err.code === 'EEXIST') {
                 id++;
-            }
-
-            else {
+            } else {
                 throw err;
             }
         }
@@ -99,12 +83,11 @@ export function forgetPid(
     name: string,
     id: number,
     logger: ILogger,
-    // istanbul ignore next
-    path: string = IMQ_PID_DIR
+    path: string = IMQ_PID_DIR,
 ) {
     try {
         fs.unlinkSync(`${path}/${name}-${id}.pid`);
+    } catch (err: any) {
+        /* ignore */
     }
-
-    catch (err) { /* ignore */ }
 }

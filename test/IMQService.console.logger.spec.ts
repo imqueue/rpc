@@ -1,74 +1,106 @@
 /*!
  * IMQService logger fallback coverage test
  */
-import { expect } from 'chai';
-import * as sinon from 'sinon';
-import { uuid } from '@imqueue/core';
-import { IMQService, IMQRPCRequest, expose, BEFORE_HOOK_ERROR, AFTER_HOOK_ERROR } from '..';
+import { describe, it, beforeEach, afterEach, mock } from 'node:test';
+import assert from 'node:assert/strict';
+import { randomUUID as uuid } from 'crypto';
+import {
+    IMQService,
+    IMQRPCRequest,
+    expose,
+    BEFORE_HOOK_ERROR,
+    AFTER_HOOK_ERROR,
+} from '..';
 
 class ConsoleLoggerService extends IMQService {
-  @expose()
-  public ping() { return 'pong'; }
+    @expose()
+    public ping() {
+        return 'pong';
+    }
 }
 
 describe('IMQService handleRequest logger fallback to console', () => {
-  let warnStub: sinon.SinonSpy;
+    let warnStub: any;
 
-  beforeEach(() => {
-    warnStub = sinon.stub(console, 'warn' as any).callsFake(() => {});
-  });
+    beforeEach(() => {
+        warnStub = mock.method(console, 'warn' as any, () => {});
+    });
 
-  afterEach(async () => {
-    sinon.restore();
-  });
+    afterEach(async () => {
+        mock.restoreAll();
+    });
 
-  it('should use console when no custom logger provided and catch BEFORE hook error', async () => {
-    const beforeCall = async () => { throw new Error('before fails'); };
-    const service: any = new ConsoleLoggerService({ beforeCall }); // no logger provided
+    it('should use console when no custom logger provided and catch BEFORE hook error', async () => {
+        const beforeCall = async () => {
+            throw new Error('before fails');
+        };
+        const service: any = new ConsoleLoggerService({ beforeCall }); // no logger provided
 
-    const request: IMQRPCRequest = { from: 'Client', method: 'ping', args: [] };
-    const id = uuid();
+        const request: IMQRPCRequest = {
+            from: 'Client',
+            method: 'ping',
+            args: [],
+        };
+        const id = uuid();
 
-    await service.start();
+        await service.start();
 
-    // Spy send to ensure regular flow continues and send is called even without afterCall
-    const sendSpy = sinon.spy(service.imq, 'send');
+        // Spy send to ensure regular flow continues and send is called even without afterCall
+        const sendSpy = mock.method(service.imq, 'send');
 
-    service.imq.emit('message', request, id);
+        service.imq.emit('message', request, id);
 
-    await new Promise((resolve, reject) => setTimeout(() => {
-      try {
-        expect(warnStub.called).to.equal(true);
-        const hasBefore = warnStub.getCalls().some(c => c.args && c.args[0] === BEFORE_HOOK_ERROR);
-        expect(hasBefore).to.equal(true);
-        expect(sendSpy.called).to.equal(true);
-        resolve(undefined);
-      } catch (e) { reject(e); }
-    }, 1));
+        await new Promise((resolve, reject) =>
+            setTimeout(() => {
+                try {
+                    assert.equal(warnStub.mock.callCount() > 0, true);
+                    const hasBefore = warnStub
+                        .mock.calls
+                        .some((c: any) => c.arguments && c.arguments[0] === BEFORE_HOOK_ERROR);
+                    assert.equal(hasBefore, true);
+                    assert.equal(sendSpy.mock.callCount() > 0, true);
+                    resolve(undefined);
+                } catch (e) {
+                    reject(e);
+                }
+            }, 1),
+        );
 
-    await service.destroy();
-  });
+        await service.destroy();
+    });
 
-  it('should use console when afterCall throws (send() logger fallback)', async () => {
-    const afterCall = async () => { throw new Error('after fails'); };
-    const service: any = new ConsoleLoggerService({ afterCall }); // no logger provided
+    it('should use console when afterCall throws (send() logger fallback)', async () => {
+        const afterCall = async () => {
+            throw new Error('after fails');
+        };
+        const service: any = new ConsoleLoggerService({ afterCall }); // no logger provided
 
-    const request: IMQRPCRequest = { from: 'Client', method: 'ping', args: [] };
-    const id = uuid();
+        const request: IMQRPCRequest = {
+            from: 'Client',
+            method: 'ping',
+            args: [],
+        };
+        const id = uuid();
 
-    await service.start();
+        await service.start();
 
-    service.imq.emit('message', request, id);
+        service.imq.emit('message', request, id);
 
-    await new Promise((resolve, reject) => setTimeout(() => {
-      try {
-        expect(warnStub.called).to.equal(true);
-        const hasAfter = warnStub.getCalls().some(c => c.args && c.args[0] === AFTER_HOOK_ERROR);
-        expect(hasAfter).to.equal(true);
-        resolve(undefined);
-      } catch (e) { reject(e); }
-    }, 1));
+        await new Promise((resolve, reject) =>
+            setTimeout(() => {
+                try {
+                    assert.equal(warnStub.mock.callCount() > 0, true);
+                    const hasAfter = warnStub
+                        .mock.calls
+                        .some((c: any) => c.arguments && c.arguments[0] === AFTER_HOOK_ERROR);
+                    assert.equal(hasAfter, true);
+                    resolve(undefined);
+                } catch (e) {
+                    reject(e);
+                }
+            }, 1),
+        );
 
-    await service.destroy();
-  });
+        await service.destroy();
+    });
 });

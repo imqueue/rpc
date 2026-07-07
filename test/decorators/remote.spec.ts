@@ -22,16 +22,17 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import '../mocks';
-import { expect } from 'chai';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
 import { remote } from '../..';
 
 describe('decorators/remote()', () => {
     it('should be a function', () => {
-        expect(typeof remote).to.equal('function');
+        assert.equal(typeof remote, 'function');
     });
 
     it('should return decorator function', () => {
-        expect(typeof remote()).to.equal('function');
+        assert.equal(typeof remote(), 'function');
     });
 
     it('should pass decorated method name on its call', () => {
@@ -42,7 +43,9 @@ describe('decorators/remote()', () => {
             }
         }
 
-        expect(new RemoteDecoratorTestClass().decoratedMethod(1))
-            .to.deep.equal([1, 'decoratedMethod']);
+        assert.deepEqual(new RemoteDecoratorTestClass().decoratedMethod(1), [
+            1,
+            'decoratedMethod',
+        ]);
     });
 });

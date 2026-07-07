@@ -21,9 +21,10 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import * as mock from 'mock-require';
+import mockRequire from 'mock-require';
+import { describe, it, before, after, mock } from 'node:test';
+import assert from 'node:assert/strict';
 import { logger } from './mocks';
-import { expect } from 'chai';
 import {
     IMQClient,
     IMQService,
@@ -32,14 +33,12 @@ import {
     expose,
     remote,
 } from '..';
-import * as sinon from 'sinon';
 import * as fs from 'fs';
 import * as imqRpc from '..';
 
-mock('@imqueue/rpc', imqRpc);
+mockRequire('@imqueue/rpc', imqRpc);
 
 class TestService extends IMQService {
-
     @expose()
     public exposed() {
         return 'exposed';
@@ -52,9 +51,8 @@ class TestService extends IMQService {
 
     @expose()
     public throwable() {
-        throw new Error('No way!')
+        throw new Error('No way!');
     }
-
 }
 
 class TestServiceClient extends IMQClient {
@@ -72,19 +70,16 @@ class TestServiceClient extends IMQClient {
     public async throwable(delay?: IMQDelay) {
         return await this.remoteCall<any>(...arguments);
     }
-
 }
 
 function rmdirr(path: string) {
     if (fs.existsSync(path)) {
-        fs.readdirSync(path).forEach((file) => {
+        fs.readdirSync(path).forEach(file => {
             const curPath = `${path}/${file}`;
 
             if (fs.lstatSync(curPath).isDirectory()) {
                 rmdirr(curPath);
-            }
-
-            else {
+            } else {
                 fs.unlinkSync(curPath);
             }
         });
@@ -105,7 +100,7 @@ describe('IMQClient', () => {
             await service.start();
             client = new TestServiceClient({ logger });
             await client.start();
-        } catch (err) {
+        } catch (err: any) {
             console.error(err);
         }
     });
@@ -116,70 +111,79 @@ describe('IMQClient', () => {
     });
 
     it('should be a class', () => {
-        expect(typeof IMQClient).to.equal('function');
+        assert.equal(typeof IMQClient, 'function');
     });
 
     describe('constructor', () => {
         it('should throw if directly called', () => {
             const Client: any = IMQClient;
 
-            expect(() => new Client()).to.throw(TypeError);
+            assert.throws(() => new Client(), TypeError);
         });
 
         it('should not throw', () => {
-            expect(() => new TestServiceClient()).not.to.throw;
+            assert.doesNotThrow(() => new TestServiceClient());
         });
 
         it('should use constructor name by default', () => {
-            expect(new TestServiceClient().name)
-                .to.contain('TestServiceClient');
+            assert.ok((new TestServiceClient().name).includes(
+                'TestServiceClient',
+            ));
         });
 
         it('should use given name if provided', () => {
-            expect(new TestServiceClient({}, undefined, 'TestClient').name)
-                .to.contain('TestClient');
+            assert.ok((
+                new TestServiceClient({}, undefined, 'TestClient').name
+            ).includes('TestClient'));
         });
 
-        it('should re-use existing redis connection if singleQueue option '
-            + 'enabled', () => {
-            const options = { logger, singleQueue: true };
-            const client1: any = new TestServiceClient(options);
-            const client2: any = new TestServiceClient(options);
+        it(
+            'should re-use existing redis connection if singleQueue option ' +
+                'enabled',
+            () => {
+                const options = { logger, singleQueue: true };
+                const client1: any = new TestServiceClient(options);
+                const client2: any = new TestServiceClient(options);
 
-            expect(client1.imq).to.equal(client2.imq);
-        });
+                assert.equal(client1.imq, client2.imq);
+            },
+        );
 
-        it('should not re-use existing redis connection if singleQueue option '
-            + 'disabled', () => {
-            const options = { logger, singleQueue: false };
-            const client1: any = new TestServiceClient(options);
-            const client2: any = new TestServiceClient(options);
+        it(
+            'should not re-use existing redis connection if singleQueue option ' +
+                'disabled',
+            () => {
+                const options = { logger, singleQueue: false };
+                const client1: any = new TestServiceClient(options);
+                const client2: any = new TestServiceClient(options);
 
-            expect(client1.imq).to.not.equal(client2.imq);
-        });
+                assert.notEqual(client1.imq, client2.imq);
+            },
+        );
     });
 
     describe('describe()', () => {
         it('should return service description', async () => {
             const description: Description = await client.describe();
 
-            expect(description.service).not.to.be.undefined;
-            expect(description.types).not.to.be.undefined;
-            expect(description.service.methods.exposed).not.to.be.undefined;
-            expect(description.service.methods.unexposed).to.be.undefined;
+            assert.notEqual(description.service, undefined);
+            assert.notEqual(description.types, undefined);
+            assert.notEqual(description.service.methods.exposed, undefined);
+            assert.equal(description.service.methods.unexposed, undefined);
         });
 
         it('should allow delayed calls', async () => {
             const start = Date.now();
             const description: Description = await client.describe(
-                new IMQDelay(100));
+                new IMQDelay(100),
+            );
             const time = Date.now() - start;
 
-            expect(time).to.be.gte(100);
-            expect(description.service).not.to.be.undefined;
-            expect(description.types).not.to.be.undefined;
-            expect(description.service.methods.exposed).not.to.be.undefined;
-            expect(description.service.methods.unexposed).to.be.undefined;
+            assert.ok((time) >= (100));
+            assert.notEqual(description.service, undefined);
+            assert.notEqual(description.types, undefined);
+            assert.notEqual(description.service.methods.exposed, undefined);
+            assert.equal(description.service.methods.unexposed, undefined);
         });
     });
 
@@ -187,10 +191,8 @@ describe('IMQClient', () => {
         it('should throw if service returned error', async () => {
             try {
                 await client.throwable();
-            }
-
-            catch (err) {
-                expect(err.code).to.equal('IMQ_RPC_CALL_ERROR');
+            } catch (err: any) {
+                assert.equal(err.code, 'IMQ_RPC_CALL_ERROR');
             }
         });
     });
@@ -198,23 +200,25 @@ describe('IMQClient', () => {
     describe('create()', () => {
         it('should create and return compiled module dynamically', async () => {
             try {
-                const testService: any = await IMQClient.create(
-                    'TestService', { logger, path: CLIENTS_PATH });
-                // noinspection TypeScriptUnresolvedFunction
+                const testService: any = await IMQClient.create('TestService', {
+                    logger,
+                    path: CLIENTS_PATH,
+                });
                 const cli = new testService.TestClient({ logger });
 
-                expect(cli).instanceOf(IMQClient);
+                assert.ok(cli instanceof IMQClient);
 
                 const notExists = await new Promise(resolve =>
-                    fs.access(`${CLIENTS_PATH}/TestService.ts`, resolve));
-                expect(!notExists).to.be.equal(
+                    fs.access(`${CLIENTS_PATH}/TestService.ts`, resolve),
+                );
+                assert.equal(!notExists,
                     true,
-                    'TestService.ts does not exit'
+                    'TestService.ts does not exit',
                 );
 
                 cli.destroy();
                 rmdirr(CLIENTS_PATH);
-            } catch (err) {
+            } catch (err: any) {
                 rmdirr(CLIENTS_PATH);
                 throw err;
             }
@@ -227,17 +231,17 @@ describe('IMQClient', () => {
                     path: CLIENTS_PATH,
                     write: false,
                 });
-                // noinspection TypeScriptUnresolvedFunction
                 const cli = new testService.TestClient({ logger });
 
-                expect(cli).instanceOf(IMQClient);
+                assert.ok(cli instanceof IMQClient);
 
                 const notExists = await new Promise(resolve =>
-                    fs.access(`${CLIENTS_PATH}/TestService.ts`, resolve));
-                expect(!notExists).to.be.equal(false, 'TestService.ts exits');
+                    fs.access(`${CLIENTS_PATH}/TestService.ts`, resolve),
+                );
+                assert.equal(!notExists, false, 'TestService.ts exits');
 
                 cli.destroy();
-            } catch (err) {
+            } catch (err: any) {
                 throw err;
             }
         });
@@ -247,22 +251,20 @@ describe('IMQClient', () => {
                 await IMQClient.create('SomeService', {
                     logger,
                     path: CLIENTS_PATH,
-                    timeout: 200
+                    timeout: 200,
                 });
-            }
-
-            catch (err) {
-                expect(err.message).to.contain('service remote call timed-out');
+            } catch (err: any) {
+                assert.ok((err.message).includes('service remote call timed-out'));
             }
         });
     });
 
     describe('stop()', () => {
         it('should stop client form serving messages', async () => {
-            const spy = sinon.spy((<any>client).imq, 'stop' as any);
+            const spy = mock.method((<any>client).imq, 'stop' as any);
             await client.stop();
-            expect(spy.called).to.be.true;
-            spy.restore();
+            assert.equal(spy.mock.callCount() > 0, true);
+            spy.mock.restore();
         });
     });
 });

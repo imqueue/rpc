@@ -21,16 +21,11 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { expect } from 'chai';
-import * as sinon from 'sinon';
-import { uuid } from '@imqueue/core';
+import { describe, it, mock } from 'node:test';
+import assert from 'node:assert/strict';
+import { randomUUID as uuid } from 'crypto';
 import { logger } from './mocks';
-import {
-    IMQService,
-    IMQRPCRequest,
-    expose,
-    AFTER_HOOK_ERROR,
-} from '..';
+import { IMQService, IMQRPCRequest, expose, AFTER_HOOK_ERROR } from '..';
 
 class AfterHookService extends IMQService {
     @expose()
@@ -40,13 +35,15 @@ class AfterHookService extends IMQService {
 
     @expose()
     public async asyncHello(name: string) {
-        return await new Promise<string>(resolve => setTimeout(() => resolve(`Hello, ${name}!`), 5));
+        return await new Promise<string>(resolve =>
+            setTimeout(() => resolve(`Hello, ${name}!`), 5),
+        );
     }
 }
 
 describe('IMQService hooks (afterCall) and promise branch', () => {
     it('should execute afterCall hook without error', async () => {
-        const afterCall = sinon.spy(async () => {});
+        const afterCall = mock.fn(async () => {});
         const service: any = new AfterHookService({ logger, afterCall });
         const request: IMQRPCRequest = {
             from: 'HookClient',
@@ -54,27 +51,31 @@ describe('IMQService hooks (afterCall) and promise branch', () => {
             args: [],
         };
         const id = uuid();
-        const sendSpy = sinon.spy(service.imq, 'send');
+        const sendSpy = mock.method(service.imq, 'send');
 
         await service.start();
         service.imq.emit('message', request, id);
 
-        await new Promise((resolve, reject) => setTimeout(() => {
-            try {
-                expect(sendSpy.called).to.be.true;
-                expect(afterCall.calledOnce).to.be.true;
-                resolve(undefined);
-            } catch (err) {
-                reject(err);
-            }
-        }));
+        await new Promise((resolve, reject) =>
+            setTimeout(() => {
+                try {
+                    assert.equal(sendSpy.mock.callCount() > 0, true);
+                    assert.equal(afterCall.mock.callCount() === 1, true);
+                    resolve(undefined);
+                } catch (err) {
+                    reject(err);
+                }
+            }),
+        );
 
         await service.destroy();
     });
 
     it('should catch afterCall error and log AFTER_HOOK_ERROR', async () => {
-        const warnSpy = sinon.spy(logger, 'warn');
-        const afterCall = async () => { throw new Error('after boom'); };
+        const warnSpy = mock.method(logger, 'warn');
+        const afterCall = async () => {
+            throw new Error('after boom');
+        };
         const service: any = new AfterHookService({ logger, afterCall });
         const request: IMQRPCRequest = {
             from: 'HookClient',
@@ -86,25 +87,35 @@ describe('IMQService hooks (afterCall) and promise branch', () => {
         await service.start();
         service.imq.emit('message', request, id);
 
-        await new Promise((resolve, reject) => setTimeout(() => {
-            try {
-                expect(warnSpy.called).to.be.true;
-                const hasAfter = warnSpy.getCalls().some((c: any) => c.args && c.args[0] === AFTER_HOOK_ERROR);
-                expect(hasAfter).to.be.true;
-                resolve(undefined);
-            } catch (err) {
-                reject(err);
-            }
-        }));
+        await new Promise((resolve, reject) =>
+            setTimeout(() => {
+                try {
+                    assert.equal(warnSpy.mock.callCount() > 0, true);
+                    const hasAfter = warnSpy
+                        .mock.calls
+                        .some(
+                            (c: any) =>
+                                c.arguments && c.arguments[0] === AFTER_HOOK_ERROR,
+                        );
+                    assert.equal(hasAfter, true);
+                    resolve(undefined);
+                } catch (err) {
+                    reject(err);
+                }
+            }),
+        );
 
-        warnSpy.restore();
+        warnSpy.mock.restore();
         await service.destroy();
     });
 
     it('should await promise-returning method result before sending', async () => {
         const service: any = new AfterHookService({ logger });
         // make an exposed method return a Promise to hit thenable branch
-        service.exposed = async () => await new Promise<string>(resolve => setTimeout(() => resolve('Hello, IMQ!'), 5));
+        service.exposed = async () =>
+            await new Promise<string>(resolve =>
+                setTimeout(() => resolve('Hello, IMQ!'), 5),
+            );
         const request: IMQRPCRequest = {
             from: 'HookClient',
             method: 'exposed',
@@ -114,15 +125,17 @@ describe('IMQService hooks (afterCall) and promise branch', () => {
 
         // stub to assert when send() is actually called, after promise resolved
         const done = new Promise<void>((resolve, reject) => {
-            sinon.stub(service.imq, 'send').callsFake(async (_to: string, response: any) => {
-                try {
-                    expect(response.data).to.equal('Hello, IMQ!');
-                    resolve();
-                } catch (err) {
-                    reject(err);
-                }
-                return id;
-            });
+            mock.method(service.imq, 'send', 
+                async (_to: string, response: any) => {
+                    try {
+                        assert.equal(response.data, 'Hello, IMQ!');
+                        resolve();
+                    } catch (err) {
+                        reject(err);
+                    }
+                    return id;
+                },
+            );
         });
 
         await service.start();

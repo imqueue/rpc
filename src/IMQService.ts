@@ -42,7 +42,8 @@ import {
     DEFAULT_IMQ_SERVICE_OPTIONS,
     AFTER_HOOK_ERROR,
     BEFORE_HOOK_ERROR,
-    SIGNALS, DEFAULT_IMQ_METRICS_SERVER_OPTIONS,
+    SIGNALS,
+    DEFAULT_IMQ_METRICS_SERVER_OPTIONS,
 } from '.';
 import * as os from 'os';
 import { ArgDescription } from './IMQRPCDescription';
@@ -54,13 +55,16 @@ const cluster: any = require('cluster');
 
 export class Description {
     service: {
-        name: string,
-        methods: MethodsCollectionDescription
+        name: string;
+        methods: MethodsCollectionDescription;
     };
     types: TypesDescription;
 }
 
-const serviceDescriptions: Map<string, Description> = new Map<string, Description>();
+const serviceDescriptions: Map<string, Description> = new Map<
+    string,
+    Description
+>();
 
 /**
  * Returns collection of class methods metadata even those are inherited
@@ -94,11 +98,9 @@ function getClassMethods(className: string): MethodsCollectionDescription {
  * @returns {boolean}
  */
 function isValidArgsCount(argsInfo: ArgDescription[], args: any[]): boolean {
-    // istanbul ignore next
-    return (argsInfo.some(argInfo => argInfo.isOptional)
+    return argsInfo.some(argInfo => argInfo.isOptional)
         ? argsInfo.length >= args.length
-        : argsInfo.length === args.length
-    );
+        : argsInfo.length === args.length;
 }
 
 /**
@@ -106,7 +108,6 @@ function isValidArgsCount(argsInfo: ArgDescription[], args: any[]): boolean {
  * Basic abstract service (server-side) implementation
  */
 export abstract class IMQService {
-
     [property: string]: any;
 
     protected imq: IMessageQueue;
@@ -117,11 +118,9 @@ export abstract class IMQService {
     public name: string;
     public options: IMQServiceOptions;
 
-    // noinspection TypeScriptAbstractClassConstructorCanBeMadeProtected
     /**
      * Class constructor
      *
-     * @constructor
      * @param {Partial<IMQServiceOptions>} options
      * @param {string} [name]
      */
@@ -129,8 +128,10 @@ export abstract class IMQService {
         this.name = name || this.constructor.name;
 
         if (this.name === 'IMQService') {
-            throw new TypeError('IMQService class is abstract and cannot ' +
-                'be instantiated directly!');
+            throw new TypeError(
+                'IMQService class is abstract and cannot ' +
+                    'be instantiated directly!',
+            );
         }
 
         this.options = {
@@ -138,7 +139,7 @@ export abstract class IMQService {
             ...options,
             metricsServer: {
                 ...DEFAULT_IMQ_METRICS_SERVER_OPTIONS,
-                ...(options?.metricsServer || {}),
+                ...options?.metricsServer,
             },
         };
         this.logger = this.options.logger || /* istanbul ignore next */ console;
@@ -146,24 +147,24 @@ export abstract class IMQService {
 
         this.handleRequest = this.handleRequest.bind(this);
 
-        SIGNALS.forEach((signal: any) => process.on(signal, async () => {
-            this.destroy().catch(this.logger.error);
+        SIGNALS.forEach((signal: any) =>
+            process.on(signal, async () => {
+                this.destroy().catch(this.logger.error);
 
-            if (this.metricsServer) {
-                this.metricsServer.close();
-            }
+                if (this.metricsServer) {
+                    this.metricsServer.close();
+                }
 
-            // istanbul ignore next
-            setTimeout(() => process.exit(0), IMQ_SHUTDOWN_TIMEOUT);
-        }));
+                setTimeout(() => process.exit(0), IMQ_SHUTDOWN_TIMEOUT);
+            }),
+        );
 
-        this.imq.on('message', this.handleRequest);
+        this.imq.on('message', this.handleRequest as any);
     }
 
     /**
      * Handles incoming request and produces corresponding response
      *
-     * @access private
      * @param {IMQRPCRequest} request - request message
      * @param {string} id - message unique identifier
      * @return {Promise<string>}
@@ -197,7 +198,7 @@ export abstract class IMQService {
 
             try {
                 await beforeCall(request, response);
-            } catch (err) {
+            } catch (err: any) {
                 logger.warn(BEFORE_HOOK_ERROR, err);
             }
         }
@@ -206,10 +207,11 @@ export abstract class IMQService {
             response.error = IMQError(
                 'IMQ_RPC_NO_METHOD',
                 `Method ${this.name}.${method}() does not exist.`,
-                new Error().stack, method, args);
-        }
-
-        else if (!description.service.methods[method]) {
+                new Error().stack,
+                method,
+                args,
+            );
+        } else if (!description.service.methods[method]) {
             // Allow calling runtime-attached methods (own props) even if
             // they are not present in the exposed service description.
             // Deny access for prototype (class) methods not decorated with @expose.
@@ -217,24 +219,31 @@ export abstract class IMQService {
             const value: any = (this as any)[method];
             const proto = Object.getPrototypeOf(this);
             const protoValue = proto && proto[method];
-            const isSameAsProto = typeof protoValue === 'function' && value === protoValue;
+            const isSameAsProto =
+                typeof protoValue === 'function' && value === protoValue;
             // Allow only truly dynamic own-instance functions (not the same as prototype)
             if (!(isOwn && typeof value === 'function' && !isSameAsProto)) {
                 response.error = IMQError(
                     'IMQ_RPC_NO_ACCESS',
                     `Access to ${this.name}.${method}() denied!`,
-                    new Error().stack, method, args);
+                    new Error().stack,
+                    method,
+                    args,
+                );
             }
-        }
-
-        else if (!isValidArgsCount(
-            description.service.methods[method].arguments,
-            args
-        )) {
+        } else if (
+            !isValidArgsCount(
+                description.service.methods[method].arguments,
+                args,
+            )
+        ) {
             response.error = IMQError(
                 'IMQ_RPC_INVALID_ARGS_COUNT',
                 `Invalid args count for ${this.name}.${method}().`,
-                new Error().stack, method, args);
+                new Error().stack,
+                method,
+                args,
+            );
         }
 
         if (response.error) {
@@ -246,15 +255,18 @@ export abstract class IMQService {
         try {
             response.data = this[method].apply(this, args);
 
-            // istanbul ignore next
             if (response.data && response.data.then) {
                 response.data = await response.data;
             }
-        }
-
-        catch (err) {
-            response.error = IMQError(err.code || 'IMQ_RPC_CALL_ERROR',
-                err.message, err.stack, method, args, err);
+        } catch (err: any) {
+            response.error = IMQError(
+                err.code || 'IMQ_RPC_CALL_ERROR',
+                err.message,
+                err.stack,
+                method,
+                args,
+                err,
+            );
         }
 
         return await send(request, response, this);
@@ -271,7 +283,8 @@ export abstract class IMQService {
         if (!this.options.multiProcess) {
             this.logger.info(
                 '%s: starting single-worker, pid %s',
-                this.name, process.pid
+                this.name,
+                process.pid,
             );
 
             this.describe();
@@ -288,7 +301,6 @@ export abstract class IMQService {
                 cluster.fork({ workerId: i });
             }
 
-            // istanbul ignore next
             cluster.on('exit', (worker: any) => {
                 this.logger.info(
                     '%s: worker pid %s died, exiting',
@@ -297,9 +309,7 @@ export abstract class IMQService {
                 );
                 process.exit(1);
             });
-        }
-
-        else {
+        } else {
             this.logger.info(
                 '%s: worker #%s started, pid %s',
                 this.name,
@@ -315,7 +325,6 @@ export abstract class IMQService {
         return this.startWithMetricsServer();
     }
 
-    // noinspection JSUnusedGlobalSymbols
     /**
      * Sends given data to service subscription channel
      *
@@ -359,9 +368,9 @@ export abstract class IMQService {
             description = {
                 service: {
                     name: this.name,
-                    methods: getClassMethods(this.constructor.name)
+                    methods: getClassMethods(this.constructor.name),
                 },
-                types: IMQRPCDescription.typesDescription
+                types: IMQRPCDescription.typesDescription,
             };
 
             serviceDescriptions.set(this.name, description);
@@ -383,9 +392,11 @@ export abstract class IMQService {
         this.metricsServer = http.createServer(async (req, res) => {
             if (req.url === '/metrics') {
                 const length = await this.imq.queueLength();
-                const content = metricServerOptions.queueLengthFormatter?.(
-                    length, 'queue_length',
-                ) || String(length);
+                const content =
+                    metricServerOptions.queueLengthFormatter?.(
+                        length,
+                        'queue_length',
+                    ) || String(length);
 
                 res.setHeader('Content-Type', 'plain/text');
                 res.setHeader('Content-Length', Buffer.byteLength(content));
@@ -398,17 +409,13 @@ export abstract class IMQService {
             res.writeHead(404);
             res.end();
         });
-        this.metricsServer.listen(
-            metricServerOptions.port,
-            '0.0.0.0',
-            () => {
-                this.logger.info(
-                    '%s: metrics server started on port %s',
-                    this.name,
-                    metricServerOptions.port,
-                );
-            },
-        );
+        this.metricsServer.listen(metricServerOptions.port, '0.0.0.0', () => {
+            this.logger.info(
+                '%s: metrics server started on port %s',
+                this.name,
+                metricServerOptions.port,
+            );
+        });
 
         return service;
     }
@@ -437,7 +444,7 @@ export async function send(
 
         try {
             await afterCall(request, response);
-        } catch (err) {
+        } catch (err: any) {
             logger.warn(AFTER_HOOK_ERROR, err);
         }
     }

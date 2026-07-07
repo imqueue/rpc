@@ -21,7 +21,92 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-const { machineIdSync } = require('node-machine-id');
+import { execSync } from 'child_process';
+import { createHash } from 'crypto';
+
+/**
+ * Returns the base path to the Windows registry query tool, accounting for
+ * 32-bit processes running on 64-bit Windows (which must go through the
+ * "sysnative" redirector to reach the real System32).
+ *
+ * @returns {string}
+ */
+function winRegBase(): string {
+    const useSysnative =
+        process.arch === 'ia32'
+        && Object.prototype.hasOwnProperty.call(
+            process.env,
+            'PROCESSOR_ARCHITEW6432',
+        );
+
+    return useSysnative
+        ? '%windir%\\sysnative\\cmd.exe /c %windir%\\System32'
+        : '%windir%\\System32';
+}
+
+/**
+ * Returns the platform-specific shell command that emits the raw machine
+ * identifier. Mirrors the commands used by the node-machine-id package.
+ *
+ * @returns {string}
+ */
+function idCommand(): string {
+    switch (process.platform) {
+        case 'darwin':
+            return 'ioreg -rd1 -c IOPlatformExpertDevice';
+        case 'win32':
+            return `${winRegBase()}\\REG.exe QUERY `
+                + 'HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography '
+                + '/v MachineGuid';
+        case 'linux':
+            return '( cat /var/lib/dbus/machine-id /etc/machine-id '
+                + '2> /dev/null || hostname ) | head -n 1 || :';
+        case 'freebsd':
+            return 'kenv -q smbios.system.uuid || sysctl -n kern.hostuuid';
+        default:
+            throw new Error(`Unsupported platform: ${process.platform}`);
+    }
+}
+
+/**
+ * Extracts the bare GUID from the raw command output for the current platform.
+ *
+ * @param {string} raw - unprocessed command output
+ * @returns {string}
+ */
+function parseId(raw: string): string {
+    switch (process.platform) {
+        case 'darwin':
+            return raw
+                .split('IOPlatformUUID')[1]
+                .split('\n')[0]
+                .replace(/=|\s+|"/gi, '')
+                .toLowerCase();
+        case 'win32':
+            return raw
+                .split('REG_SZ')[1]
+                .replace(/\r+|\n+|\s+/gi, '')
+                .toLowerCase();
+        default: // linux, freebsd
+            return raw.replace(/\r+|\n+|\s+/gi, '').toLowerCase();
+    }
+}
+
+/**
+ * Returns the OS machine identifier synchronously, replicating the approach
+ * used by the node-machine-id package: it runs the platform-specific command,
+ * parses out the GUID, and, unless the original id is requested, returns its
+ * sha256 hash.
+ *
+ * @param {boolean} [original] - when true returns the raw machine GUID,
+ *  otherwise returns its sha256 hash
+ * @returns {string}
+ */
+function machineIdSync(original?: boolean): string {
+    const id = parseId(execSync(idCommand()).toString());
+
+    return original ? id : createHash('sha256').update(id).digest('hex');
+}
 
 /**
  * Returns machine UUID
@@ -29,5 +114,5 @@ const { machineIdSync } = require('node-machine-id');
  * @returns {string}
  */
 export function osUuid(): string {
-    return machineIdSync({ original: true });
+    return machineIdSync(true);
 }

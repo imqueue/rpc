@@ -22,7 +22,8 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import '../mocks';
-import { expect } from 'chai';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
 import { indexed, property, IMQRPCDescription } from '../..';
 
 @indexed('[fieldName: string]: SchemaField')
@@ -47,22 +48,28 @@ const typesMetadata = IMQRPCDescription.typesDescription;
 
 describe('decorators/property()', () => {
     it('should be a function', () => {
-        expect(typeof indexed).to.equal('function');
+        assert.equal(typeof indexed, 'function');
     });
 
     it('should return decorator function', () => {
-        expect(typeof indexed('[name: string]: any')).to.equal('function');
+        assert.equal(typeof indexed('[name: string]: any'), 'function');
     });
 
     it('should properly fill exposed metadata', () => {
-        expect(typesMetadata.Schema).not.to.be.undefined;
-        expect(typesMetadata.Schema.indexType)
-            .contains('[fieldName: string]: SchemaField');
+        assert.notEqual(typesMetadata.Schema, undefined);
+        assert.ok(
+            typesMetadata.Schema!.indexType!.includes(
+                '[fieldName: string]: SchemaField',
+            ),
+        );
     });
 
     it('should accept thunk definition', () => {
-        expect(typesMetadata.SchemaThunk).not.to.be.undefined;
-        expect(typesMetadata.SchemaThunk.indexType)
-            .contains('[fieldName: string]: SchemaField');
+        assert.notEqual(typesMetadata.SchemaThunk, undefined);
+        assert.ok(
+            typesMetadata.SchemaThunk!.indexType!.includes(
+                '[fieldName: string]: SchemaField',
+            ),
+        );
     });
 });

@@ -42,26 +42,28 @@ export interface LockOptions {
  * ) => void}
  */
 export function lock(enabledOrOptions: boolean | LockOptions = true) {
-    return function(
-        target: any,
-        methodName: string | symbol,
-        descriptor: TypedPropertyDescriptor<(...args: any[]) => any>,
-    ) {
-        const enabled = typeof enabledOrOptions === 'boolean'
-            ? enabledOrOptions
-            : !enabledOrOptions.disabled;
-        const skipArgs = typeof enabledOrOptions === 'boolean'
-            ? undefined
-            : enabledOrOptions.skipArgs;
-        const original = descriptor.value;
-        const className: string = typeof target === 'function'
-            ? target.name              // static
-            : target.constructor.name; // dynamic
+    return function (
+        value: (...args: any[]) => any,
+        context: ClassMethodDecoratorContext,
+    ): (...args: any[]) => any {
+        const enabled =
+            typeof enabledOrOptions === 'boolean'
+                ? enabledOrOptions
+                : !enabledOrOptions.disabled;
+        const skipArgs =
+            typeof enabledOrOptions === 'boolean'
+                ? undefined
+                : enabledOrOptions.skipArgs;
+        const original = value;
+        const methodName = context.name;
+        const isStatic = context.static;
 
-        descriptor.value = async function<T>(...args: any[]): Promise<T> {
-            const withLocks = !parseInt(
-                process.env['DISABLE_LOCKS'] + ''
-            ) && enabled;
+        return async function <T>(this: any, ...args: any[]): Promise<T> {
+            const className: string = isStatic
+                ? this.name // static: `this` is the class
+                : this.constructor.name; // dynamic: `this` is the instance
+            const withLocks =
+                !parseInt(process.env['DISABLE_LOCKS'] + '') && enabled;
             let lock: AcquiredLock<T>;
             let sig: string = '';
 
@@ -69,9 +71,9 @@ export function lock(enabledOrOptions: boolean | LockOptions = true) {
                 sig = signature(
                     className,
                     methodName,
-                    skipArgs ? args.filter((_, index) =>
-                        !~skipArgs.indexOf(index)
-                    ) : args,
+                    skipArgs
+                        ? args.filter((_, index) => !~skipArgs.indexOf(index))
+                        : args,
                 );
                 lock = await IMQLock.acquire<T>(sig, undefined, {
                     className,
@@ -85,12 +87,13 @@ export function lock(enabledOrOptions: boolean | LockOptions = true) {
             }
 
             try {
-                // istanbul ignore next
                 let result: any = original
                     ? original.apply(this, args)
                     : undefined;
 
-                if (result && result.then &&
+                if (
+                    result &&
+                    result.then &&
                     typeof result.then === 'function'
                 ) {
                     result = await result;
@@ -102,14 +105,12 @@ export function lock(enabledOrOptions: boolean | LockOptions = true) {
 
                 return result;
             } catch (err) {
-                // istanbul ignore next
                 if (withLocks) {
                     IMQLock.release(sig, null, err);
                 }
 
-                // istanbul ignore next
                 throw err;
             }
         };
-    }
+    };
 }

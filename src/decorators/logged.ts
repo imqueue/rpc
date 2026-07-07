@@ -31,7 +31,6 @@ export interface LoggedDecoratorOptions {
     doNotThrow?: boolean;
 }
 
-// noinspection JSUnusedGlobalSymbols
 /**
  * Logger decorator factory for class methods. Will try, catch and log errors
  * during method calls. If logger is bypassed, will use given logger, otherwise
@@ -45,39 +44,39 @@ export interface LoggedDecoratorOptions {
  */
 export function logged(options?: ILogger | LoggedDecoratorOptions) {
     return (
-        target: any,
-        methodName: string | symbol,
-        descriptor: TypedPropertyDescriptor<(...args: any[]) => any>,
-    ) => {
-        const original = descriptor.value;
-        const level: LoggedLogLevel = (
-            options &&
-            (options as LoggedDecoratorOptions).level
-        )
-            ? (options as LoggedDecoratorOptions).level as LoggedLogLevel
-            : 'error';
-        const doThrow = !options ||
-            !(options as LoggedDecoratorOptions).doNotThrow;
+        value: (...args: any[]) => any,
+        context: ClassMethodDecoratorContext,
+    ): ((...args: any[]) => any) => {
+        const original = value;
+        const level: LoggedLogLevel =
+            options && (options as LoggedDecoratorOptions).level
+                ? ((options as LoggedDecoratorOptions).level as LoggedLogLevel)
+                : 'error';
+        const doThrow =
+            !options || !(options as LoggedDecoratorOptions).doNotThrow;
 
-        descriptor.value = async function<T>(...args: any[]): Promise<T|void> {
+        return async function <T>(
+            this: any,
+            ...args: any[]
+        ): Promise<T | void> {
             try {
-                const ctx = (typeof this !== 'undefined' && this !== null)
-                    ? this
-                    : target;
-
                 if (original) {
-                    return await original.apply(ctx, args);
+                    return await original.apply(this, args);
                 }
             } catch (err) {
-                const logger: ILogger = (options && (options as LoggedDecoratorOptions).logger)
-                    ? (options as LoggedDecoratorOptions).logger as ILogger
-                    : (options && (options as any).error)
-                        ? options as ILogger
-                        : (this && (this as any).logger)
-                            ? (this as any).logger as ILogger
-                            : (target && (target as any).logger)
-                                ? (target as any).logger as ILogger
-                                : console;
+                const logger: ILogger =
+                    options && (options as LoggedDecoratorOptions).logger
+                        ? ((options as LoggedDecoratorOptions)
+                              .logger as ILogger)
+                        : options && (options as any).error
+                          ? (options as ILogger)
+                          : this && (this as any).logger
+                            ? ((this as any).logger as ILogger)
+                            : this &&
+                                this.constructor &&
+                                (this.constructor as any).logger
+                              ? ((this.constructor as any).logger as ILogger)
+                              : console;
 
                 (logger as any)[level](err);
 

@@ -64,9 +64,7 @@ export class RedisCache implements ICache {
             ...options,
         };
 
-        this.logger = this.options.logger ||
-            // istanbul ignore next
-            console;
+        this.logger = this.options.logger || console;
 
         if (RedisCache.redis) {
             return this;
@@ -81,12 +79,9 @@ export class RedisCache implements ICache {
         }
 
         return new Promise<RedisCache>((resolve, reject) => {
-            const connectionName = `${
-                this.options.prefix}:${
-                this.name }:pid:${
-                process.pid }:host:${
-                os.hostname()
-            }`;
+            const connectionName = `${this.options.prefix}:${this.name}:pid:${
+                process.pid
+            }:host:${os.hostname()}`;
 
             RedisCache.redis = new Redis({
                 port: Number(this.options.port),
@@ -110,11 +105,10 @@ export class RedisCache implements ICache {
                 resolve(this);
             });
 
-            // istanbul ignore next
             RedisCache.redis.on('error', (err: Error) => {
                 this.logger.error(
                     `${this.name}: error connecting redis, pid ${process.pid}:`,
-                    err
+                    err,
                 );
 
                 reject(err);
@@ -125,7 +119,6 @@ export class RedisCache implements ICache {
     /**
      * Returns fully qualified key name for a given generic key
      *
-     * @access private
      * @param {string} key
      * @returns {string}
      */
@@ -144,7 +137,6 @@ export class RedisCache implements ICache {
             throw new TypeError(REDIS_CLIENT_INIT_ERROR);
         }
 
-        // noinspection ES6RedundantAwait
         const data = <any>await RedisCache.redis.get(this.key(key));
 
         if (data) {
@@ -171,7 +163,7 @@ export class RedisCache implements ICache {
         key: string,
         value: any,
         ttl?: number,
-        nx: boolean = false
+        nx: boolean = false,
     ): Promise<boolean> {
         if (!RedisCache.redis) {
             throw new TypeError(REDIS_CLIENT_INIT_ERROR);
@@ -179,7 +171,7 @@ export class RedisCache implements ICache {
 
         const args: any[] = [
             this.key(key),
-            JSON.stringify(value && value.then ? await value : value)
+            JSON.stringify(value && value.then ? await value : value),
         ];
 
         if (ttl && ttl > 0) {
@@ -190,7 +182,10 @@ export class RedisCache implements ICache {
             args.push('NX');
         }
 
-        return await RedisCache.redis.set.apply(RedisCache.redis, args);
+        return await (RedisCache.redis.set as any).apply(
+            RedisCache.redis,
+            args,
+        );
     }
 
     /**
@@ -204,7 +199,7 @@ export class RedisCache implements ICache {
             throw new TypeError(REDIS_CLIENT_INIT_ERROR);
         }
 
-        return !!await RedisCache.redis.del(this.key(key));
+        return !!(await RedisCache.redis.del(this.key(key)));
     }
 
     /**
@@ -219,7 +214,6 @@ export class RedisCache implements ICache {
         }
 
         try {
-            // noinspection SpellCheckingInspection
             await RedisCache.redis.eval(
                 `for _,k in ipairs(redis.call('keys','${
                     keyMask
@@ -242,16 +236,12 @@ export class RedisCache implements ICache {
      */
     public static async destroy(): Promise<void> {
         try {
-            // istanbul ignore else
             if (RedisCache.redis) {
                 RedisCache.redis.removeAllListeners();
                 RedisCache.redis.disconnect(false);
                 RedisCache.redis.quit();
                 delete RedisCache.redis;
             }
-        }
-
-        catch (err) {}
+        } catch (err) {}
     }
-
 }

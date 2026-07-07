@@ -2,8 +2,8 @@
  * IMQClient methods Unit Tests (subscribe/unsubscribe/broadcast + signals)
  */
 import './mocks';
-import { expect } from 'chai';
-import * as sinon from 'sinon';
+import { describe, it, afterEach, mock } from 'node:test';
+import assert from 'node:assert/strict';
 import { IMQClient, remote } from '..';
 import { logger } from './mocks';
 
@@ -19,63 +19,71 @@ describe('IMQClient methods', () => {
     let client: MethodsClient;
 
     afterEach(async () => {
-        try { await client?.destroy(); } catch { /* ignore */ }
-        sinon.restore();
+        try {
+            await client?.destroy();
+        } catch {
+            /* ignore */
+        }
+        mock.restoreAll();
     });
 
     it('should delegate subscribe() to subscriptionImq with service name', async () => {
         client = new MethodsClient({ logger });
         const subImq: any = (client as any).subscriptionImq;
-        const spy = sinon.stub(subImq, 'subscribe').resolves();
-        const handler = sinon.spy();
+        const spy = mock.method(subImq, 'subscribe', async () => {});
+        const handler = mock.fn();
         await client.subscribe(handler as any);
-        expect(spy.calledOnce).to.equal(true);
-        expect(spy.firstCall.args[0]).to.equal(client.serviceName);
-        expect(spy.firstCall.args[1]).to.equal(handler);
+        assert.equal(spy.mock.callCount() === 1, true);
+        assert.equal(spy.mock.calls[0].arguments[0], client.serviceName);
+        assert.equal(spy.mock.calls[0].arguments[1], handler);
     });
 
     it('should delegate unsubscribe() to subscriptionImq', async () => {
         client = new MethodsClient({ logger });
         const subImq: any = (client as any).subscriptionImq;
-        const spy = sinon.stub(subImq, 'unsubscribe').resolves();
+        const spy = mock.method(subImq, 'unsubscribe', async () => {});
         await client.unsubscribe();
-        expect(spy.calledOnce).to.equal(true);
+        assert.equal(spy.mock.callCount() === 1, true);
     });
 
     it('should delegate broadcast() to imq.publish with queueName', async () => {
         client = new MethodsClient({ logger });
         const imq: any = (client as any).imq;
-        const spy = sinon.stub(imq, 'publish').resolves();
+        const spy = mock.method(imq, 'publish', async () => {});
         const payload: any = { hello: 'world' };
         await client.broadcast(payload);
-        expect(spy.calledOnce).to.equal(true);
-        expect(spy.firstCall.args[0]).to.equal(payload);
-        expect(spy.firstCall.args[1]).to.equal(client.queueName);
+        assert.equal(spy.mock.callCount() === 1, true);
+        assert.equal(spy.mock.calls[0].arguments[0], payload);
+        assert.equal(spy.mock.calls[0].arguments[1], client.queueName);
     });
 
     it('should handle process signals by calling destroy and then process.exit(0)', async () => {
         const callbacks: Array<() => any> = [];
-        const onStub = sinon.stub(process as any, 'on').callsFake((sig: any, cb: any) => {
-            callbacks.push(cb);
-            return process as any;
-        });
-        const exitStub = sinon.stub(process as any, 'exit');
-        const clock = sinon.useFakeTimers();
+        const onStub = mock.method(
+            process as any,
+            'on',
+            (sig: any, cb: any) => {
+                callbacks.push(cb);
+                return process as any;
+            },
+        );
+        const exitStub = mock.method(process as any, 'exit', () => {});
+        mock.timers.enable({ apis: ['setTimeout'] });
 
         client = new MethodsClient({ logger });
-        const destroyStub = sinon.stub(client, 'destroy').resolves();
+        const destroyStub = mock.method(client, 'destroy', async () => {});
 
         // invoke the first registered signal handler (e.g., SIGTERM)
         await callbacks[0]();
         // fast-forward shutdown timeout
-        clock.tick(10000); // IMQ_SHUTDOWN_TIMEOUT default
+        mock.timers.tick(10000); // IMQ_SHUTDOWN_TIMEOUT default
 
-        expect(destroyStub.calledOnce).to.equal(true);
-        expect(exitStub.called).to.equal(true);
-        expect(exitStub.firstCall.args[0]).to.equal(0);
+        assert.equal(destroyStub.mock.callCount(), 1);
+        assert.ok(exitStub.mock.callCount() > 0);
+        assert.equal(exitStub.mock.calls[0].arguments[0], 0);
 
-        clock.restore();
-        onStub.restore();
-        exitStub.restore();
+        mock.timers.reset();
+        onStub.mock.restore();
+        exitStub.mock.restore();
     });
 });

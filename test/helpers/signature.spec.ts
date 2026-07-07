@@ -1,5 +1,5 @@
 /*!
- * signature() Function Unit Tests
+ * osUuid() Function Unit Tests
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>
@@ -22,32 +22,33 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import '../mocks';
-import { expect } from 'chai';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
 import { signature } from '../..';
 
 describe('helpers/signature()', () => {
     it('should be a function', () => {
-        expect(typeof signature).to.equal('function');
+        assert.equal(typeof signature, 'function');
     });
 
     it('should return hash string', () => {
-        expect(/^[0-9a-f]{16,32}$/.test(signature('A', 'a', []))).to.be.true;
+        assert.ok(/^[0-9a-f]{16,32}$/.test(signature('A', 'a', [])));
     });
 
     it('should return same hash string for the same arguments bypassed', () => {
         const hashOne: string = signature('A', 'a', []);
         const hashTwo: string = signature('A', 'a', []);
 
-        expect(hashOne).to.equal(hashTwo);
+        assert.equal(hashOne, hashTwo);
     });
 
     it('should return different hash string for different args', () => {
         const hashOne: string = signature('A', 'a', []);
         const hashTwo: string = signature('A', 'b', []);
-        const hashThree: string = signature('A', 'a', [1,2,3]);
+        const hashThree: string = signature('A', 'a', [1, 2, 3]);
 
-        expect(hashOne).not.to.equal(hashTwo);
-        expect(hashTwo).not.to.equal(hashThree);
-        expect(hashOne).not.to.equal(hashThree);
+        assert.notEqual(hashOne, hashTwo);
+        assert.notEqual(hashTwo, hashThree);
+        assert.notEqual(hashOne, hashThree);
     });
 });

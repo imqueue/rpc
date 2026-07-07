@@ -1,5 +1,5 @@
 /*!
- * IMQMetadata Unit Tests
+ * IMQ-RPC Decorators: Symbol.metadata polyfill
  *
  * I'm Queue Software Project
  * Copyright (C) 2025  imqueue.com <support@imqueue.com>
@@ -21,24 +21,23 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import './mocks';
-import { expect } from 'chai';
-import { IMQMetadata } from '..';
 
-describe('IMQMetadata', () => {
-    it('should be a class', () => {
-        expect(typeof IMQMetadata).to.equal('function');
+/**
+ * Standard (TC39) decorator metadata relies on the well-known
+ * `Symbol.metadata`. Node.js does not implement it natively yet, so without
+ * this polyfill the compiler emits `context.metadata` as `undefined` and
+ * decorator metadata (used by @property/@expose/@indexed to collect complex
+ * type definitions) is unavailable.
+ *
+ * This module must be imported before any decorated class is defined; it is
+ * imported first by the decorator barrel, which every decorator consumer
+ * loads transitively.
+ */
+if (!(Symbol as { metadata?: symbol }).metadata) {
+    Object.defineProperty(Symbol, 'metadata', {
+        value: Symbol.for('Symbol.metadata'),
+        writable: false,
+        enumerable: false,
+        configurable: true,
     });
-
-    it('should copy provided metadata props to instance index', () => {
-        const data = { a: 1, b: 'x', c: { y: true } } as any;
-        const m = new IMQMetadata(data);
-        // direct property access
-        expect((m as any).a).to.equal(1);
-        expect((m as any).b).to.equal('x');
-        expect((m as any).c).to.deep.equal({ y: true });
-        // index signature behavior
-        const keys = Object.keys(m);
-        expect(keys.sort()).to.deep.equal(['a','b','c']);
-    });
-});
+}

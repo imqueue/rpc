@@ -22,22 +22,23 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import './mocks';
-import { expect } from 'chai';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
 import { IMQDelay } from '..';
 
 describe('IMQDelay', () => {
     it('should be a class', () => {
-        expect(typeof IMQDelay).to.equal('function');
+        assert.equal(typeof IMQDelay, 'function');
     });
 
     describe('constructor()', () => {
         it('should construct ms time from given args', () => {
-            expect(new IMQDelay(5).ms).to.equal(5);
-            expect(new IMQDelay(5, 'ms').ms).to.equal(5);
-            expect(new IMQDelay(5, 's').ms).to.equal(5000);
-            expect(new IMQDelay(5, 'm').ms).to.equal(300000);
-            expect(new IMQDelay(5, 'h').ms).to.equal(3600*5000);
-            expect(new IMQDelay(5, 'd').ms).to.equal(86400*5000);
+            assert.equal(new IMQDelay(5).ms, 5);
+            assert.equal(new IMQDelay(5, 'ms').ms, 5);
+            assert.equal(new IMQDelay(5, 's').ms, 5000);
+            assert.equal(new IMQDelay(5, 'm').ms, 300000);
+            assert.equal(new IMQDelay(5, 'h').ms, 3600 * 5000);
+            assert.equal(new IMQDelay(5, 'd').ms, 86400 * 5000);
         });
     });
 });

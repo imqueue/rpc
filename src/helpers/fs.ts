@@ -40,9 +40,9 @@ export function fileExists(path: string) {
  * @return {Promise<any>}
  */
 export function mkdir(path: string) {
-    return new Promise((resolve, reject) => fs.mkdir(
-        path,
-        generalCallback.bind(null, resolve, reject)));
+    return new Promise((resolve, reject) =>
+        fs.mkdir(path, generalCallback.bind(null, resolve, reject)),
+    );
 }
 
 /**
@@ -58,7 +58,9 @@ export function writeFile(path: string, content: string) {
             path,
             content,
             { encoding: 'utf8' },
-            generalCallback.bind(null, resolve, reject)));
+            generalCallback.bind(null, resolve, reject),
+        ),
+    );
 }
 
 /**
@@ -70,9 +72,9 @@ export function writeFile(path: string, content: string) {
  * @param {Error} err
  */
 function generalCallback(
-    resolve: () => void,
-    reject: (err: Error) => void,
-    err?: Error
+    resolve: (value?: unknown) => void,
+    reject: (err?: unknown) => void,
+    err?: Error | null,
 ) {
     if (err) {
         reject(err);
