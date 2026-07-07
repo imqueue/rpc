@@ -45,7 +45,7 @@
   "author": "imqueue.com <support@imqueue.com> (https://imqueue.com)",
   "license": "GPL-3.0-only",
   "dependencies": {
-    "@imqueue/core": "file:../core",
+    "@imqueue/core": "^2.0.26",
     "acorn": "^8.15.0",
     "farmhash-modern": "^1.1.0",
     "typescript": "^6.0.3"
