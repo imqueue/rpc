@@ -21,22 +21,10 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import 'reflect-metadata';
 import * as acorn from 'acorn';
-import {
-    ArgDescription,
-    ReturnValueDescription,
-    IMQRPCDescription,
-} from '..';
+import { ArgDescription, ReturnValueDescription, IMQRPCDescription } from '..';
 
-const TS_TYPES = [
-    'object',
-    'string',
-    'number',
-    'boolean',
-    'null',
-    'undefined',
-];
+const TS_TYPES = ['object', 'string', 'number', 'boolean', 'null', 'undefined'];
 
 type CommentMetadata = {
     [key: string]: string | ArgDescription[] | ReturnValueDescription;
@@ -54,7 +42,7 @@ type ClassDescriptions = {
         [key: string]: string | CommentBlockMetadata;
         inherits: string;
     };
-}
+};
 
 const descriptions: ClassDescriptions = {};
 
@@ -63,11 +51,9 @@ const RX_COMMA_SPLIT = /\s*,\s*/;
 const RX_MULTILINE_CLEANUP = /\*?\n +\* ?/g;
 const RX_DESCRIPTION = /^([\s\S]*?)@/;
 const RX_TAG = /(@[^@]+)/g;
-// noinspection RegExpRedundantEscape
 const RX_TYPE = /\{([\s\S]+)\}/;
 const RX_LI_CLEANUP = /^\s*-\s*/;
 const RX_SPACE_SPLIT = / /;
-// noinspection RegExpRedundantEscape
 const RX_OPTIONAL = /^\[(.*?)\]$/;
 
 /**
@@ -78,11 +64,11 @@ const RX_OPTIONAL = /^\[(.*?)\]$/;
  */
 function argumentNames(fn: (...args: any[]) => any): string[] {
     let src: string = fn.toString();
-    return src.slice(
-        src.indexOf('(') + 1, src.indexOf(')')
-    ).split(RX_COMMA_SPLIT).map(arg =>
-        arg.trim().replace(RX_ARG_NAMES, '$1')
-    ).filter(arg => arg);
+    return src
+        .slice(src.indexOf('(') + 1, src.indexOf(')'))
+        .split(RX_COMMA_SPLIT)
+        .map(arg => arg.trim().replace(RX_ARG_NAMES, '$1'))
+        .filter(arg => arg);
 }
 
 /**
@@ -100,13 +86,13 @@ function parseComment(src: string): CommentMetadata {
             description: '',
             type: '',
             tsType: '',
-        }
+        },
     };
-    let match, tags = [];
+    let match,
+        tags = [];
 
-    // istanbul ignore next
     data.description = String(
-        (cleanSrc.match(RX_DESCRIPTION) || [])[1] || ''
+        (cleanSrc.match(RX_DESCRIPTION) || [])[1] || '',
     ).trim();
 
     while ((match = RX_TAG.exec(cleanSrc))) {
@@ -118,7 +104,10 @@ function parseComment(src: string): CommentMetadata {
         let tagName = parts.shift();
         let tagDef = parts.join(' ');
         let typeMatch = tagDef.match(RX_TYPE);
-        let tsType = '', name = '', description = '', type = '';
+        let tsType = '',
+            name = '',
+            description = '',
+            type = '';
         let isOptional = false;
 
         if (typeMatch) {
@@ -162,7 +151,6 @@ function parseComment(src: string): CommentMetadata {
     return data;
 }
 
-// codebeat:disable[LOC,ABC]
 /**
  * Finds and parses methods and their comment blocks for a given class
  *
@@ -172,7 +160,9 @@ function parseComment(src: string): CommentMetadata {
 function parseDescriptions(name: string, src: string) {
     const comments: acorn.Comment[] = [];
     const options: acorn.Options = {
-        ecmaVersion: 8,
+        // 'latest' so we can parse whatever modern syntax the configured
+        // compilation target emits into the class source we introspect
+        ecmaVersion: 'latest',
         locations: true,
         ranges: true,
         allowReserved: true,
@@ -181,43 +171,45 @@ function parseDescriptions(name: string, src: string) {
     const nodes = (acorn.parse(src, options) as any).body;
 
     descriptions[name] = {
-        inherits: 'Function'
+        inherits: 'Function',
     };
 
     for (let node of nodes) {
-        // istanbul ignore if
-        if (!(
-            node && node.type === 'ClassDeclaration' &&
-            node.id && node.id.name === name &&
-            node.body.type === 'ClassBody'
-        )) {
+        if (
+            !(
+                node &&
+                node.type === 'ClassDeclaration' &&
+                node.id &&
+                node.id.name === name &&
+                node.body.type === 'ClassBody'
+            )
+        ) {
             continue;
         }
 
         if (node.superClass) {
-            // istanbul ignore next
             if (node.superClass.type === 'MemberExpression') {
-                descriptions[name].inherits =
-                    (<any>node.superClass.property).name;
-            }
-
-            else if (node.superClass.type === 'Identifier') {
+                descriptions[name].inherits = (<any>(
+                    node.superClass.property
+                )).name;
+            } else if (node.superClass.type === 'Identifier') {
                 descriptions[name].inherits = node.superClass.name;
             }
         }
 
-        const methods = node.body.body.filter((f: any) =>
-            f.type === 'MethodDefinition');
+        const methods = node.body.body.filter(
+            (f: any) => f.type === 'MethodDefinition',
+        );
 
         for (let method of node.body.body) {
-            // istanbul ignore if
             if (method.type !== 'MethodDefinition') {
                 continue;
             }
 
             const methodName: string = (<any>method.key).name;
-            const blocks: acorn.Comment[] = comments.filter(comment =>
-                comment.type === 'Block');
+            const blocks: acorn.Comment[] = comments.filter(
+                comment => comment.type === 'Block',
+            );
 
             if (!blocks.length) {
                 continue;
@@ -248,8 +240,9 @@ function parseDescriptions(name: string, src: string) {
 
             const index: number = methods.indexOf(method);
             const prev: any = index && methods[index - 1];
-            const prevBeforeComment = !prev
-                || (prev && prev.range && prev.range[1] <= foundBlock.start);
+            const prevBeforeComment =
+                !prev ||
+                (prev && prev.range && prev.range[1] <= foundBlock.start);
 
             if (prevBeforeComment) {
                 // it's a method comment block!!!!
@@ -260,7 +253,6 @@ function parseDescriptions(name: string, src: string) {
         }
     }
 }
-// codebeat:enable[LOC,ABC]
 
 /**
  * Helper function to make easy descriptions parts extractions
@@ -275,14 +267,12 @@ function get<T>(
     prop: string,
     className: string,
     method: string,
-    defaults: T
+    defaults: T,
 ): T {
     if (descriptions[className] && descriptions[className][method]) {
-        let comment = (
-            <CommentBlockMetadata>descriptions[className][method]
-        ).comment;
+        let comment = (<CommentBlockMetadata>descriptions[className][method])
+            .comment;
 
-        // istanbul ignore else
         if (comment[prop]) {
             return <any>comment[prop];
         }
@@ -302,13 +292,9 @@ function cast(type: string) {
 
     if (tsType === 'undefined') {
         tsType = 'void';
-    }
-
-    else if (tsType === 'array') {
+    } else if (tsType === 'array') {
         tsType = 'any[]';
-    }
-
-    else if (!~TS_TYPES.indexOf(tsType)) {
+    } else if (!~TS_TYPES.indexOf(tsType)) {
         tsType = type;
     }
 
@@ -316,76 +302,119 @@ function cast(type: string) {
 }
 
 /**
- * Expose decorator factory
+ * Builds and registers the RPC description for a single exposed method.
  *
- * @return {(
- *    target: object,
- *    methodName: (string),
- *    descriptor: TypedPropertyDescriptor<(...args: any[]) => any>
- * ) => void} - decorator function
+ * Types are taken from the method's JSDoc (parsed from the class source,
+ * preserved by `removeComments: false`); standard decorators provide no
+ * runtime `design:type` metadata, so JSDoc is the sole type source.
+ *
+ * @param {Function} ctor - class that declares the method
+ * @param {string} methodName - exposed method name
+ * @param {(...args: any[]) => any} fn - the method implementation
  */
-export function expose(): (...args: any[]) => any {
-    return function exposeDecorator(
-        target: any,
-        methodName: string,
-        descriptor: TypedPropertyDescriptor<(...args: any[]) => any>,
-    ) {
-        let className: string = target.constructor.name;
-        let argNames: string[] = argumentNames(
-            <(...args: any[]) => any>descriptor.value,
-        );
-        let retType = Reflect.getMetadata(
-            'design:returntype',
-            target,
-            methodName,
-        );
-        let retTypeName: string = retType ? retType.name : String(retType);
+function buildMethodDescription(
+    ctor: Function,
+    methodName: string,
+    fn: (...args: any[]) => any,
+): void {
+    const className: string = ctor.name;
+    const argNames: string[] = argumentNames(fn);
 
-        if (!descriptions[className]) {
-            parseDescriptions(className, target.constructor.toString());
-        }
-
-        let args: ArgDescription[] = get<ArgDescription[]>(
-            'params', className, methodName, []);
-        let ret: ReturnValueDescription = get<ReturnValueDescription>(
-            'returns', className, methodName, {
-                description: '',
-                type: retTypeName,
-                tsType: cast(retTypeName),
-            });
-
-        ret.type = retTypeName;
-
-        if (!args || !args.length) {
-            for (let i = 0, s = argNames.length; i < s; i++) {
-                args[i] = {
-                    description: '',
-                    name: argNames[i],
-                    type: '',
-                    tsType: '',
-                    isOptional : false,
-                };
-            }
-        }
-
-        Reflect.getMetadata(
-            'design:paramtypes',
-            target,
-            methodName,
-        ).forEach((typeConstructor: any, i: number) => {
-            args[i].type = args[i].type || typeConstructor.name;
-            args[i].tsType = args[i].tsType || cast(args[i].type);
-        });
-
-        IMQRPCDescription.serviceDescription[className] =
-        IMQRPCDescription.serviceDescription[className] || {
-            inherits: descriptions[className].inherits,
-            methods: {},
-        };
-        IMQRPCDescription.serviceDescription[className].methods[methodName] = {
-            description: get<string>('description', className, methodName, ''),
-            arguments: args,
-            returns: ret,
-        };
+    if (!descriptions[className]) {
+        parseDescriptions(className, ctor.toString());
     }
+
+    const args: ArgDescription[] = get<ArgDescription[]>(
+        'params',
+        className,
+        methodName,
+        [],
+    );
+    const ret: ReturnValueDescription = get<ReturnValueDescription>(
+        'returns',
+        className,
+        methodName,
+        {
+            description: '',
+            type: '',
+            tsType: '',
+        },
+    );
+
+    if (!args || !args.length) {
+        for (let i = 0, s = argNames.length; i < s; i++) {
+            args[i] = {
+                description: '',
+                name: argNames[i],
+                type: '',
+                tsType: '',
+                isOptional: false,
+            };
+        }
+    }
+
+    // JSDoc is the sole type source; mirror the parsed tsType into `type`
+    // (the only consumer of `type` is the client generator's
+    // IMQDelay/IMQMetadata stripping) and default any undocumented type to
+    // 'any' so generated clients are always valid TypeScript
+    for (const arg of args) {
+        arg.tsType = arg.tsType || 'any';
+        arg.type = arg.type || arg.tsType;
+    }
+
+    ret.tsType = ret.tsType || 'any';
+    ret.type = ret.type || ret.tsType;
+
+    // derive the parent from the runtime prototype chain rather than the
+    // parsed source: standard-decorator output aliases the `extends` clause
+    // to a helper (e.g. `extends _classSuper`), so the source name is unusable
+    const parent: any = Object.getPrototypeOf(ctor);
+    const inherits: string = parent && parent.name ? parent.name : 'Function';
+
+    IMQRPCDescription.serviceDescription[className] = IMQRPCDescription
+        .serviceDescription[className] || {
+        inherits,
+        methods: {},
+    };
+    IMQRPCDescription.serviceDescription[className].methods[methodName] = {
+        description: get<string>('description', className, methodName, ''),
+        arguments: args,
+        returns: ret,
+    };
+}
+
+/**
+ * Expose decorator factory. Applied to a service method, it registers that
+ * method in the RPC service description. (Complex argument/return types are
+ * registered separately via the '@classType' decorator on those classes.)
+ *
+ * @return {(value: any, context: ClassMethodDecoratorContext) => void}
+ */
+export function expose(): any {
+    return function exposeDecorator(
+        value: any,
+        context: ClassMethodDecoratorContext,
+    ): void {
+        const methodName: string = String(context.name);
+
+        // the class is not available at decoration time, so defer to an
+        // initializer that runs at construction, where `this` is known
+        context.addInitializer(function (this: any): void {
+            // register the method under the class that actually declares it
+            // (so a method inherited from a base class is described under the
+            // base, matching the previous decoration-time behavior)
+            let proto: any = this.constructor.prototype;
+
+            while (
+                proto &&
+                !Object.prototype.hasOwnProperty.call(proto, methodName)
+            ) {
+                proto = Object.getPrototypeOf(proto);
+            }
+
+            const ctor: Function = proto ? proto.constructor : this.constructor;
+
+            buildMethodDescription(ctor, methodName, value);
+        });
+    };
 }

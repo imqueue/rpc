@@ -22,20 +22,20 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import { logger } from '../mocks';
-import { expect } from 'chai';
-import { pid, forgetPid, IMQ_TMP_DIR, uuid } from '../..';
+import { describe, it, beforeEach, afterEach } from 'node:test';
+import assert from 'node:assert/strict';
+import { pid, forgetPid, IMQ_TMP_DIR } from '../..';
+import { randomUUID as uuid } from 'crypto';
 import * as fs from 'fs';
 
 function rmdirr(path: string) {
     if (fs.existsSync(path)) {
-        fs.readdirSync(path).forEach((file) => {
+        fs.readdirSync(path).forEach(file => {
             const curPath = `${path}/${file}`;
 
             if (fs.lstatSync(curPath).isDirectory()) {
                 rmdirr(curPath);
-            }
-
-            else {
+            } else {
                 fs.unlinkSync(curPath);
             }
         });
@@ -47,40 +47,48 @@ function rmdirr(path: string) {
 describe('helpers/pid()', () => {
     let TEST_PID_DIR: string;
 
-    beforeEach(() => { TEST_PID_DIR = `${IMQ_TMP_DIR}/${uuid()}` });
-    afterEach(() => { rmdirr(TEST_PID_DIR) });
+    beforeEach(() => {
+        TEST_PID_DIR = `${IMQ_TMP_DIR}/${uuid()}`;
+    });
+    afterEach(() => {
+        rmdirr(TEST_PID_DIR);
+    });
 
     it('should be a function', () => {
-        expect(typeof pid).to.equal('function');
+        assert.equal(typeof pid, 'function');
     });
 
     it('should return pid file numeric incremental identifier', () => {
         const name: string = 'TestPidFile';
 
-        expect(pid(name, TEST_PID_DIR)).to.equal(0);
-        expect(pid(name, TEST_PID_DIR)).to.equal(1);
-        expect(pid(name, TEST_PID_DIR)).to.equal(2);
+        assert.equal(pid(name, TEST_PID_DIR), 0);
+        assert.equal(pid(name, TEST_PID_DIR), 1);
+        assert.equal(pid(name, TEST_PID_DIR), 2);
     });
 
     it('should re-use free identifiers', () => {
         const name: string = 'TestPidFile';
 
-        expect(pid(name, TEST_PID_DIR)).to.equal(0);
-        expect(pid(name, TEST_PID_DIR)).to.equal(1);
-        expect(pid(name, TEST_PID_DIR)).to.equal(2);
+        assert.equal(pid(name, TEST_PID_DIR), 0);
+        assert.equal(pid(name, TEST_PID_DIR), 1);
+        assert.equal(pid(name, TEST_PID_DIR), 2);
         fs.unlinkSync(`${TEST_PID_DIR}/${name}-1.pid`);
-        expect(pid(name, TEST_PID_DIR)).to.equal(1);
+        assert.equal(pid(name, TEST_PID_DIR), 1);
     });
 });
 
 describe('helpers/forgetPid()', () => {
     let TEST_PID_DIR: string;
 
-    beforeEach(() => { TEST_PID_DIR = `${IMQ_TMP_DIR}/${uuid()}` });
-    afterEach(() => { rmdirr(TEST_PID_DIR) });
+    beforeEach(() => {
+        TEST_PID_DIR = `${IMQ_TMP_DIR}/${uuid()}`;
+    });
+    afterEach(() => {
+        rmdirr(TEST_PID_DIR);
+    });
 
     it('should be a function', () => {
-        expect(typeof forgetPid).to.equal('function');
+        assert.equal(typeof forgetPid, 'function');
     });
 
     it('should free-up pid file', () => {
@@ -89,6 +97,6 @@ describe('helpers/forgetPid()', () => {
 
         forgetPid(name, id, logger, TEST_PID_DIR);
 
-        expect(fs.existsSync(`${TEST_PID_DIR}/${name}-0.pid`)).not.to.be.ok;
+        assert.ok(!fs.existsSync(`${TEST_PID_DIR}/${name}-0.pid`));
     });
 });

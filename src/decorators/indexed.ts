@@ -21,8 +21,8 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { IMQRPCDescription } from '..';
 import { Thunk } from '..';
+import { registerType } from './property';
 
 /**
  * Implements '@indexed' decorator factory
@@ -42,31 +42,20 @@ import { Thunk } from '..';
  * @return {(constructor: Function) => void}
  */
 export function indexed(indexTypedef: string | Thunk): any {
-    return function (constructor: Function): any {
-        // istanbul ignore if
+    return function (value: Function, context: ClassDecoratorContext): void {
         if (!indexTypedef) {
-            return ; // nothing to do here
+            return; // nothing to do here
         }
 
         if (typeof indexTypedef === 'function') {
             indexTypedef = indexTypedef();
         }
 
-        // istanbul ignore if
         if (typeof indexTypedef !== 'string') {
             indexTypedef = String(indexTypedef);
         }
 
-        const typeName = constructor.name;
-
-        IMQRPCDescription.typesDescription[typeName] =
-        IMQRPCDescription.typesDescription[typeName] || {
-            indexType: indexTypedef as string,
-            properties: {},
-            inherits: Object.getPrototypeOf(constructor).name,
-        };
-
-        IMQRPCDescription.typesDescription[typeName]
-            .indexType = indexTypedef as string;
+        // registers any @property fields on this class plus the index type
+        registerType(value, context.metadata, indexTypedef as string);
     };
 }

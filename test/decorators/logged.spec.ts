@@ -1,19 +1,18 @@
-import 'reflect-metadata';
-import { expect } from 'chai';
-import * as sinon from 'sinon';
+import { describe, it, mock } from 'node:test';
+import assert from 'node:assert/strict';
 import { logged } from '../../src/decorators/logged';
 
 describe('decorators/logged()', () => {
     it('should be a function and return decorator function', () => {
-        expect(typeof logged).to.equal('function');
+        assert.equal(typeof logged, 'function');
         // @ts-ignore
         const decorator = logged();
-        expect(typeof decorator).to.equal('function');
+        assert.equal(typeof decorator, 'function');
     });
 
     it('should fallback to console logger and rethrow by default', async () => {
         const error = new Error('boom');
-        const stub = sinon.stub(console, 'error');
+        const stub = mock.method(console, 'error', () => {});
         class A {
             // @ts-ignore
             @logged()
@@ -24,23 +23,23 @@ describe('decorators/logged()', () => {
 
         try {
             await new A().fail();
-            expect.fail('should throw');
+            assert.fail('should throw');
         } catch (e) {
-            expect(e).to.equal(error);
-            expect(stub.calledOnce).to.equal(true);
-            expect(stub.firstCall.args[0]).to.equal(error);
+            assert.equal(e, error);
+            assert.equal(stub.mock.callCount() === 1, true);
+            assert.equal(stub.mock.calls[0].arguments[0], error);
         } finally {
-            stub.restore();
+            stub.mock.restore();
         }
     });
 
     it('should use provided logger, level and suppress throw when doNotThrow', async () => {
         const error = new Error('warned');
         const myLogger = {
-            warn: sinon.stub(),
-            error: sinon.stub(),
-            log: sinon.stub(),
-            info: sinon.stub(),
+            warn: mock.fn(),
+            error: mock.fn(),
+            log: mock.fn(),
+            info: mock.fn(),
         } as any;
 
         class B {
@@ -52,18 +51,18 @@ describe('decorators/logged()', () => {
         }
 
         const res = await new B().fail();
-        expect(res).to.equal(undefined);
-        expect(myLogger.warn.calledOnce).to.equal(true);
-        expect(myLogger.warn.firstCall.args[0]).to.equal(error);
+        assert.equal(res, undefined);
+        assert.equal(myLogger.warn.mock.callCount() === 1, true);
+        assert.equal(myLogger.warn.mock.calls[0].arguments[0], error);
     });
 
     it('should accept ILogger directly and rethrow by default', async () => {
         const error = new Error('as-logger');
         const myLogger = {
-            warn: sinon.stub(),
-            error: sinon.stub(),
-            log: sinon.stub(),
-            info: sinon.stub(),
+            warn: mock.fn(),
+            error: mock.fn(),
+            log: mock.fn(),
+            info: mock.fn(),
         } as any;
 
         class C {
@@ -76,18 +75,18 @@ describe('decorators/logged()', () => {
 
         try {
             await new C().fail();
-            expect.fail('should throw');
+            assert.fail('should throw');
         } catch (e) {
-            expect(e).to.equal(error);
-            expect(myLogger.error.calledOnce).to.equal(true);
-            expect(myLogger.error.firstCall.args[0]).to.equal(error);
+            assert.equal(e, error);
+            assert.equal(myLogger.error.mock.callCount() === 1, true);
+            assert.equal(myLogger.error.mock.calls[0].arguments[0], error);
         }
     });
 
     it('should use instance logger when present and rethrow', async () => {
         const error = new Error('inst-logger');
         const myLogger = {
-            error: sinon.stub(),
+            error: mock.fn(),
         } as any;
         class E {
             public logger = myLogger;
@@ -99,30 +98,32 @@ describe('decorators/logged()', () => {
         }
         try {
             await new E().fail();
-            expect.fail('should throw');
+            assert.fail('should throw');
         } catch (e) {
-            expect(e).to.equal(error);
-            expect(myLogger.error.calledOnce).to.equal(true);
-            expect(myLogger.error.firstCall.args[0]).to.equal(error);
+            assert.equal(e, error);
+            assert.equal(myLogger.error.mock.callCount() === 1, true);
+            assert.equal(myLogger.error.mock.calls[0].arguments[0], error);
         }
     });
 
     it('should use target logger when present on prototype for instance method', async () => {
         const error = new Error('proto-logger');
-        const protologger = { error: sinon.stub() } as any;
+        const protologger = { error: mock.fn() } as any;
         class F {
             // @ts-ignore
             @logged()
-            public fail() { throw error; }
+            public fail() {
+                throw error;
+            }
         }
         (F.prototype as any).logger = protologger;
         try {
             await new F().fail();
-            expect.fail('should throw');
+            assert.fail('should throw');
         } catch (e) {
-            expect(e).to.equal(error);
-            expect(protologger.error.calledOnce).to.equal(true);
-            expect(protologger.error.firstCall.args[0]).to.equal(error);
+            assert.equal(e, error);
+            assert.equal(protologger.error.mock.callCount() === 1, true);
+            assert.equal(protologger.error.mock.calls[0].arguments[0], error);
         }
     });
 
@@ -136,6 +137,6 @@ describe('decorators/logged()', () => {
         }
 
         const v = await new D().ok();
-        expect(v).to.equal(42);
+        assert.equal(v, 42);
     });
 });

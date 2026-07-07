@@ -26,7 +26,6 @@ export interface ICacheConstructor {
 }
 
 export interface ICache {
-
     name: string;
     ready: boolean;
 
@@ -35,7 +34,6 @@ export interface ICache {
     set(key: string, value: any, ttl?: number): Promise<boolean>;
     del(key: string): Promise<boolean>;
     purge(keyMask: string): Promise<boolean>;
-
 }
 
 export type ICacheAdapter = ICacheConstructor | ICache | string;

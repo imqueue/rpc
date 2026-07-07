@@ -21,16 +21,25 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import '../mocks';
-import { expect } from 'chai';
-import { osUuid } from '../..';
+import './mocks';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { IMQMetadata } from '..';
 
-describe('helpers/osUuid()', () => {
-    it('should be a function', () => {
-        expect(typeof osUuid).to.equal('function');
+describe('IMQMetadata', () => {
+    it('should be a class', () => {
+        assert.equal(typeof IMQMetadata, 'function');
     });
 
-    it('should return same id for each call', () => {
-        expect(osUuid()).to.equal(osUuid());
+    it('should copy provided metadata props to instance index', () => {
+        const data = { a: 1, b: 'x', c: { y: true } } as any;
+        const m = new IMQMetadata(data);
+
+        assert.equal((m as any).a, 1);
+        assert.equal((m as any).b, 'x');
+        assert.deepEqual((m as any).c, { y: true });
+
+        const keys = Object.keys(m);
+        assert.deepEqual(keys.sort(), ['a', 'b', 'c']);
     });
 });

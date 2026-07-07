@@ -22,11 +22,11 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import '../mocks';
-import { expect } from 'chai';
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
 import { lock } from '../..';
 
 class TestLockClass {
-
     @lock()
     public async dynamicLock() {
         return Math.random() * Math.random() + Math.random();
@@ -46,45 +46,62 @@ class TestLockClass {
     public static async rejected() {
         throw new Error('Rejected!');
     }
-
 }
 
 describe('decorators/lock()', () => {
     it('should be a function', () => {
-        expect(typeof lock).to.equal('function');
+        assert.equal(typeof lock, 'function');
     });
 
     it('should return decorator function', () => {
-        expect(typeof lock()).to.equal('function');
+        assert.equal(typeof lock(), 'function');
     });
 
-    it('should resolve all called with the first resolved', async  () => {
+    it('should resolve all called with the first resolved', async () => {
         const obj = new TestLockClass();
-        const results = [...new Set(await Promise.all(
-            new Array(10).fill(0).map(() => obj.dynamicLock())
-        ))];
-        expect(results.length).to.equal(1);
+        const results = [
+            ...new Set(
+                await Promise.all(
+                    new Array(10).fill(0).map(() => obj.dynamicLock()),
+                ),
+            ),
+        ];
+        assert.equal(results.length, 1);
     });
 
-    it('should work for static methods as well', async  () => {
-        const results = [...new Set(await Promise.all(
-            new Array(10).fill(0).map(() => TestLockClass.staticLock())
-        ))];
-        expect(results.length).to.equal(1);
+    it('should work for static methods as well', async () => {
+        const results = [
+            ...new Set(
+                await Promise.all(
+                    new Array(10).fill(0).map(() => TestLockClass.staticLock()),
+                ),
+            ),
+        ];
+        assert.equal(results.length, 1);
     });
 
     it('should work with non-promised methods as well', async () => {
-        const results = [...new Set(await Promise.all(
-            new Array(10).fill(0).map(() => TestLockClass.nonPromised())
-        ))];
-        expect(results.length).to.equal(1);
+        const results = [
+            ...new Set(
+                await Promise.all(
+                    new Array(10)
+                        .fill(0)
+                        .map(() => TestLockClass.nonPromised()),
+                ),
+            ),
+        ];
+        assert.equal(results.length, 1);
     });
 
     it('should be turned off if DISABLE_LOCKS env var set', async () => {
         process.env['DISABLE_LOCKS'] = '1';
-        const results = [...new Set(await Promise.all(
-            new Array(10).fill(0).map(() => TestLockClass.staticLock())
-        ))];
-        expect(results.length).to.equal(10);
+        const results = [
+            ...new Set(
+                await Promise.all(
+                    new Array(10).fill(0).map(() => TestLockClass.staticLock()),
+                ),
+            ),
+        ];
+        assert.equal(results.length, 10);
     });
 });

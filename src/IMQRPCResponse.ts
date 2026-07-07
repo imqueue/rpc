@@ -32,5 +32,5 @@ export interface IMQRPCResponse extends JsonObject {
     to: string;
     data: JsonObject | null;
     error: IMQRPCError | null;
-    request: IMQRPCRequest
+    request: IMQRPCRequest;
 }

@@ -1,0 +1,36 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "no-debugger": "error",
+    "no-console": ["warn", { "allow": ["warn", "error", "info"] }],
+    "no-unused-vars": "warn",
+    "no-unused-expressions": [
+      "error",
+      { "allowShortCircuit": true, "allowTernary": true }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["test/**"],
+      "rules": {
+        "no-unused-expressions": "off",
+        "no-async-promise-executor": "off",
+        "no-useless-catch": "off",
+        "unicorn/no-new-array": "off",
+        "unicorn/prefer-string-starts-ends-with": "off",
+        "unicorn/no-unnecessary-await": "off"
+      }
+    }
+  ],
+  "ignorePatterns": [
+    "**/*.js",
+    "**/*.d.ts",
+    "docs/",
+    "coverage/",
+    ".nyc_output/",
+    "node_modules/"
+  ]
+}

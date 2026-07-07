@@ -22,9 +22,9 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import { logger } from './mocks';
-import { expect } from 'chai';
+import { describe, it, afterEach, mock } from 'node:test';
+import assert from 'node:assert/strict';
 import { IMQCache, RedisCache } from '..';
-import * as sinon from 'sinon';
 
 describe('IMQCache', () => {
     IMQCache.adapters = {};
@@ -36,29 +36,32 @@ describe('IMQCache', () => {
     });
 
     it('should be a class', () => {
-        expect(typeof IMQCache).to.equal('function');
+        assert.equal(typeof IMQCache, 'function');
     });
 
     describe('register', () => {
         it('should accept adapter name', () => {
             IMQCache.register('RedisCache');
 
-            expect(IMQCache.adapters['RedisCache'])
-                .to.be.instanceOf(RedisCache);
+            assert.ok((IMQCache.adapters['RedisCache']) instanceof 
+                RedisCache,
+            );
         });
 
         it('should accept constructor', () => {
             IMQCache.register(RedisCache);
 
-            expect(IMQCache.adapters['RedisCache'])
-                .to.be.instanceOf(RedisCache);
+            assert.ok((IMQCache.adapters['RedisCache']) instanceof 
+                RedisCache,
+            );
         });
 
         it('should accept instance', () => {
             IMQCache.register(new RedisCache());
 
-            expect(IMQCache.adapters['RedisCache'])
-                .to.be.instanceOf(RedisCache);
+            assert.ok((IMQCache.adapters['RedisCache']) instanceof 
+                RedisCache,
+            );
         });
     });
 
@@ -66,23 +69,25 @@ describe('IMQCache', () => {
         it('should apply provided options to adapter', () => {
             IMQCache.register(RedisCache);
 
-            expect((<any>IMQCache).options['RedisCache']).to.be.undefined;
+            assert.equal((<any>IMQCache).options['RedisCache'], undefined);
 
             IMQCache.apply('RedisCache', { logger });
 
-            expect((<any>IMQCache).options['RedisCache'].logger)
-                .to.be.equal(logger);
+            assert.equal((<any>IMQCache).options['RedisCache'].logger, 
+                logger,
+            );
         });
 
         it('should work the same if adapter name provided', () => {
             IMQCache.register(RedisCache);
 
-            expect((<any>IMQCache).options['RedisCache']).to.be.undefined;
+            assert.equal((<any>IMQCache).options['RedisCache'], undefined);
 
             IMQCache.apply(RedisCache, { logger });
 
-            expect((<any>IMQCache).options['RedisCache'].logger)
-                .to.be.equal(logger);
+            assert.equal((<any>IMQCache).options['RedisCache'].logger, 
+                logger,
+            );
         });
     });
 
@@ -91,26 +96,25 @@ describe('IMQCache', () => {
             IMQCache.register(RedisCache);
             IMQCache.apply(RedisCache, { logger });
 
-            const spy = sinon.spy(IMQCache.adapters['RedisCache'], 'init');
+            const spy = mock.method(IMQCache.adapters['RedisCache'], 'init');
 
             await IMQCache.init();
 
-            expect(spy.called).to.be.true;
+            assert.equal(spy.mock.callCount() > 0, true);
         });
     });
 
     describe('get()', () => {
         it('should return undefined if nothing registered', () => {
-            expect(IMQCache.get('RedisCache')).to.be.undefined;
-            expect(IMQCache.get(RedisCache)).to.be.undefined;
+            assert.equal(IMQCache.get('RedisCache'), undefined);
+            assert.equal(IMQCache.get(RedisCache), undefined);
         });
 
         it('should return adapter if registered', () => {
             IMQCache.register(RedisCache);
 
-            expect(IMQCache.get('RedisCache')).to.be.instanceOf(RedisCache);
-            expect(IMQCache.get(RedisCache)).to.be.instanceOf(RedisCache);
+            assert.ok((IMQCache.get('RedisCache')) instanceof RedisCache);
+            assert.ok((IMQCache.get(RedisCache)) instanceof RedisCache);
         });
     });
-
 });

@@ -24,16 +24,21 @@
 export class IMQDelay {
     public get ms() {
         switch (this.unit) {
-            case 'ms': return this.timer;
-            case 's': return this.timer * 1000;
-            case 'm': return this.timer * 60000;
-            case 'h': return this.timer * 3600000;
-            case 'd': return this.timer * 86400000;
+            case 'ms':
+                return this.timer;
+            case 's':
+                return this.timer * 1000;
+            case 'm':
+                return this.timer * 60000;
+            case 'h':
+                return this.timer * 3600000;
+            case 'd':
+                return this.timer * 86400000;
         }
     }
 
     constructor(
         public timer: number,
-        public unit: 'ms' | 's' | 'm' | 'h' | 'd' = 'ms'
+        public unit: 'ms' | 's' | 'm' | 'h' | 'd' = 'ms',
     ) {}
 }

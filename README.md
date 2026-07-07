@@ -179,6 +179,74 @@ import { hello } from './clients/Hello';
 In this case all complex types defined within service implementation
 will be available under imported namespace of the client.
 
+## Complex Types
+
+To expose complex (object) types as service method arguments or return values,
+annotate the class with `@classType()` and its fields with `@property()`:
+
+~~~typescript
+import { classType, property, expose, IMQService } from '@imqueue/rpc';
+
+@classType()
+class Address {
+    @property('string')
+    country: string;
+
+    @property('string', true)
+    zipCode?: string; // optional
+}
+
+@classType()
+class User {
+    @property('string')
+    firstName: string;
+
+    @property('Array<Address>', true)
+    addresses?: Address[];
+}
+
+class UserService extends IMQService {
+    /**
+     * Persists the given user
+     *
+     * @param {User} user - user to save
+     * @returns {Promise<boolean>}
+     */
+    @expose()
+    public async save(user: User): Promise<boolean> {
+        // User and Address are now exposed to generated clients
+        return true;
+    }
+}
+~~~
+
+The `@classType()` class decorator is **required** on every class that uses
+`@property()` — without it the type will not be registered and will not appear
+in generated clients. (Indexed types use `@indexed()`, which registers `@property`
+fields as well.)
+
+## Requirements
+
+This package uses **standard (TC39) decorators**. Consuming projects must set,
+in their `tsconfig.json`:
+
+~~~json
+{
+  "compilerOptions": {
+    "experimentalDecorators": false,
+    "removeComments": false,
+    "lib": ["es2023", "esnext.decorators"]
+  }
+}
+~~~
+
+Because standard decorators provide no runtime type reflection (there is no
+`emitDecoratorMetadata`), the RPC layer derives argument and return types from
+**JSDoc**. Therefore **every exposed method must be documented with JSDoc**
+`@param`/`@returns` tags carrying the types (as shown in the examples above),
+and `removeComments` must remain `false` so those comments survive compilation.
+Undocumented parameters fall back to `any` in generated clients.
+
 ## Notes
 
 For image containers builds assign machine UUID in `/etc/machine-id` and 

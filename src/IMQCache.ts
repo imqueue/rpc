@@ -27,7 +27,6 @@ import { ICache, ICacheAdapter, ICacheConstructor } from '.';
  * Generic cache registry
  */
 export class IMQCache {
-
     private static options: { [name: string]: any } = {};
     public static adapters: { [name: string]: ICache } = {};
 
@@ -42,23 +41,18 @@ export class IMQCache {
         const self = IMQCache;
 
         if (typeof adapter === 'string') {
-            // istanbul ignore else
             if (!self.adapters[adapter]) {
-                self.adapters[adapter] = <ICache>new (require(
-                    `${__dirname}/cache/${adapter}.js`
-                )[adapter])();
+                self.adapters[adapter] = <ICache>(
+                    new (require(`${__dirname}/cache/${adapter}.js`)[adapter])()
+                );
             }
-        }
-
-        else {
-            // istanbul ignore else
+        } else {
             if (!self.adapters[(adapter as ICacheConstructor).name]) {
                 if (typeof adapter === 'function') {
-                    self.adapters[(adapter as ICacheConstructor).name] =
-                        new (<any>adapter)();
-                }
-
-                else {
+                    self.adapters[(adapter as ICacheConstructor).name] = new (<
+                        any
+                    >adapter)();
+                } else {
                     self.adapters[(adapter as ICache).name] =
                         adapter as any as ICache;
                 }
@@ -84,9 +78,8 @@ export class IMQCache {
             return self;
         }
 
-        const name = typeof adapter === 'string'
-            ? adapter
-            : (adapter as ICache).name;
+        const name =
+            typeof adapter === 'string' ? adapter : (adapter as ICache).name;
 
         let opts = self.options[name] || {};
 
@@ -105,12 +98,9 @@ export class IMQCache {
         const promises = [];
 
         for (let adapter of Object.keys(self.adapters)) {
-            // istanbul ignore else
             if (!self.adapters[adapter].ready) {
                 promises.push(
-                    self.adapters[adapter].init(
-                        self.options[adapter]
-                    )
+                    self.adapters[adapter].init(self.options[adapter]),
                 );
             }
         }
@@ -128,10 +118,7 @@ export class IMQCache {
      */
     public static get(adapter: ICacheAdapter): ICache {
         return IMQCache.adapters[
-            typeof adapter === 'string'
-                ? adapter
-                : (adapter as ICache).name
+            typeof adapter === 'string' ? adapter : (adapter as ICache).name
         ];
     }
-
 }

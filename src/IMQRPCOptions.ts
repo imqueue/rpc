@@ -38,7 +38,7 @@ export interface IMQAfterCall<T> {
 export interface IMQMetricsServerOptions {
     enabled?: boolean;
     port?: number;
-    queueLengthFormatter?: (length: number, metricName: string) => string,
+    queueLengthFormatter?: (length: number, metricName: string) => string;
 }
 
 export interface IMQServiceOptions extends IMQOptions {
@@ -77,14 +77,13 @@ export const DEFAULT_IMQ_SERVICE_OPTIONS: IMQServiceOptions = {
  *
  * @type {NonNullable<IMQMetricsServerOptions>}
  */
-export const DEFAULT_IMQ_METRICS_SERVER_OPTIONS: NonNullable<
-    IMQMetricsServerOptions
-> = {
-    enabled: false,
-    port: 9090,
-    queueLengthFormatter: (length, metricName) =>
-        `${ metricName }{} ${ length }`,
-};
+export const DEFAULT_IMQ_METRICS_SERVER_OPTIONS: NonNullable<IMQMetricsServerOptions> =
+    {
+        enabled: false,
+        port: 9090,
+        queueLengthFormatter: (length, metricName) =>
+            `${metricName}{} ${length}`,
+    };
 
 /**
  * Default client options

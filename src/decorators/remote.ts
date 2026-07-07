@@ -25,24 +25,22 @@
  * Implements '@remote' decorator factory
  *
  * @return {(
- *    target: any,
- *    methodName: (string),
- *    descriptor: TypedPropertyDescriptor<(...args: any[]) => any>
- * ) => void}
+ *    value: (...args: any[]) => any,
+ *    context: ClassMethodDecoratorContext
+ * ) => (...args: any[]) => any}
  */
 export function remote() {
-    return function(
-        target: any,
-        methodName: string,
-        descriptor: TypedPropertyDescriptor<(...args: any[]) => any>,
-    ) {
-        const original = descriptor.value;
+    return function (
+        value: (...args: any[]) => any,
+        context: ClassMethodDecoratorContext,
+    ): (...args: any[]) => any {
+        const methodName = String(context.name);
 
-        descriptor.value = function(...args: any[]) {
+        return function (this: any, ...args: any[]) {
             args.push(methodName);
 
             // istanbul ignore next
-            return (original ? original.apply(this, args) : undefined);
+            return value ? value.apply(this, args) : undefined;
         };
-    }
+    };
 }

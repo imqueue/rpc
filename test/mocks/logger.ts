@@ -21,10 +21,9 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-// noinspection JSUnusedGlobalSymbols
 export const logger: any = {
     log() {},
     info() {},
     warn() {},
-    error() {}
+    error() {},
 };

@@ -1,5 +1,6 @@
 import '../mocks';
-import { expect } from 'chai';
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
 import { lock } from '../..';
 
 class SkipArgsClass {
@@ -29,8 +30,8 @@ describe('decorators/lock() with skipArgs', () => {
         ]);
         // Since b (index 1) is skipped in signature, all concurrent calls share one lock
         const uniq = [...new Set(results)];
-        expect(uniq.length).to.equal(1);
+        assert.equal(uniq.length, 1);
         // Original method body should be executed only once
-        expect(obj.calls).to.equal(1);
+        assert.equal(obj.calls, 1);
     });
 });

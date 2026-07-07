@@ -34,42 +34,38 @@ export interface CacheDecorator {
     globalOptions?: CacheDecoratorOptions;
 }
 
-// codebeat:disable[BLOCK_NESTING]
-export const cache: CacheDecorator = function(options?: CacheDecoratorOptions) {
+export const cache: CacheDecorator = function (
+    options?: CacheDecoratorOptions,
+) {
     const cacheOptions: CacheDecoratorOptions = {
         ...cache.globalOptions,
         ...options,
     };
     let Adapter: any = cacheOptions.adapter || RedisCache;
 
-    return function(
-        target: any,
-        methodName: string | symbol,
-        descriptor: TypedPropertyDescriptor<(...args: any[]) => any>,
-    ) {
-        const original: (...args: any[]) => any = descriptor.value as any;
+    return function (
+        value: (...args: any[]) => any,
+        context: ClassMethodDecoratorContext,
+    ): (...args: any[]) => any {
+        const original: (...args: any[]) => any = value;
+        const methodName = context.name;
 
-        descriptor.value = async function(...args: any[]) {
-            const context: any = this;
+        return async function (this: any, ...args: any[]) {
             const className = this.constructor.name;
 
-            if (!context.cache) {
+            if (!this.cache) {
                 let cache = IMQCache.get(Adapter);
 
-                // istanbul ignore next
                 if (cache && cache.ready) {
-                    context.cache = cache;
-                }
-
-                else {
+                    this.cache = cache;
+                } else {
                     let opts: any = undefined;
 
-                    if (context.imq && context.imq.writer) {
-                        opts = { conn: (<any>context.imq).writer };
+                    if (this.imq && this.imq.writer) {
+                        opts = { conn: (<any>this.imq).writer };
                     }
 
-                    const logger = context.logger ||
-                        (context.imq && context.imq.logger);
+                    const logger = this.logger || (this.imq && this.imq.logger);
 
                     if (logger) {
                         opts = { ...opts, logger };
@@ -77,19 +73,19 @@ export const cache: CacheDecorator = function(options?: CacheDecoratorOptions) {
 
                     await IMQCache.register(Adapter, opts).init();
 
-                    context.cache = IMQCache.get(Adapter);
+                    this.cache = IMQCache.get(Adapter);
                 }
             }
 
             try {
                 const key = signature(className, methodName, args);
 
-                let result = await context.cache.get(key);
+                let result = await this.cache.get(key);
 
                 if (result === undefined) {
                     result = original.apply(this, args);
 
-                    await context.cache.set(
+                    await this.cache.set(
                         key,
                         result,
                         cacheOptions.ttl,
@@ -98,23 +94,21 @@ export const cache: CacheDecorator = function(options?: CacheDecoratorOptions) {
                 }
 
                 return result;
-            }
-
-            catch (err) {
-                // istanbul ignore next
-                (this.logger || context.cache.logger).warn(
+            } catch (err) {
+                (this.logger || this.cache.logger).warn(
                     'cache: Error fetching cached value for %s.%s(), args: %s!',
-                    className, methodName, JSON.stringify(args), err,
+                    className,
+                    methodName,
+                    JSON.stringify(args),
+                    err,
                 );
 
-                // istanbul ignore next
                 return original.apply(this, args);
             }
         };
-    }
+    };
 };
-// codebeat:enable[BLOCK_NESTING]
 
 cache.globalOptions = {
-    adapter: RedisCache
+    adapter: RedisCache,
 };

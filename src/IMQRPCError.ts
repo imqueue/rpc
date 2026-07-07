@@ -39,7 +39,6 @@ export interface IMQRPCError extends JsonObject {
     original?: any;
 }
 
-// istanbul ignore next
 /**
  * Builds JSON representation of IMQ Error
  *

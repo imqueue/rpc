@@ -21,7 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { fingerprint64 } from 'farmhash';
+import { fingerprint64 } from 'farmhash-modern';
 
 /**
  * Constructs and returns hash string for a given set of className, methodName
@@ -35,7 +35,7 @@ import { fingerprint64 } from 'farmhash';
 export function signature(
     className: string,
     methodName: string | symbol,
-    args: any[]
+    args: any[],
 ): string {
     const data = JSON.stringify([className, methodName, args]);
     const hashBigInt = fingerprint64(data);

@@ -22,28 +22,32 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import { Redis, logger } from '../mocks';
-import { expect } from 'chai';
+import { describe, it, before, after, beforeEach } from 'node:test';
+import assert from 'node:assert/strict';
 import { RedisCache } from '../..';
-import { IRedisClient, uuid } from '@imqueue/core';
+import { IRedisClient } from '@imqueue/core';
+import { randomUUID as uuid } from 'crypto';
 
 describe('cache/RedisCache', () => {
     it('should be a class', () => {
-        expect(typeof RedisCache).to.equal('function');
+        assert.equal(typeof RedisCache, 'function');
     });
 
     describe('constructor()', () => {
         it('should not throw', () => {
-            expect(() => new RedisCache()).not.to.throw;
+            assert.doesNotThrow(() => new RedisCache());
         });
     });
 
     describe('init()', () => {
-        beforeEach(() => { delete (<any>RedisCache).redis });
+        beforeEach(() => {
+            delete (<any>RedisCache).redis;
+        });
 
         it('should not throw without options', async () => {
             const cache = new RedisCache();
 
-            expect(async () => await cache.init({ logger })).not.to.throw;
+            assert.doesNotThrow(async () => await cache.init({ logger }));
         });
 
         it('should re-use existing conn if given', async () => {
@@ -57,7 +61,7 @@ describe('cache/RedisCache', () => {
 
             await cache.init({ logger });
 
-            expect(oldConn).to.equal((<any>RedisCache).redis);
+            assert.equal(oldConn, (<any>RedisCache).redis);
         });
 
         it('should use connection from options if passed', async () => {
@@ -66,14 +70,14 @@ describe('cache/RedisCache', () => {
 
             await cache.init({ conn, logger });
 
-            expect((<any>RedisCache).redis).to.equal(conn);
+            assert.equal((<any>RedisCache).redis, conn);
         });
     });
 
     describe('get()', () => {
         let cache: RedisCache;
 
-        before(async() => {
+        before(async () => {
             cache = new RedisCache();
             await cache.init({ logger });
         });
@@ -81,26 +85,26 @@ describe('cache/RedisCache', () => {
         after(async () => RedisCache.destroy());
 
         it('should return undefined if nothing found', async () => {
-            expect(await cache.get(uuid())).to.be.undefined;
+            assert.equal(await cache.get(uuid()), undefined);
         });
 
         it('should return stored value if found', async () => {
             const key = uuid();
             await cache.set(key, 1000);
-            expect(await cache.get(key)).to.equal(1000);
+            assert.equal(await cache.get(key), 1000);
             await cache.set(key, { a: 'b' });
-            expect(await cache.get(key)).to.deep.equal({ a: 'b' });
+            assert.deepEqual(await cache.get(key), { a: 'b' });
             await cache.set(key, false);
-            expect(await cache.get(key)).to.be.false;
+            assert.equal(await cache.get(key), false);
             await cache.set(key, null);
-            expect(await cache.get(key)).to.be.null;
+            assert.equal(await cache.get(key), null);
         });
     });
 
     describe('set()', () => {
         let cache: RedisCache;
 
-        before(async() => {
+        before(async () => {
             cache = new RedisCache();
             await cache.init({ logger });
         });
@@ -110,18 +114,20 @@ describe('cache/RedisCache', () => {
         it('should not overwrite if asked', async () => {
             const key = uuid();
             await cache.set(key, 'initial value');
-            expect(await cache.get(key)).to.equal('initial value');
+            assert.equal(await cache.get(key), 'initial value');
             await cache.set(key, 'new value', undefined, true);
-            expect(await cache.get(key)).to.equal('initial value');
+            assert.equal(await cache.get(key), 'initial value');
         });
 
         it('should expire if ttl given', async () => {
             const key = uuid();
             await cache.set(key, 'initial value', 10);
-            expect(await cache.get(key)).to.equal('initial value');
-            await new Promise(resolve => setTimeout(async () => {
-                resolve(expect(await cache.get(key)).to.be.undefined)
-            }, 10));
+            assert.equal(await cache.get(key), 'initial value');
+            await new Promise(resolve =>
+                setTimeout(async () => {
+                    resolve(assert.equal(await cache.get(key), undefined));
+                }, 10),
+            );
         });
     });
 
@@ -132,17 +138,16 @@ describe('cache/RedisCache', () => {
             await cache.init({ logger });
             await cache.set(key, 'value');
             await cache.del(key);
-            expect(await cache.get(key)).to.be.undefined;
+            assert.equal(await cache.get(key), undefined);
         });
     });
 
     describe('destroy()', () => {
         it('should destroy redis connection', async () => {
             new RedisCache();
-            expect((<any>RedisCache).redis).to.be.ok;
+            assert.ok((<any>RedisCache).redis);
             await RedisCache.destroy();
-            expect((<any>RedisCache).redis).to.be.undefined;
+            assert.equal((<any>RedisCache).redis, undefined);
         });
     });
-
 });
