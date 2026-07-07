@@ -59,8 +59,5 @@
     "typedoc": "^0.28.20"
   },
   "main": "index.js",
-  "types": "index.d.ts",
-  "typescript": {
-    "definitions": "index.d.ts"
-  }
+  "types": "index.d.ts"
 }
