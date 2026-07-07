@@ -85,12 +85,10 @@ describe('IMQService hooks (beforeCall)', () => {
             setTimeout(() => {
                 try {
                     assert.equal(warnSpy.mock.callCount() > 0, true);
-                    const calledWithBefore = warnSpy
-                        .mock.calls
-                        .some(
-                            (c: any) =>
-                                c.arguments && c.arguments[0] === BEFORE_HOOK_ERROR,
-                        );
+                    const calledWithBefore = warnSpy.mock.calls.some(
+                        (c: any) =>
+                            c.arguments && c.arguments[0] === BEFORE_HOOK_ERROR,
+                    );
                     assert.equal(calledWithBefore, true);
                     resolve(undefined);
                 } catch (err) {

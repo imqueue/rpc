@@ -27,20 +27,40 @@ import { IMQRPCResponse } from './IMQRPCResponse';
 import { IMQService } from './IMQService';
 import { IMQClient } from './IMQClient';
 
+/**
+ * Hook invoked before a service method call is dispatched.
+ *
+ * @param {IMQRPCRequest} [req] - the incoming request
+ * @param {IMQRPCResponse} [res] - the response being prepared
+ * @return {Promise<void>}
+ */
 export interface IMQBeforeCall<T> {
     (req?: IMQRPCRequest, res?: IMQRPCResponse): Promise<void>;
 }
 
+/**
+ * Hook invoked after a service method call has been handled.
+ *
+ * @param {IMQRPCRequest} req - the handled request
+ * @param {IMQRPCResponse} [res] - the produced response
+ * @return {Promise<void>}
+ */
 export interface IMQAfterCall<T> {
     (req: IMQRPCRequest, res?: IMQRPCResponse): Promise<void>;
 }
 
+/**
+ * Options for the built-in metrics server.
+ */
 export interface IMQMetricsServerOptions {
     enabled?: boolean;
     port?: number;
     queueLengthFormatter?: (length: number, metricName: string) => string;
 }
 
+/**
+ * Options accepted by an IMQ service.
+ */
 export interface IMQServiceOptions extends IMQOptions {
     multiProcess: boolean;
     childrenPerCore: number;
@@ -49,11 +69,21 @@ export interface IMQServiceOptions extends IMQOptions {
     afterCall?: IMQAfterCall<IMQService>;
 }
 
+/**
+ * Options accepted by a generated IMQ client.
+ */
 export interface IMQClientOptions extends IMQOptions {
     path: string;
     compile: boolean;
     timeout: number;
     write: boolean;
+    // Per-call timeout in milliseconds. When set to a positive number, every
+    // remote call that has not received a response within the given time (plus
+    // any requested IMQDelay) is rejected with an IMQ_RPC_CALL_TIMEOUT error
+    // and its pending resolver is released. When 0 or unset, calls wait
+    // indefinitely (a hung service keeps the caller's promise pending
+    // forever), so enabling it is recommended for production use.
+    callTimeout?: number;
     beforeCall?: IMQBeforeCall<IMQClient>;
     afterCall?: IMQAfterCall<IMQClient>;
     singleQueue?: boolean;
@@ -73,7 +103,7 @@ export const DEFAULT_IMQ_SERVICE_OPTIONS: IMQServiceOptions = {
 };
 
 /**
- * Default metric server options
+ * Default metrics server options
  *
  * @type {NonNullable<IMQMetricsServerOptions>}
  */

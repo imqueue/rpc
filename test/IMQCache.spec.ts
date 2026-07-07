@@ -43,25 +43,19 @@ describe('IMQCache', () => {
         it('should accept adapter name', () => {
             IMQCache.register('RedisCache');
 
-            assert.ok((IMQCache.adapters['RedisCache']) instanceof 
-                RedisCache,
-            );
+            assert.ok(IMQCache.adapters['RedisCache'] instanceof RedisCache);
         });
 
         it('should accept constructor', () => {
             IMQCache.register(RedisCache);
 
-            assert.ok((IMQCache.adapters['RedisCache']) instanceof 
-                RedisCache,
-            );
+            assert.ok(IMQCache.adapters['RedisCache'] instanceof RedisCache);
         });
 
         it('should accept instance', () => {
             IMQCache.register(new RedisCache());
 
-            assert.ok((IMQCache.adapters['RedisCache']) instanceof 
-                RedisCache,
-            );
+            assert.ok(IMQCache.adapters['RedisCache'] instanceof RedisCache);
         });
     });
 
@@ -73,9 +67,7 @@ describe('IMQCache', () => {
 
             IMQCache.apply('RedisCache', { logger });
 
-            assert.equal((<any>IMQCache).options['RedisCache'].logger, 
-                logger,
-            );
+            assert.equal((<any>IMQCache).options['RedisCache'].logger, logger);
         });
 
         it('should work the same if adapter name provided', () => {
@@ -85,9 +77,7 @@ describe('IMQCache', () => {
 
             IMQCache.apply(RedisCache, { logger });
 
-            assert.equal((<any>IMQCache).options['RedisCache'].logger, 
-                logger,
-            );
+            assert.equal((<any>IMQCache).options['RedisCache'].logger, logger);
         });
     });
 
@@ -113,8 +103,8 @@ describe('IMQCache', () => {
         it('should return adapter if registered', () => {
             IMQCache.register(RedisCache);
 
-            assert.ok((IMQCache.get('RedisCache')) instanceof RedisCache);
-            assert.ok((IMQCache.get(RedisCache)) instanceof RedisCache);
+            assert.ok(IMQCache.get('RedisCache') instanceof RedisCache);
+            assert.ok(IMQCache.get(RedisCache) instanceof RedisCache);
         });
     });
 });

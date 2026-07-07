@@ -31,13 +31,17 @@ export class IMQCache {
     public static adapters: { [name: string]: ICache } = {};
 
     /**
-     * Registers given cache adapter
+     * Registers the given cache adapter.
      *
-     * @param { ICache | string} adapter - adapter name or class or instance
-     * @param {any} options - adapter specific options
+     * @param {ICacheAdapter | string} adapter - adapter name, class or
+     *                                            instance
+     * @param {any} [options] - adapter-specific options
      * @returns {IMQCache}
      */
-    public static register(adapter: ICacheAdapter | string, options?: any) {
+    public static register(
+        adapter: ICacheAdapter | string,
+        options?: any,
+    ): typeof IMQCache {
         const self = IMQCache;
 
         if (typeof adapter === 'string') {
@@ -49,9 +53,8 @@ export class IMQCache {
         } else {
             if (!self.adapters[(adapter as ICacheConstructor).name]) {
                 if (typeof adapter === 'function') {
-                    self.adapters[(adapter as ICacheConstructor).name] = new (<
-                        any
-                    >adapter)();
+                    self.adapters[(adapter as ICacheConstructor).name] =
+                        new (adapter as ICacheConstructor)();
                 } else {
                     self.adapters[(adapter as ICache).name] =
                         adapter as any as ICache;
@@ -65,13 +68,16 @@ export class IMQCache {
     }
 
     /**
-     * Overrides existing adapter options with the given
+     * Overrides existing adapter options with the given ones.
      *
-     * @param {ICache | string} adapter - adapter to apply options to
-     * @param {any} options - adapter specific options
+     * @param {ICacheAdapter | string} adapter - adapter to apply options to
+     * @param {any} options - adapter-specific options
      * @returns {IMQCache}
      */
-    public static apply(adapter: ICacheAdapter | string, options: any) {
+    public static apply(
+        adapter: ICacheAdapter | string,
+        options: any,
+    ): typeof IMQCache {
         const self = IMQCache;
 
         if (!options) {
@@ -89,12 +95,12 @@ export class IMQCache {
     }
 
     /**
-     * Initializes all registered cache adapters
+     * Initializes all registered cache adapters.
      *
      * @returns {Promise<any>}
      */
-    public static async init() {
-        const self: any = IMQCache;
+    public static async init(): Promise<any> {
+        const self = IMQCache;
         const promises = [];
 
         for (let adapter of Object.keys(self.adapters)) {
@@ -111,9 +117,9 @@ export class IMQCache {
     }
 
     /**
-     * Returns registered cache adapter by its given name or class
+     * Returns a registered cache adapter by its given name or class.
      *
-     * @param { ICache | string} adapter - adapter name or class
+     * @param {ICacheAdapter} adapter - adapter name, class or instance
      * @returns {ICache} - adapter instance
      */
     public static get(adapter: ICacheAdapter): ICache {

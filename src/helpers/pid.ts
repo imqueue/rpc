@@ -21,31 +21,43 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import * as path from 'path';
-import * as fs from 'fs';
+import { resolve } from 'path';
+import { existsSync, mkdirSync, writeFileSync, unlinkSync } from 'fs';
 import { ILogger } from '@imqueue/core';
 
+/**
+ * OS signals that should trigger pid file cleanup on process termination.
+ */
 export const SIGNALS: string[] = ['SIGTERM', 'SIGINT', 'SIGHUP', 'SIGQUIT'];
-export const IMQ_TMP_DIR = process.env.TMPDIR || '/tmp';
-export const IMQ_PID_DIR = path.resolve(IMQ_TMP_DIR, '.imq-rpc');
 
 /**
- * Returns increment-based process identifier for a given name
+ * Base temporary directory used by imq-rpc.
+ */
+export const IMQ_TMP_DIR = process.env.TMPDIR || '/tmp';
+
+/**
+ * Directory where imq-rpc stores its pid files.
+ */
+export const IMQ_PID_DIR = resolve(IMQ_TMP_DIR, '.imq-rpc');
+
+/**
+ * Returns an increment-based process identifier for the given service name,
+ * creating the corresponding pid file under the given directory.
  *
- * @param {string} name - name of a service to create pid file for
- * @param {string} path - directory to
- * @returns {number}
+ * @param {string} name - name of the service to create the pid file for
+ * @param {string} [path] - directory to store the pid file in
+ * @returns {number} - the allocated increment-based identifier
  */
 export function pid(name: string, path: string = IMQ_PID_DIR): number {
     const pidFile = `${path}/${name}`;
     const pidOpts: {
-        encoding: string;
+        encoding: BufferEncoding;
         mode?: string | number | undefined;
         flag?: string | undefined;
     } = { encoding: 'utf8', flag: 'wx' };
 
-    if (!fs.existsSync(path)) {
-        fs.mkdirSync(path);
+    if (!existsSync(path)) {
+        mkdirSync(path);
     }
 
     let id: number = 0;
@@ -53,14 +65,10 @@ export function pid(name: string, path: string = IMQ_PID_DIR): number {
 
     while (!done) {
         try {
-            fs.writeFileSync(
-                `${pidFile}-${id}.pid`,
-                process.pid + '',
-                pidOpts as any,
-            );
+            writeFileSync(`${pidFile}-${id}.pid`, process.pid + '', pidOpts);
             done = true;
-        } catch (err: any) {
-            if (err.code === 'EEXIST') {
+        } catch (err) {
+            if ((err as NodeJS.ErrnoException).code === 'EEXIST') {
                 id++;
             } else {
                 throw err;
@@ -72,22 +80,22 @@ export function pid(name: string, path: string = IMQ_PID_DIR): number {
 }
 
 /**
- * Removes pid file for a given name and id
+ * Removes the pid file for the given service name and identifier.
  *
- * @param {string} name
- * @param {number} id
- * @param {ILogger} logger
- * @param {string} [path]
+ * @param {string} name - name of the service whose pid file to remove
+ * @param {number} id - increment-based identifier of the pid file
+ * @param {ILogger} logger - logger instance
+ * @param {string} [path] - directory the pid file is stored in
  */
 export function forgetPid(
     name: string,
     id: number,
     logger: ILogger,
     path: string = IMQ_PID_DIR,
-) {
+): void {
     try {
-        fs.unlinkSync(`${path}/${name}-${id}.pid`);
-    } catch (err: any) {
+        unlinkSync(`${path}/${name}-${id}.pid`);
+    } catch {
         /* ignore */
     }
 }

@@ -29,7 +29,7 @@ import {
     IMQOptions,
     Redis,
 } from '@imqueue/core';
-import * as os from 'os';
+import { hostname } from 'os';
 
 export interface IRedisCacheOptions extends Partial<IMQOptions> {
     conn?: IRedisClient;
@@ -43,19 +43,24 @@ export const DEFAULT_REDIS_CACHE_OPTIONS = {
 export const REDIS_CLIENT_INIT_ERROR = 'Redis client is not initialized!';
 
 /**
- * Class RedisCache. Implements cache engine over redis.
+ * Class RedisCache. Implements a cache engine on top of Redis.
  */
 export class RedisCache implements ICache {
     private static redis?: IRedisClient;
-    private logger: ILogger;
-    public options: IRedisCacheOptions;
+    // pending shared connection attempt; concurrent init() calls await this
+    // single promise instead of opening one connection each
+    private static initPromise?: Promise<void>;
+    private logger!: ILogger;
+    public options!: IRedisCacheOptions;
     public name: string = RedisCache.name;
     public ready: boolean = false;
 
     /**
-     * Initializes cache instance
+     * Initializes the cache instance. The underlying Redis connection is
+     * shared between all instances; concurrent initializations share a single
+     * connection attempt.
      *
-     * @param {IRedisCacheOptions} [options]
+     * @param {IRedisCacheOptions} [options] - Redis cache options
      * @returns {Promise<RedisCache>}
      */
     public async init(options?: IRedisCacheOptions): Promise<RedisCache> {
@@ -66,60 +71,78 @@ export class RedisCache implements ICache {
 
         this.logger = this.options.logger || console;
 
-        if (RedisCache.redis) {
+        if (RedisCache.redis && !RedisCache.initPromise) {
+            this.ready = true;
+
             return this;
         }
 
-        if (this.options.conn) {
+        if (this.options.conn && !RedisCache.initPromise) {
             this.logger.info('Re-using given connection for cache.');
 
             RedisCache.redis = this.options.conn;
+            this.ready = true;
 
             return this;
         }
 
-        return new Promise<RedisCache>((resolve, reject) => {
-            const connectionName = `${this.options.prefix}:${this.name}:pid:${
-                process.pid
-            }:host:${os.hostname()}`;
+        if (!RedisCache.initPromise) {
+            RedisCache.initPromise = new Promise<void>((resolve, reject) => {
+                const connectionName = `${this.options.prefix}:${
+                    this.name
+                }:pid:${process.pid}:host:${hostname()}`;
 
-            RedisCache.redis = new Redis({
-                port: Number(this.options.port),
-                host: String(this.options.host),
-                username: this.options.username,
-                password: this.options.password,
-                connectionName,
+                RedisCache.redis = new Redis({
+                    port: Number(this.options.port),
+                    host: String(this.options.host),
+                    username: this.options.username,
+                    password: this.options.password,
+                    connectionName,
+                });
+
+                RedisCache.redis.on('ready', () => {
+                    this.logger.info(
+                        '%s: redis cache connected, host %s:%s, pid %s',
+                        this.name,
+                        this.options.host,
+                        this.options.port,
+                        process.pid,
+                    );
+
+                    resolve();
+                });
+
+                RedisCache.redis.on('error', (err: Error) => {
+                    this.logger.error(
+                        `${this.name}: error connecting redis, pid ${
+                            process.pid
+                        }:`,
+                        err,
+                    );
+
+                    reject(err);
+                });
             });
+        }
 
-            RedisCache.redis.on('ready', async () => {
-                this.logger.info(
-                    '%s: redis cache connected, host %s:%s, pid %s',
-                    this.name,
-                    this.options.host,
-                    this.options.port,
-                    process.pid,
-                );
+        try {
+            await RedisCache.initPromise;
+        } finally {
+            // the promise only guards the pending connection attempt; once it
+            // settles (either way), clear it so later init() calls observe
+            // the current RedisCache.redis state (or retry after a failure)
+            RedisCache.initPromise = undefined;
+        }
 
-                this.ready = true;
+        this.ready = true;
 
-                resolve(this);
-            });
-
-            RedisCache.redis.on('error', (err: Error) => {
-                this.logger.error(
-                    `${this.name}: error connecting redis, pid ${process.pid}:`,
-                    err,
-                );
-
-                reject(err);
-            });
-        });
+        return this;
     }
 
     /**
-     * Returns fully qualified key name for a given generic key
+     * Returns the fully qualified key name for a given generic key.
      *
-     * @param {string} key
+     * @param {string} key - generic key to qualify
      * @returns {string}
      */
     private key(key: string): string {
@@ -127,17 +150,17 @@ export class RedisCache implements ICache {
     }
 
     /**
-     * Returns value stored in cache by a given key
+     * Returns the value stored in the cache under a given key.
      *
-     * @param {string} key
-     * @returns {Promise<any>}
+     * @param {string} key - key to read the value for
+     * @returns {Promise<any>} - stored value, or undefined if not found
      */
     public async get(key: string): Promise<any> {
         if (!RedisCache.redis) {
             throw new TypeError(REDIS_CLIENT_INIT_ERROR);
         }
 
-        const data = <any>await RedisCache.redis.get(this.key(key));
+        const data = await RedisCache.redis.get(this.key(key));
 
         if (data) {
             return JSON.parse(data);
@@ -147,16 +170,16 @@ export class RedisCache implements ICache {
     }
 
     /**
-     * Stores in cache given value under given key. If TTL is specified,
-     * cached value will expire in a given number of milliseconds. If NX
-     * argument set to true will create key:value in cache only if it does
-     * not exist yet. Given value could be any JSON-compatible object and
-     * will be serialized automatically.
+     * Stores the given value in the cache under the given key. If TTL is
+     * specified, the cached value will expire after the given number of
+     * milliseconds. If the NX argument is set to true, the key:value pair
+     * is created only if it does not exist yet. The given value can be any
+     * JSON-compatible object and will be serialized automatically.
      *
-     * @param {string} key
-     * @param {any} value
-     * @param {number} ttl
-     * @param {boolean} nx
+     * @param {string} key - key to store the value under
+     * @param {any} value - value to store
+     * @param {number} [ttl] - time-to-live in milliseconds
+     * @param {boolean} [nx] - store only if the key does not exist yet
      * @returns {Promise<boolean>}
      */
     public async set(
@@ -169,7 +192,7 @@ export class RedisCache implements ICache {
             throw new TypeError(REDIS_CLIENT_INIT_ERROR);
         }
 
-        const args: any[] = [
+        const args: (string | number)[] = [
             this.key(key),
             JSON.stringify(value && value.then ? await value : value),
         ];
@@ -189,9 +212,9 @@ export class RedisCache implements ICache {
     }
 
     /**
-     * Removes stored in cache value under given key
+     * Removes the value stored in the cache under the given key.
      *
-     * @param {string} key
+     * @param {string} key - key to remove
      * @returns {Promise<boolean>}
      */
     public async del(key: string): Promise<boolean> {
@@ -203,10 +226,10 @@ export class RedisCache implements ICache {
     }
 
     /**
-     * Purges all keys from cache by a given wildcard mask
+     * Purges all keys from the cache matching a given wildcard mask.
      *
-     * @param {string} keyMask
-     * @return {boolean}
+     * @param {string} keyMask - wildcard mask to match keys against
+     * @return {Promise<boolean>}
      */
     public async purge(keyMask: string): Promise<boolean> {
         if (!RedisCache.redis) {
@@ -230,11 +253,13 @@ export class RedisCache implements ICache {
     }
 
     /**
-     * Safely destroys redis connection
+     * Safely destroys the Redis connection.
      *
      * @returns {Promise<void>}
      */
     public static async destroy(): Promise<void> {
+        RedisCache.initPromise = undefined;
+
         try {
             if (RedisCache.redis) {
                 RedisCache.redis.removeAllListeners();
@@ -242,6 +267,6 @@ export class RedisCache implements ICache {
                 RedisCache.redis.quit();
                 delete RedisCache.redis;
             }
-        } catch (err) {}
+        } catch {}
     }
 }

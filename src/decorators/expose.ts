@@ -21,7 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import * as acorn from 'acorn';
+import { parse, type Comment, type Options } from 'acorn';
 import { ArgDescription, ReturnValueDescription, IMQRPCDescription } from '..';
 
 const TS_TYPES = ['object', 'string', 'number', 'boolean', 'null', 'undefined'];
@@ -158,8 +158,8 @@ function parseComment(src: string): CommentMetadata {
  * @param {string} src - class source code
  */
 function parseDescriptions(name: string, src: string) {
-    const comments: acorn.Comment[] = [];
-    const options: acorn.Options = {
+    const comments: Comment[] = [];
+    const options: Options = {
         // 'latest' so we can parse whatever modern syntax the configured
         // compilation target emits into the class source we introspect
         ecmaVersion: 'latest',
@@ -168,7 +168,7 @@ function parseDescriptions(name: string, src: string) {
         allowReserved: true,
         onComment: comments,
     };
-    const nodes = (acorn.parse(src, options) as any).body;
+    const nodes = (parse(src, options) as any).body;
 
     descriptions[name] = {
         inherits: 'Function',
@@ -207,7 +207,7 @@ function parseDescriptions(name: string, src: string) {
             }
 
             const methodName: string = (<any>method.key).name;
-            const blocks: acorn.Comment[] = comments.filter(
+            const blocks: Comment[] = comments.filter(
                 comment => comment.type === 'Block',
             );
 
@@ -217,7 +217,7 @@ function parseDescriptions(name: string, src: string) {
 
             const methodStart: number = (<any>method).start;
             let lastDif: number = methodStart - blocks[0].end;
-            let foundBlock: acorn.Comment = blocks[0];
+            let foundBlock: Comment = blocks[0];
 
             for (let comment of blocks) {
                 const dif: number = methodStart - comment.end;
@@ -391,30 +391,50 @@ function buildMethodDescription(
  * @return {(value: any, context: ClassMethodDecoratorContext) => void}
  */
 export function expose(): any {
+    // Dual-mode: standard (TC39) invocations pass a context object with a
+    // `kind` property; legacy ones pass (target, propertyKey, descriptor).
     return function exposeDecorator(
-        value: any,
-        context: ClassMethodDecoratorContext,
-    ): void {
-        const methodName: string = String(context.name);
+        target: any,
+        context: any,
+        descriptor?: any,
+    ): any {
+        if (context && typeof context === 'object' && 'kind' in context) {
+            const value: any = target;
+            const methodName: string = String(context.name);
 
-        // the class is not available at decoration time, so defer to an
-        // initializer that runs at construction, where `this` is known
-        context.addInitializer(function (this: any): void {
-            // register the method under the class that actually declares it
-            // (so a method inherited from a base class is described under the
-            // base, matching the previous decoration-time behavior)
-            let proto: any = this.constructor.prototype;
+            // the class is not available at decoration time, so defer to an
+            // initializer that runs at construction, where `this` is known
+            context.addInitializer(function (this: any): void {
+                // register the method under the class that actually declares
+                // it (inherited methods are described under the base class,
+                // matching decoration-time behavior)
+                let proto: any = this.constructor.prototype;
 
-            while (
-                proto &&
-                !Object.prototype.hasOwnProperty.call(proto, methodName)
-            ) {
-                proto = Object.getPrototypeOf(proto);
-            }
+                while (
+                    proto &&
+                    !Object.prototype.hasOwnProperty.call(proto, methodName)
+                ) {
+                    proto = Object.getPrototypeOf(proto);
+                }
 
-            const ctor: Function = proto ? proto.constructor : this.constructor;
+                const ctor: Function = proto
+                    ? proto.constructor
+                    : this.constructor;
 
-            buildMethodDescription(ctor, methodName, value);
-        });
+                buildMethodDescription(ctor, methodName, value);
+            });
+
+            return;
+        }
+
+        // legacy: `target` is the prototype, so its constructor is the class
+        // that declares the method — available immediately at decoration time
+        buildMethodDescription(
+            target.constructor,
+            String(context),
+            descriptor.value,
+        );
+
+        return descriptor;
     };
 }

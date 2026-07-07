@@ -33,8 +33,8 @@ import { createHash } from 'crypto';
  */
 function winRegBase(): string {
     const useSysnative =
-        process.arch === 'ia32'
-        && Object.prototype.hasOwnProperty.call(
+        process.arch === 'ia32' &&
+        Object.prototype.hasOwnProperty.call(
             process.env,
             'PROCESSOR_ARCHITEW6432',
         );
@@ -55,12 +55,16 @@ function idCommand(): string {
         case 'darwin':
             return 'ioreg -rd1 -c IOPlatformExpertDevice';
         case 'win32':
-            return `${winRegBase()}\\REG.exe QUERY `
-                + 'HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography '
-                + '/v MachineGuid';
+            return (
+                `${winRegBase()}\\REG.exe QUERY ` +
+                'HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography ' +
+                '/v MachineGuid'
+            );
         case 'linux':
-            return '( cat /var/lib/dbus/machine-id /etc/machine-id '
-                + '2> /dev/null || hostname ) | head -n 1 || :';
+            return (
+                '( cat /var/lib/dbus/machine-id /etc/machine-id ' +
+                '2> /dev/null || hostname ) | head -n 1 || :'
+            );
         case 'freebsd':
             return 'kenv -q smbios.system.uuid || sysctl -n kern.hostuuid';
         default:
@@ -108,11 +112,21 @@ function machineIdSync(original?: boolean): string {
     return original ? id : createHash('sha256').update(id).digest('hex');
 }
 
+// The machine id cannot change while the process is running, so it is
+// resolved once and memoized: osUuid() is called from every client
+// constructor, and shelling out each time would needlessly slow startup.
+let cachedUuid: string | undefined;
+
 /**
- * Returns machine UUID
+ * Returns the machine UUID. The underlying platform command runs only once
+ * per process; subsequent calls return the memoized value.
  *
  * @returns {string}
  */
 export function osUuid(): string {
-    return machineIdSync(true);
+    if (cachedUuid === undefined) {
+        cachedUuid = machineIdSync(true);
+    }
+
+    return cachedUuid;
 }

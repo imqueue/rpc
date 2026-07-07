@@ -42,6 +42,7 @@ describe('cache/RedisCache', () => {
     describe('init()', () => {
         beforeEach(() => {
             delete (<any>RedisCache).redis;
+            delete (<any>RedisCache).initPromise;
         });
 
         it('should not throw without options', async () => {

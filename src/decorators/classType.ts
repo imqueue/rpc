@@ -65,11 +65,18 @@ import { registerType } from './property';
  *
  * @return {(value: Function, context: ClassDecoratorContext) => void}
  */
-export function classType(): (
-    value: Function,
-    context: ClassDecoratorContext,
-) => void {
-    return function (value: Function, context: ClassDecoratorContext): void {
-        registerType(value, context.metadata);
+export function classType(): any {
+    // Dual-mode: standard (TC39) class decorators pass a context object with a
+    // `kind` property; legacy ones pass only the constructor. In legacy mode
+    // @property already registers each field directly, so there is nothing to
+    // flush and the class is returned unchanged.
+    return function (value: any, context?: any): any {
+        if (context && typeof context === 'object' && 'kind' in context) {
+            registerType(value, context.metadata);
+
+            return;
+        }
+
+        return value;
     };
 }

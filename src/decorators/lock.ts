@@ -29,36 +29,33 @@ export interface LockOptions {
 }
 
 /**
- * \@lock() decorator implementation
- * Will make all simultaneous similar method calls locked to be resolved with
- * the first obtained values. Similarity is identified by a bypassed method
- * argument values.
+ * Creates a `@lock()` method decorator. Concurrent calls to the decorated
+ * method that share the same arguments are coalesced: only the first call is
+ * executed, and all the others resolve with its result. Call similarity is
+ * determined by the method's argument values. The returned decorator is
+ * dual-mode: it works both as a standard (TC39) and as a legacy method
+ * decorator.
  *
- * @param {boolean|LockOptions} enabledOrOptions - whether to enable locks or not
- * @return {(
- *  target: any,
- *  methodName: (string),
- *  descriptor: TypedPropertyDescriptor<(...args: any[]) => any>
- * ) => void}
+ * @param {boolean | LockOptions} enabledOrOptions - whether locking is enabled,
+ *  or the lock options
+ * @return {Function} - a dual-mode method decorator
  */
-export function lock(enabledOrOptions: boolean | LockOptions = true) {
-    return function (
-        value: (...args: any[]) => any,
-        context: ClassMethodDecoratorContext,
-    ): (...args: any[]) => any {
-        const enabled =
-            typeof enabledOrOptions === 'boolean'
-                ? enabledOrOptions
-                : !enabledOrOptions.disabled;
-        const skipArgs =
-            typeof enabledOrOptions === 'boolean'
-                ? undefined
-                : enabledOrOptions.skipArgs;
-        const original = value;
-        const methodName = context.name;
-        const isStatic = context.static;
+export function lock(enabledOrOptions: boolean | LockOptions = true): any {
+    const enabled =
+        typeof enabledOrOptions === 'boolean'
+            ? enabledOrOptions
+            : !enabledOrOptions.disabled;
+    const skipArgs =
+        typeof enabledOrOptions === 'boolean'
+            ? undefined
+            : enabledOrOptions.skipArgs;
 
-        return async function <T>(this: any, ...args: any[]): Promise<T> {
+    const wrap = (
+        original: (...args: any[]) => any,
+        methodName: string | symbol,
+        isStatic: boolean,
+    ) =>
+        async function <T>(this: any, ...args: any[]): Promise<T> {
             const className: string = isStatic
                 ? this.name // static: `this` is the class
                 : this.constructor.name; // dynamic: `this` is the instance
@@ -112,5 +109,18 @@ export function lock(enabledOrOptions: boolean | LockOptions = true) {
                 throw err;
             }
         };
+
+    // Dual-mode: standard (TC39) invocations pass a context object with a
+    // `kind` property; legacy ones pass (target, propertyKey, descriptor).
+    return function (target: any, context: any, descriptor?: any): any {
+        if (context && typeof context === 'object' && 'kind' in context) {
+            return wrap(target, context.name, context.static);
+        }
+
+        const isStatic = typeof target === 'function';
+
+        descriptor.value = wrap(descriptor.value, context, isStatic);
+
+        return descriptor;
     };
 }

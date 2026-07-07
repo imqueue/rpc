@@ -40,14 +40,14 @@ export interface IMQRPCError extends JsonObject {
 }
 
 /**
- * Builds JSON representation of IMQ Error
+ * Builds a JSON representation of an IMQ error.
  *
- * @param {string} code    - error code
+ * @param {string} code - error code
  * @param {string} message - error message
- * @param {string} stack   - error stack
- * @param {string} method  - IMQ service method called, which produced an error
- * @param {any} args       - IMQ service method call args passed
- * @param {any} [original] - Original error thrown (JSON'ified) if any
+ * @param {any} stack - error stack
+ * @param {any} method - IMQ service method that produced the error
+ * @param {unknown} args - arguments passed to the service method call
+ * @param {unknown} [original] - original error thrown (JSON-serialized), if any
  * @return {IMQRPCError}
  */
 export function IMQError(
@@ -55,8 +55,8 @@ export function IMQError(
     message: string,
     stack: any,
     method: any,
-    args: any,
-    original?: any,
+    args: unknown,
+    original?: unknown,
 ): IMQRPCError {
     return {
         code,

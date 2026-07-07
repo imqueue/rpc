@@ -47,11 +47,11 @@ export interface IMQLockMetadata {
  *     const lock: AcquiredLock<number> = await IMQLock.acquire<number>('doSomething');
  *
  *     if (IMQLock.locked('doSomething')) {
- *         // avoiding err handling in this way can cause ded-locks
- *         // so it is good always try catch locked calls!
+ *         // skipping error handling this way can cause dead-locks,
+ *         // so it is always good to wrap locked calls in try/catch!
  *         // BTW, IMQLock uses timeouts to avoid dead-locks
  *         try {
- *             // this code will be called only once per multiple async calls
+ *             // this code is called only once across multiple async calls,
  *             // so all promises will be resolved with the same value
  *             const res = Math.random();
  *             IMQLock.release('doSomething', res);
@@ -89,19 +89,20 @@ export class IMQLock {
     public static deadlockTimeout: number = 10000;
 
     /**
-     * Logger used to log errors which appears during locked calls
+     * Logger used to log errors that appear during locked calls
      *
      * @type {ILogger}
      */
     public static logger: ILogger = console;
 
     /**
-     * Acquires a lock for a given key
+     * Acquires a lock for a given key.
      *
-     * @param {string} key
-     * @param {(...args: any[]) => any} [callback]
-     * @param {IMQLockMetadataItem} [metadata]
-     * @returns {AcquiredLock}
+     * @param {string} key - key to acquire the lock for
+     * @param {(...args: any[]) => any} [callback] - callback invoked on
+     *                                               lock resolution
+     * @param {IMQLockMetadataItem} [metadata] - metadata for the locked call
+     * @returns {Promise<AcquiredLock<T>>}
      */
     public static async acquire<T>(
         key: string,
@@ -116,7 +117,7 @@ export class IMQLock {
 
         if (IMQLock.locked(key)) {
             return new Promise<T>((resolve, reject) => {
-                let timer: any = null;
+                let timer: NodeJS.Timeout | null = null;
 
                 if (IMQLock.deadlockTimeout) {
                     // avoid dead-locks using timeouts
@@ -135,7 +136,7 @@ export class IMQLock {
                             }" call rejected, metadata: ${dumpStr}`,
                         );
 
-                        clearTimeout(timer);
+                        timer && clearTimeout(timer);
                         timer = null;
 
                         IMQLock.release(key, null, err);
@@ -177,13 +178,14 @@ export class IMQLock {
     }
 
     /**
-     * Releases previously acquired lock for a given key
+     * Releases a previously acquired lock for a given key.
      *
-     * @param {string} key
-     * @param {T} value
-     * @param {E} err
+     * @param {string} key - key to release the lock for
+     * @param {T} [value] - value to resolve pending calls with
+     * @param {E} [err] - error to reject pending calls with
+     * @returns {void}
      */
-    public static release<T, E>(key: string, value?: T, err?: E) {
+    public static release<T, E>(key: string, value?: T, err?: E): void {
         const queue: IMQLockQueue = IMQLock.queues[key];
 
         IMQLock.queues[key] = [];
@@ -200,9 +202,9 @@ export class IMQLock {
     }
 
     /**
-     * Returns true if given key is locked, false otherwise
+     * Returns true if the given key is locked, false otherwise.
      *
-     * @param {string} key
+     * @param {string} key - key to check the lock state for
      * @returns {boolean}
      */
     public static locked(key: string): boolean {

@@ -41,7 +41,7 @@ describe('IMQService signal handler and publish()', () => {
         });
 
         // simulate first registered signal handler
-        assert.ok((handlers.length) > (0));
+        assert.ok(handlers.length > 0);
         await handlers[0].fn();
 
         // let microtasks settle

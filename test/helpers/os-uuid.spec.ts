@@ -30,6 +30,17 @@ import { osUuid } from '../..';
 // call time, so we mock that same object (not an `import * as` namespace copy).
 const childProcess: typeof import('child_process') = require('child_process');
 
+// osUuid memoizes its result at module level, so the per-platform parsing
+// tests below load a FRESH copy of the module after mocking the platform and
+// execSync — otherwise the first test's cached id would leak into the rest.
+const OS_UUID_PATH = require.resolve('../../src/helpers/os-uuid');
+
+function freshOsUuid(): () => string {
+    delete require.cache[OS_UUID_PATH];
+
+    return require(OS_UUID_PATH).osUuid;
+}
+
 describe('helpers/osUuid()', () => {
     const realPlatform = process.platform;
 
@@ -54,6 +65,22 @@ describe('helpers/osUuid()', () => {
         assert.equal(id, id.toLowerCase());
     });
 
+    it('should memoize the machine id and shell out only once', () => {
+        const spy = mock.method(
+            childProcess,
+            'execSync',
+            () => 'ab12cd34ef567890abcdef1234567890\n',
+        );
+        const uuid = freshOsUuid();
+
+        assert.equal(uuid(), uuid());
+        assert.equal(
+            spy.mock.callCount(),
+            1,
+            'the machine id command must run only once per process',
+        );
+    });
+
     it('should read and parse the darwin IOPlatformUUID', () => {
         Object.defineProperty(process, 'platform', { value: 'darwin' });
         const spy = mock.method(
@@ -63,7 +90,7 @@ describe('helpers/osUuid()', () => {
                 '  "IOPlatformUUID" = "AB12CD34-0000-1111-2222-33445566EE77"\n',
         );
 
-        assert.equal(osUuid(), 'ab12cd34-0000-1111-2222-33445566ee77');
+        assert.equal(freshOsUuid()(), 'ab12cd34-0000-1111-2222-33445566ee77');
         assert.match(
             spy.mock.calls[0].arguments[0] as string,
             /ioreg -rd1 -c IOPlatformExpertDevice/,
@@ -76,11 +103,11 @@ describe('helpers/osUuid()', () => {
             childProcess,
             'execSync',
             () =>
-                '\r\nHKEY_LOCAL_MACHINE\\...\\Cryptography\r\n'
-                + '    MachineGuid    REG_SZ    AB12CD34-DEAD-BEEF\r\n',
+                '\r\nHKEY_LOCAL_MACHINE\\...\\Cryptography\r\n' +
+                '    MachineGuid    REG_SZ    AB12CD34-DEAD-BEEF\r\n',
         );
 
-        assert.equal(osUuid(), 'ab12cd34-dead-beef');
+        assert.equal(freshOsUuid()(), 'ab12cd34-dead-beef');
         assert.match(
             spy.mock.calls[0].arguments[0] as string,
             /REG\.exe QUERY .*Cryptography \/v MachineGuid/,
@@ -95,7 +122,7 @@ describe('helpers/osUuid()', () => {
             () => 'AB12CD34EF567890ABCDEF1234567890\n',
         );
 
-        assert.equal(osUuid(), 'ab12cd34ef567890abcdef1234567890');
+        assert.equal(freshOsUuid()(), 'ab12cd34ef567890abcdef1234567890');
         assert.match(
             spy.mock.calls[0].arguments[0] as string,
             /\/etc\/machine-id/,
