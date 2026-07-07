@@ -126,7 +126,7 @@ export class IMQLock {
 
                         try {
                             dumpStr = JSON.stringify(IMQLock.metadata[key]);
-                        } catch (err) {
+                        } catch {
                             dumpStr = 'Unable to stringify metadata';
                         }
 

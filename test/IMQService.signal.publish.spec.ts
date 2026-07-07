@@ -4,7 +4,7 @@
 import { describe, it, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID as uuid } from 'crypto';
-import { IMQService, IMQRPCRequest, expose } from '..';
+import { IMQService, expose } from '..';
 
 class SignalTestService extends IMQService {
     @expose()

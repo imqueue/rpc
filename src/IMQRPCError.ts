@@ -67,7 +67,7 @@ export function IMQError(
         original: (() => {
             try {
                 return JSON.stringify(original);
-            } catch (err) {
+            } catch {
                 return undefined;
             }
         })(),
