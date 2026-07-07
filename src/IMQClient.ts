@@ -397,11 +397,12 @@ export abstract class IMQClient extends EventEmitter {
     /**
      * Returns service description metadata.
      *
-     * @param {IMQDelay} delay
+     * @param {IMQDelay} [_delay] - optional delivery delay; forwarded to the
+     *  service through `arguments` by the `@remote` decorator
      * @returns {Promise<Description>}
      */
     @remote()
-    public async describe(delay?: IMQDelay): Promise<Description> {
+    public async describe(_delay?: IMQDelay): Promise<Description> {
         return await this.remoteCall<Description>(...arguments);
     }
 
@@ -710,12 +711,12 @@ export namespace ${namespaceName} {\n`;
 }
 
 /**
- * Return promised typedef of a given type if its missing
+ * Return the promised typedef of a given type if its missing
  *
  * @param {string} typedef
  * @returns {string}
  */
-function promisedType(typedef: string) {
+function promisedType(typedef: string): string {
     if (!typedef.startsWith('Promise<')) {
         typedef = `Promise<${typedef}>`;
     }
@@ -729,7 +730,7 @@ function promisedType(typedef: string) {
  * @param {string} typedef
  * @returns {string}
  */
-function cleanType(typedef: string) {
+function cleanType(typedef: string): string {
     return typedef.replace(/^Promise<([\s\S]+?)>$/, '$1');
 }
 

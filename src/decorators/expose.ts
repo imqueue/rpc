@@ -24,8 +24,6 @@
 import { parse, type Comment, type Options } from 'acorn';
 import { ArgDescription, ReturnValueDescription, IMQRPCDescription } from '..';
 
-const TS_TYPES = ['object', 'string', 'number', 'boolean', 'null', 'undefined'];
-
 type CommentMetadata = {
     [key: string]: string | ArgDescription[] | ReturnValueDescription;
     description: string;
@@ -279,26 +277,6 @@ function get<T>(
     }
 
     return defaults;
-}
-
-/**
- * Converts JavaScript type to most close possible TypeScript type
- *
- * @param type
- * @returns {string}
- */
-function cast(type: string) {
-    let tsType = String(type).toLowerCase();
-
-    if (tsType === 'undefined') {
-        tsType = 'void';
-    } else if (tsType === 'array') {
-        tsType = 'any[]';
-    } else if (!~TS_TYPES.indexOf(tsType)) {
-        tsType = type;
-    }
-
-    return tsType;
 }
 
 /**

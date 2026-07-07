@@ -34,7 +34,7 @@ import { IMQClient } from './IMQClient';
  * @param {IMQRPCResponse} [res] - the response being prepared
  * @return {Promise<void>}
  */
-export interface IMQBeforeCall<T> {
+export interface IMQBeforeCall<_T> {
     (req?: IMQRPCRequest, res?: IMQRPCResponse): Promise<void>;
 }
 
@@ -45,7 +45,7 @@ export interface IMQBeforeCall<T> {
  * @param {IMQRPCResponse} [res] - the produced response
  * @return {Promise<void>}
  */
-export interface IMQAfterCall<T> {
+export interface IMQAfterCall<_T> {
     (req: IMQRPCRequest, res?: IMQRPCResponse): Promise<void>;
 }
 

@@ -21,7 +21,8 @@
         "no-useless-catch": "off",
         "unicorn/no-new-array": "off",
         "unicorn/prefer-string-starts-ends-with": "off",
-        "unicorn/no-unnecessary-await": "off"
+        "unicorn/no-unnecessary-await": "off",
+        "no-unused-vars": "off"
       }
     }
   ],

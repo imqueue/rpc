@@ -5,14 +5,7 @@ import * as fs from 'fs';
 import mockRequire from 'mock-require';
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-    IMQService,
-    IMQClient,
-    IMQDelay,
-    IMQMetadata,
-    expose,
-    remote,
-} from '..';
+import { IMQService, IMQClient, IMQDelay, IMQMetadata, expose } from '..';
 import * as imqRpc from '..';
 
 // The generated client imports from '@imqueue/rpc'; map it to this package so
