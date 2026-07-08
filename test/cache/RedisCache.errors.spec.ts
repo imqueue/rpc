@@ -61,4 +61,23 @@ describe('cache/RedisCache errors when not initialized', () => {
         }
         assert.equal(threw, true);
     });
+
+    it('init() rejects and logs when the connection errors', async () => {
+        delete (RedisCache as any).redis;
+        (RedisCache as any).initPromise = undefined;
+
+        const cache: any = new RedisCache();
+        const pending = cache.init();
+
+        // the mock emits 'ready' on a later tick, so emitting 'error'
+        // synchronously here reaches the reject branch first
+        (RedisCache as any).redis.emit('error', new Error('connection boom'));
+
+        await assert.rejects(pending, /connection boom/);
+
+        // the failed attempt still left a live mock connection — close it so it
+        // does not keep the process alive
+        await RedisCache.destroy().catch(() => undefined);
+        (RedisCache as any).initPromise = undefined;
+    });
 });

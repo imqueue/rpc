@@ -23,7 +23,7 @@
  */
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { randomUUID as uuid } from 'crypto';
+import { randomUUID as uuid } from 'node:crypto';
 import { logger } from './mocks';
 import { IMQService, IMQRPCRequest, expose, AFTER_HOOK_ERROR } from '..';
 

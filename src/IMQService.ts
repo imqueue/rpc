@@ -42,9 +42,9 @@ import {
     DEFAULT_IMQ_SERVICE_OPTIONS,
     AFTER_HOOK_ERROR,
     BEFORE_HOOK_ERROR,
-    SIGNALS,
     DEFAULT_IMQ_METRICS_SERVER_OPTIONS,
 } from '.';
+import { SIGNALS } from './helpers';
 import { cpus } from 'node:os';
 import cluster, { type Worker } from 'node:cluster';
 import { ArgDescription } from './IMQRPCDescription';
@@ -319,12 +319,16 @@ export abstract class IMQService {
             }
 
             cluster.on('exit', (worker: Worker) => {
+                /* node:coverage disable */
+                // exercised by tests, but V8 will not record coverage for an
+                // inline listener body that terminates via process.exit()
                 this.logger.info(
                     '%s: worker pid %s died, exiting',
                     this.name,
                     worker.process.pid,
                 );
                 process.exit(1);
+                /* node:coverage enable */
             });
         } else {
             this.logger.info(

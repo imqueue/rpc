@@ -21,7 +21,8 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { IMQCache, ICache, RedisCache, ICacheConstructor, signature } from '..';
+import { IMQCache, ICache, RedisCache, ICacheConstructor } from '..';
+import { signature } from '../helpers';
 
 export interface CacheDecoratorOptions {
     adapter?: string | ICache | ICacheConstructor;

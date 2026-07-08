@@ -21,7 +21,16 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { parse, type Comment, type Options } from 'acorn';
+import {
+    createSourceFile,
+    getLeadingCommentRanges,
+    isClassDeclaration,
+    isIdentifier,
+    isMethodDeclaration,
+    ScriptKind,
+    ScriptTarget,
+    SyntaxKind,
+} from 'typescript';
 import { ArgDescription, ReturnValueDescription, IMQRPCDescription } from '..';
 
 type CommentMetadata = {
@@ -156,98 +165,59 @@ function parseComment(src: string): CommentMetadata {
  * @param {string} src - class source code
  */
 function parseDescriptions(name: string, src: string) {
-    const comments: Comment[] = [];
-    const options: Options = {
-        // 'latest' so we can parse whatever modern syntax the configured
-        // compilation target emits into the class source we introspect
-        ecmaVersion: 'latest',
-        locations: true,
-        ranges: true,
-        allowReserved: true,
-        onComment: comments,
-    };
-    const nodes = (parse(src, options) as any).body;
+    // parsed with the TypeScript compiler, which is already a runtime
+    // dependency (used for client generation) — no parent pointers needed,
+    // only class members and their leading comment trivia are read
+    const sourceFile = createSourceFile(
+        `${name}.js`,
+        src,
+        ScriptTarget.Latest,
+        false,
+        ScriptKind.JS,
+    );
 
+    // the local `inherits` is a placeholder only: the public description's
+    // `inherits` is derived from the runtime prototype chain in
+    // buildMethodDescription(), never from the parsed source
     descriptions[name] = {
         inherits: 'Function',
     };
 
-    for (let node of nodes) {
+    for (const statement of sourceFile.statements) {
         if (
-            !(
-                node &&
-                node.type === 'ClassDeclaration' &&
-                node.id &&
-                node.id.name === name &&
-                node.body.type === 'ClassBody'
-            )
+            !isClassDeclaration(statement) ||
+            !statement.name ||
+            statement.name.text !== name
         ) {
             continue;
         }
 
-        if (node.superClass) {
-            if (node.superClass.type === 'MemberExpression') {
-                descriptions[name].inherits = (<any>(
-                    node.superClass.property
-                )).name;
-            } else if (node.superClass.type === 'Identifier') {
-                descriptions[name].inherits = node.superClass.name;
-            }
-        }
-
-        const methods = node.body.body.filter(
-            (f: any) => f.type === 'MethodDefinition',
-        );
-
-        for (let method of node.body.body) {
-            if (method.type !== 'MethodDefinition') {
+        for (const member of statement.members) {
+            if (
+                !isMethodDeclaration(member) ||
+                !member.name ||
+                !isIdentifier(member.name)
+            ) {
                 continue;
             }
 
-            const methodName: string = (<any>method.key).name;
-            const blocks: Comment[] = comments.filter(
-                comment => comment.type === 'Block',
-            );
+            // the method's doc is the last block comment in its leading
+            // trivia; member.pos starts right after the previous token, so
+            // comments belonging to earlier members can never match
+            const blocks = (
+                getLeadingCommentRanges(src, member.pos) || []
+            ).filter(range => range.kind === SyntaxKind.MultiLineCommentTrivia);
 
             if (!blocks.length) {
                 continue;
             }
 
-            const methodStart: number = (<any>method).start;
-            let lastDif: number = methodStart - blocks[0].end;
-            let foundBlock: Comment = blocks[0];
+            const block = blocks[blocks.length - 1];
 
-            for (let comment of blocks) {
-                const dif: number = methodStart - comment.end;
-
-                if (dif < 0) {
-                    break;
-                }
-
-                if (dif >= lastDif) {
-                    continue;
-                }
-
-                lastDif = dif;
-                foundBlock = comment;
-            }
-
-            if (!method.range || foundBlock.start > method.range[1]) {
-                continue;
-            }
-
-            const index: number = methods.indexOf(method);
-            const prev: any = index && methods[index - 1];
-            const prevBeforeComment =
-                !prev ||
-                (prev && prev.range && prev.range[1] <= foundBlock.start);
-
-            if (prevBeforeComment) {
-                // it's a method comment block!!!!
-                descriptions[name][methodName] = {
-                    comment: parseComment(foundBlock.value),
-                };
-            }
+            descriptions[name][member.name.text] = {
+                // comment body without the enclosing /* and */ delimiters
+                comment: parseComment(src.slice(block.pos + 2, block.end - 2)),
+            };
         }
     }
 }

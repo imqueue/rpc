@@ -93,6 +93,10 @@ describe('decorators/lock()', () => {
         assert.equal(results.length, 1);
     });
 
+    it('should release the lock and rethrow when the method throws', async () => {
+        await assert.rejects(TestLockClass.rejected(), /Rejected!/);
+    });
+
     it('should be turned off if DISABLE_LOCKS env var set', async () => {
         process.env['DISABLE_LOCKS'] = '1';
         const results = [

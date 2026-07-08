@@ -25,9 +25,9 @@ import { logger } from './mocks';
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { IMQService, IMQRPCRequest, Description, expose } from '..';
-import { randomUUID as uuid } from 'crypto';
+import { randomUUID as uuid } from 'node:crypto';
 
-const cluster: any = require('cluster');
+const cluster: any = require('node:cluster');
 
 class TestService extends IMQService {
     @expose()
@@ -324,5 +324,135 @@ describe('IMQService', () => {
                 await service.destroy();
             },
         );
+    });
+});
+
+describe('IMQService metrics server', () => {
+    it('serves the queue length and 404s other paths', async () => {
+        const service: any = new TestService(
+            { logger, metricsServer: { enabled: true, port: 0 } },
+            uuid(),
+        );
+
+        mock.method(service.imq, 'start', async () => undefined);
+        mock.method(service.imq, 'queueLength', async () => 7);
+
+        await service.startWithMetricsServer();
+
+        const server = service.metricsServer;
+
+        if (!server.listening) {
+            await new Promise(resolve => server.once('listening', resolve));
+        }
+
+        const port = server.address().port;
+
+        try {
+            const metrics = await fetch(`http://127.0.0.1:${port}/metrics`);
+            assert.equal(metrics.status, 200);
+            // the default formatter renders a prometheus-style line
+            assert.match(await metrics.text(), /7/);
+
+            const other = await fetch(`http://127.0.0.1:${port}/nope`);
+            assert.equal(other.status, 404);
+            await other.text();
+        } finally {
+            await new Promise(resolve =>
+                server.close(() => resolve(undefined)),
+            );
+            for (const [sig, h] of service.signalHandlers) {
+                process.removeListener(sig, h);
+            }
+        }
+    });
+
+    it('does not start a server when metrics are disabled', async () => {
+        const service: any = new TestService({ logger }, uuid());
+
+        mock.method(service.imq, 'start', async () => undefined);
+
+        await service.startWithMetricsServer();
+
+        assert.equal(service.metricsServer, undefined);
+
+        for (const [sig, h] of service.signalHandlers) {
+            process.removeListener(sig, h);
+        }
+    });
+
+    it('signal handler closes the metrics server and exits', () => {
+        const service: any = new TestService({ logger }, uuid());
+        const closeSpy = mock.fn();
+
+        service.metricsServer = { close: closeSpy };
+        mock.method(service, 'destroy', async () => undefined);
+        const exit = mock.method(process, 'exit', (() => undefined) as any);
+
+        mock.timers.enable({ apis: ['setTimeout'] });
+
+        try {
+            service.signalHandlers[0][1]();
+
+            assert.ok(closeSpy.mock.callCount() > 0);
+
+            mock.timers.tick(60000);
+            assert.ok(exit.mock.callCount() > 0);
+        } finally {
+            mock.timers.reset();
+            for (const [sig, h] of service.signalHandlers) {
+                process.removeListener(sig, h);
+            }
+        }
+    });
+});
+
+describe('IMQService multi-process master', () => {
+    it('forks workers and exits when one dies', async () => {
+        if (!cluster.isMaster) {
+            return;
+        }
+
+        const service: any = new TestService(
+            { logger, multiProcess: true, childrenPerCore: 1 },
+            uuid(),
+        );
+        const exit = mock.method(process, 'exit', (() => undefined) as any);
+        const fork = mock.method(cluster, 'fork', () => ({
+            process: { pid: 111 },
+        }));
+        const before = cluster.listeners('exit').slice();
+
+        try {
+            await service.start();
+
+            assert.ok(fork.mock.callCount() > 0);
+
+            // invoke the handler start() registered, directly, so its body is
+            // exercised without going through cluster's internal 'exit' plumbing
+            const added = cluster
+                .listeners('exit')
+                .filter((l: any) => !before.includes(l));
+
+            assert.ok(added.length > 0);
+
+            const infoSpy = mock.method(service.logger, 'info');
+            added[0]({ process: { pid: 222 } });
+
+            assert.ok(
+                infoSpy.mock.calls.some((c: any) =>
+                    String(c.arguments[0]).includes('died'),
+                ),
+            );
+            assert.ok(exit.mock.callCount() > 0);
+        } finally {
+            for (const l of cluster.listeners('exit')) {
+                if (!before.includes(l)) {
+                    cluster.removeListener('exit', l);
+                }
+            }
+            for (const [sig, h] of service.signalHandlers) {
+                process.removeListener(sig, h);
+            }
+        }
     });
 });

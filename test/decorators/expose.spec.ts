@@ -213,4 +213,63 @@ describe('decorators/expose()', () => {
             },
         );
     });
+
+    it('should skip parsed classes whose name does not match', () => {
+        class RenamedExposeClass {
+            /**
+             * Doc for a renamed class method
+             *
+             * @return {void}
+             */
+            public renamedMethod() {}
+        }
+
+        // force ctor.name to differ from the class name in ctor.toString(), so
+        // the source parser finds a class declaration that does not match
+        Object.defineProperty(RenamedExposeClass, 'name', {
+            value: 'MismatchedExposeName',
+        });
+
+        const descriptor = Object.getOwnPropertyDescriptor(
+            RenamedExposeClass.prototype,
+            'renamedMethod',
+        );
+
+        assert.doesNotThrow(() =>
+            expose()(RenamedExposeClass.prototype, 'renamedMethod', descriptor),
+        );
+    });
+
+    it('should register the method via the legacy signature', () => {
+        class LegacyExposeClass {
+            /**
+             * Legacy documented method
+             *
+             * @param {number} a - some number
+             * @return {string}
+             */
+            public legacyMethod(a: number) {
+                return String(a);
+            }
+        }
+
+        const descriptor = Object.getOwnPropertyDescriptor(
+            LegacyExposeClass.prototype,
+            'legacyMethod',
+        );
+
+        // (target, propertyKey, descriptor) with no TC39 context object
+        const result = expose()(
+            LegacyExposeClass.prototype,
+            'legacyMethod',
+            descriptor,
+        );
+
+        assert.equal(result, descriptor);
+        assert.notEqual(description.LegacyExposeClass, undefined);
+        assert.equal(
+            description.LegacyExposeClass.methods.legacyMethod.description,
+            'Legacy documented method',
+        );
+    });
 });

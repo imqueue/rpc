@@ -33,7 +33,7 @@ import {
     expose,
     remote,
 } from '..';
-import * as fs from 'fs';
+import * as fs from 'node:fs';
 import * as imqRpc from '..';
 
 mockRequire('@imqueue/rpc', imqRpc);

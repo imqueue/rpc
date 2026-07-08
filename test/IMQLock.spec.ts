@@ -79,3 +79,52 @@ describe('IMQLock', () => {
         });
     });
 });
+
+describe('IMQLock queued callback errors', () => {
+    const originalTimeout = IMQLock.deadlockTimeout;
+    const originalLogger = IMQLock.logger;
+
+    before(() => {
+        // no deadlock timer, and a silent logger so a thrown callback is
+        // contained rather than logged to the console
+        IMQLock.deadlockTimeout = 0;
+        IMQLock.logger = {
+            log: () => {},
+            info: () => {},
+            warn: () => {},
+            error: () => {},
+        } as any;
+    });
+    after(() => {
+        IMQLock.deadlockTimeout = originalTimeout;
+        IMQLock.logger = originalLogger;
+    });
+
+    it('contains a throwing callback on the resolve path', async () => {
+        const key = 'cbResolveThrow';
+
+        await IMQLock.acquire(key);
+
+        const pending = IMQLock.acquire(key, () => {
+            throw new Error('resolve callback boom');
+        });
+
+        IMQLock.release(key, 'ok');
+
+        assert.equal(await pending, 'ok');
+    });
+
+    it('surfaces a throwing callback on the reject path', async () => {
+        const key = 'cbRejectThrow';
+
+        await IMQLock.acquire(key);
+
+        const pending = IMQLock.acquire(key, () => {
+            throw new Error('reject callback boom');
+        });
+
+        IMQLock.release(key, null, new Error('original rejection'));
+
+        await assert.rejects(pending, /reject callback boom/);
+    });
+});

@@ -106,6 +106,19 @@ describe('IMQClient call timeout', () => {
         });
     });
 
+    it('should reject the call when the underlying send throws', async () => {
+        client = new TimeoutClient({ logger });
+        await client.start();
+
+        const imq: any = (client as any).imq;
+
+        mock.method(imq, 'send', async () => {
+            throw new Error('send boom');
+        });
+
+        await assert.rejects(client.ping());
+    });
+
     it('should not time out calls when callTimeout is not set', async () => {
         client = new TimeoutClient({ logger });
         await client.start();

@@ -26,7 +26,7 @@ import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { RedisCache } from '../..';
 import { IRedisClient } from '@imqueue/core';
-import { randomUUID as uuid } from 'crypto';
+import { randomUUID as uuid } from 'node:crypto';
 
 describe('cache/RedisCache', () => {
     it('should be a class', () => {

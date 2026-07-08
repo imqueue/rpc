@@ -21,8 +21,8 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { resolve } from 'path';
-import { existsSync, mkdirSync, writeFileSync, unlinkSync } from 'fs';
+import { resolve } from 'node:path';
+import { existsSync, mkdirSync, writeFileSync, unlinkSync } from 'node:fs';
 import { ILogger } from '@imqueue/core';
 
 /**
