@@ -45,6 +45,18 @@ jobs:
       fail-fast: false
       matrix:
         node-version: [22.x, 24.x]
+    services:
+      # the service/client integration tests talk to a real redis over the
+      # message queue (unlike core, which mocks the driver entirely)
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
