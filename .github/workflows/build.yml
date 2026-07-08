@@ -46,8 +46,6 @@ jobs:
       matrix:
         node-version: [22.x, 24.x]
     services:
-      # the service/client integration tests talk to a real redis over the
-      # message queue (unlike core, which mocks the driver entirely)
       redis:
         image: redis:7
         ports:
