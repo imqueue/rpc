@@ -21,7 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { access, mkdir as fsMkdir, writeFile as fsWriteFile } from 'fs';
+import { access, mkdir as fsMkdir, writeFile as fsWriteFile } from 'node:fs';
 
 /**
  * Checks whether a file exists at the given path.

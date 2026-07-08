@@ -1,7 +1,7 @@
 /*!
  * IMQClient generator trailing args removal coverage test
  */
-import * as fs from 'fs';
+import * as fs from 'node:fs';
 import mockRequire from 'mock-require';
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

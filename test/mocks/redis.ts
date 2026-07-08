@@ -22,8 +22,8 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import mock from 'mock-require';
-import { EventEmitter } from 'events';
-import * as crypto from 'crypto';
+import { EventEmitter } from 'node:events';
+import * as crypto from 'node:crypto';
 
 function sha1(str: string) {
     let sha: crypto.Hash = crypto.createHash('sha1');

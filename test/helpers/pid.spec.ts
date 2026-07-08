@@ -24,9 +24,9 @@
 import { logger } from '../mocks';
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { pid, forgetPid, IMQ_TMP_DIR } from '../..';
-import { randomUUID as uuid } from 'crypto';
-import * as fs from 'fs';
+import { pid, forgetPid, IMQ_TMP_DIR } from '../../src/helpers';
+import { randomUUID as uuid } from 'node:crypto';
+import * as fs from 'node:fs';
 
 function rmdirr(path: string) {
     if (fs.existsSync(path)) {
@@ -98,5 +98,11 @@ describe('helpers/forgetPid()', () => {
         forgetPid(name, id, logger, TEST_PID_DIR);
 
         assert.ok(!fs.existsSync(`${TEST_PID_DIR}/${name}-0.pid`));
+    });
+
+    it('should ignore a missing pid file', () => {
+        assert.doesNotThrow(() =>
+            forgetPid('DoesNotExist', 999, logger, TEST_PID_DIR),
+        );
     });
 });

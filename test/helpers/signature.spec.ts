@@ -24,7 +24,7 @@
 import '../mocks';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { signature } from '../..';
+import { signature } from '../../src/helpers';
 
 describe('helpers/signature()', () => {
     it('should be a function', () => {

@@ -24,11 +24,11 @@
 import '../mocks';
 import { describe, it, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { osUuid } from '../..';
+import { osUuid } from '../../src/helpers';
 
-// The helper under test reads the live `require('child_process')` object at
+// The helper under test reads the live `require('node:child_process')` object at
 // call time, so we mock that same object (not an `import * as` namespace copy).
-const childProcess: typeof import('child_process') = require('child_process');
+const childProcess: typeof import('node:child_process') = require('node:child_process');
 
 // osUuid memoizes its result at module level, so the per-platform parsing
 // tests below load a FRESH copy of the module after mocking the platform and
@@ -43,10 +43,13 @@ function freshOsUuid(): () => string {
 
 describe('helpers/osUuid()', () => {
     const realPlatform = process.platform;
+    const realArch = process.arch;
 
     afterEach(() => {
         mock.restoreAll();
         Object.defineProperty(process, 'platform', { value: realPlatform });
+        Object.defineProperty(process, 'arch', { value: realArch });
+        delete process.env.PROCESSOR_ARCHITEW6432;
     });
 
     it('should be a function', () => {
@@ -127,5 +130,37 @@ describe('helpers/osUuid()', () => {
             spy.mock.calls[0].arguments[0] as string,
             /\/etc\/machine-id/,
         );
+    });
+
+    it('should build the freebsd command', () => {
+        Object.defineProperty(process, 'platform', { value: 'freebsd' });
+        const spy = mock.method(childProcess, 'execSync', () => 'ABCDEF12\n');
+
+        assert.equal(freshOsUuid()(), 'abcdef12');
+        assert.match(
+            spy.mock.calls[0].arguments[0] as string,
+            /kenv -q smbios\.system\.uuid/,
+        );
+    });
+
+    it('should throw for an unsupported platform', () => {
+        Object.defineProperty(process, 'platform', { value: 'aix' });
+
+        assert.throws(() => freshOsUuid()(), /Unsupported platform/);
+    });
+
+    it('should use the sysnative redirector for 32-bit on 64-bit windows', () => {
+        Object.defineProperty(process, 'platform', { value: 'win32' });
+        Object.defineProperty(process, 'arch', { value: 'ia32' });
+        process.env.PROCESSOR_ARCHITEW6432 = 'AMD64';
+        const spy = mock.method(
+            childProcess,
+            'execSync',
+            () => 'MachineGuid  REG_SZ  AB12CD34\r\n',
+        );
+
+        freshOsUuid()();
+
+        assert.match(spy.mock.calls[0].arguments[0] as string, /sysnative/);
     });
 });

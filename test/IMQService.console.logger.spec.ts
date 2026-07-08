@@ -3,7 +3,7 @@
  */
 import { describe, it, beforeEach, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { randomUUID as uuid } from 'crypto';
+import { randomUUID as uuid } from 'node:crypto';
 import {
     IMQService,
     IMQRPCRequest,

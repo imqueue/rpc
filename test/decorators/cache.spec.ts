@@ -24,7 +24,7 @@
 import { logger } from '../mocks';
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { RedisCache, cache } from '../..';
+import { RedisCache, cache, IMQCache } from '../..';
 import { ILogger } from '@imqueue/core';
 
 class CacheTestClass {
@@ -38,6 +38,55 @@ class CacheTestClass {
     @cache({ ttl: 100 })
     public async testMethodWithTTL() {
         return Math.random() * Math.random() + Math.random();
+    }
+}
+
+// minimal in-memory adapter used to exercise the decorator's init/error paths
+// without touching a real redis connection
+class MemoryAdapter {
+    public name = 'MemoryAdapter';
+    public ready = false;
+    public logger: any = logger;
+    public initOptions: any;
+    public throwOnGet = false;
+
+    public init(options?: any): void {
+        this.initOptions = options;
+        this.ready = true;
+    }
+    public async get(): Promise<any> {
+        if (this.throwOnGet) {
+            throw new Error('cache get failure');
+        }
+
+        return undefined;
+    }
+    public async set(): Promise<boolean> {
+        return true;
+    }
+    public async del(): Promise<boolean> {
+        return true;
+    }
+    public async purge(): Promise<boolean> {
+        return true;
+    }
+}
+
+class CacheConnClass {
+    public imq: any = { writer: { fake: 'writer' }, logger };
+
+    @cache({ adapter: MemoryAdapter as any })
+    public async withConn() {
+        return 1;
+    }
+}
+
+class CacheErrClass {
+    public logger: ILogger = logger;
+
+    @cache({ adapter: MemoryAdapter as any })
+    public async willFallBack() {
+        return 42;
     }
 }
 
@@ -80,5 +129,28 @@ describe('decorators/cache()', () => {
 
                 assert.notEqual(callThree, callOne);
             }, 100));
+    });
+
+    it('passes the imq writer connection to a fresh adapter', async () => {
+        const conn = new CacheConnClass();
+
+        assert.equal(await conn.withConn(), 1);
+        const adapter: any = IMQCache.get(MemoryAdapter as any);
+
+        assert.ok(adapter.ready);
+        assert.deepEqual(adapter.initOptions.conn, { fake: 'writer' });
+    });
+
+    it('reuses a ready adapter and falls back on a cache error', async () => {
+        // first instance registers + inits the (now ready) shared adapter
+        await new CacheErrClass().willFallBack();
+        const adapter: any = IMQCache.get(MemoryAdapter as any);
+        adapter.throwOnGet = true;
+
+        // a second instance finds the adapter already ready, then get() throws
+        // and the decorator falls back to the original method
+        const result = await new CacheErrClass().willFallBack();
+
+        assert.equal(result, 42);
     });
 });

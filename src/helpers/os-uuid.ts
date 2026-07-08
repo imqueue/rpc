@@ -21,8 +21,8 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { execSync } from 'child_process';
-import { createHash } from 'crypto';
+import { execSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 
 /**
  * Returns the base path to the Windows registry query tool, accounting for

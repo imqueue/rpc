@@ -63,7 +63,7 @@ let writeFile: (path: string, content: string) => Promise<void>;
 
 describe('fs helpers', () => {
     before(function before() {
-        mockRequire('fs', fsMock);
+        mockRequire('node:fs', fsMock);
         delete require.cache[require.resolve('../../src/helpers/fs')];
         const fs = require('../../src/helpers/fs');
         fileExists = fs.fileExists;
@@ -71,7 +71,7 @@ describe('fs helpers', () => {
         writeFile = fs.writeFile;
     });
     after(() => {
-        mockRequire.stop('fs');
+        mockRequire.stop('node:fs');
     });
 
     it('should check file existance', () =>

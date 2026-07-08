@@ -21,7 +21,6 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { ICache } from '.';
 import {
     ILogger,
     DEFAULT_IMQ_OPTIONS,
@@ -29,7 +28,8 @@ import {
     IMQOptions,
     Redis,
 } from '@imqueue/core';
-import { hostname } from 'os';
+import { hostname } from 'node:os';
+import { ICache } from '.';
 
 export interface IRedisCacheOptions extends Partial<IMQOptions> {
     conn?: IRedisClient;

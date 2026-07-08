@@ -20,7 +20,6 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 export * from './decorators';
-export * from './helpers';
 export * from './cache';
 export * from './IMQDelay';
 export * from './IMQCache';
