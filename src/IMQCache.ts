@@ -22,7 +22,11 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import { RedisCache } from './cache/index.js';
-import { type ICache, type ICacheAdapter, type ICacheConstructor } from './index.js';
+import {
+    type ICache,
+    type ICacheAdapter,
+    type ICacheConstructor,
+} from './index.js';
 
 // ES modules provide no synchronous dynamic loading, so the built-in cache
 // adapters registrable by name are enumerated statically; custom adapters
