@@ -31,9 +31,11 @@ import { mock, MockModuleOptions } from 'node:test';
  * Node 22 only understands the earlier pair, so the same exports shape is
  * translated there.
  *
- * `cache: true` keeps mock-require's semantics: every `require()` of the
- * mocked specifier returns the same module instance, so a test may patch a
- * property in place and the code under test observes the change.
+ * `cache: false` is required: as of the Node 24.17/24.18 module-loader
+ * changes, `cache: true` mock modules expose their export names with the
+ * values never bound. Instance caching is not load-bearing here — shared
+ * state lives on the exported references themselves (mock class statics),
+ * so each re-evaluation serves the same objects.
  *
  * @param {Record<string, unknown>} exports - mock exports, `default` key being
  *                                            the default export
@@ -42,13 +44,8 @@ import { mock, MockModuleOptions } from 'node:test';
 export function moduleMockOptions(
     exports: Record<string, unknown>,
 ): MockModuleOptions {
-    if (+process.versions.node.split('.')[0] >= 24) {
-        // typings (@types/node 24.x) lag the runtime's `exports` option
-        return { cache: true, exports } as MockModuleOptions;
-    }
-
     const { default: defaultExport, ...namedExports } = exports;
-    const options: MockModuleOptions = { cache: true };
+    const options: MockModuleOptions = { cache: false };
 
     if (defaultExport !== undefined) {
         options.defaultExport = defaultExport;

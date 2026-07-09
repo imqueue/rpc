@@ -21,7 +21,8 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { mockModule } from './moduleMock';
+import { mock } from 'node:test';
+import { moduleMockOptions } from './moduleMock';
 import { EventEmitter } from 'node:events';
 import * as crypto from 'node:crypto';
 
@@ -322,7 +323,13 @@ const Redis = RedisClientMock;
 // exports onto a class default, so the whole ESM-shaped namespace object is
 // registered as the module's export (for CJS consumers it IS what
 // `require('ioredis')` returns).
-mockModule('ioredis', { __esModule: true, Redis, default: Redis });
+mock.module(
+    'ioredis',
+    moduleMockOptions({
+        default: { __esModule: true, Redis, default: Redis },
+        Redis,
+    }),
+);
 
 // @ts-ignore
 export * from 'ioredis';
