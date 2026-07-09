@@ -22,14 +22,14 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import {
-    ILogger,
+    type ILogger,
     DEFAULT_IMQ_OPTIONS,
-    IRedisClient,
-    IMQOptions,
+    type IRedisClient,
+    type IMQOptions,
     Redis,
 } from '@imqueue/core';
 import { hostname } from 'node:os';
-import { ICache } from './index.js';
+import { type ICache } from './index.js';
 
 export interface IRedisCacheOptions extends Partial<IMQOptions> {
     conn?: IRedisClient;

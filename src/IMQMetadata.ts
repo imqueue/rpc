@@ -21,7 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { AnyJson, JsonObject } from '@imqueue/core';
+import { type AnyJson, type JsonObject } from '@imqueue/core';
 
 /**
  * Arbitrary, JSON-serializable metadata bag carried alongside an IMQ request.

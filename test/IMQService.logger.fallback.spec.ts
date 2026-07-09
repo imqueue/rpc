@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { randomUUID as uuid } from 'node:crypto';
 import {
     IMQService,
-    IMQRPCRequest,
+    type IMQRPCRequest,
     expose,
     BEFORE_HOOK_ERROR,
     AFTER_HOOK_ERROR,

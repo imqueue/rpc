@@ -21,7 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { Thunk, IMQRPCDescription } from '../index.js';
+import { type Thunk, IMQRPCDescription } from '../index.js';
 import { registerType } from './property.js';
 
 /**

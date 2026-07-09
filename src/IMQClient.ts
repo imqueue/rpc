@@ -22,17 +22,17 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import IMQ, {
-    IMessageQueue,
-    ILogger,
-    JsonObject,
-    AnyJson,
+    type IMessageQueue,
+    type ILogger,
+    type JsonObject,
+    type AnyJson,
     IMQ_SHUTDOWN_TIMEOUT,
 } from '@imqueue/core';
 import {
     DEFAULT_IMQ_CLIENT_OPTIONS,
-    IMQClientOptions,
-    IMQRPCResponse,
-    IMQRPCRequest,
+    type IMQClientOptions,
+    type IMQRPCResponse,
+    type IMQRPCRequest,
     IMQDelay,
     IMQError,
     remote,
@@ -63,7 +63,7 @@ import {
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
-import { IMQBeforeCall, IMQAfterCall } from './IMQRPCOptions.js';
+import { type IMQBeforeCall, type IMQAfterCall } from './IMQRPCOptions.js';
 
 // CommonJS require scoped to this module: resolves the typescript package
 // and loads generated CommonJS client modules from the ESM host

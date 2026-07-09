@@ -23,7 +23,7 @@
  */
 // cache classes are imported from their defining modules (not the package
 // barrel) to avoid a circular-import TDZ on the module-scope default options
-import { ICache, ICacheConstructor, RedisCache } from '../cache/index.js';
+import { type ICache, type ICacheConstructor, RedisCache } from '../cache/index.js';
 import { IMQCache } from '../IMQCache.js';
 import { signature } from '../helpers/index.js';
 

@@ -5,7 +5,7 @@ import './mocks/index.js';
 import { describe, it, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID as uuid } from 'node:crypto';
-import { IMQService, IMQRPCRequest, expose } from '../index.js';
+import { IMQService, type IMQRPCRequest, expose } from '../index.js';
 
 class ReplyFailService extends IMQService {
     @expose()

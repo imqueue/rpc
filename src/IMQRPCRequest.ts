@@ -21,7 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { JsonObject } from '@imqueue/core';
+import { type JsonObject } from '@imqueue/core';
 import { IMQMetadata } from './IMQMetadata.js';
 
 /**

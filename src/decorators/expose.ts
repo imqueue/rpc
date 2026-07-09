@@ -23,8 +23,8 @@
  */
 import { parse, type Comment, type Options } from 'acorn';
 import {
-    ArgDescription,
-    ReturnValueDescription,
+    type ArgDescription,
+    type ReturnValueDescription,
     IMQRPCDescription,
 } from '../index.js';
 

@@ -23,7 +23,7 @@
  */
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { IMQMetadata } from './IMQMetadata.js';
-import { IMQRPCRequest } from './IMQRPCRequest.js';
+import { type IMQRPCRequest } from './IMQRPCRequest.js';
 
 const storage = new AsyncLocalStorage<IMQRPCRequest>();
 

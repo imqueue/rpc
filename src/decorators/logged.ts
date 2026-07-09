@@ -21,7 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { ILogger } from '@imqueue/core';
+import { type ILogger } from '@imqueue/core';
 
 export type LoggedLogLevel = 'info' | 'log' | 'warn' | 'error';
 
