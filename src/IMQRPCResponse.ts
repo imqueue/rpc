@@ -22,7 +22,7 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import { JsonObject } from '@imqueue/core';
-import { IMQRPCError, IMQRPCRequest } from '.';
+import { IMQRPCError, IMQRPCRequest } from './index.js';
 
 /**
  * Response message data structure that a service replies with to handled

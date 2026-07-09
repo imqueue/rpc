@@ -21,10 +21,10 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import '../mocks';
+import '../mocks/index.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { signature } from '../../src/helpers';
+import { signature } from '../../src/helpers/index.js';
 
 describe('helpers/signature()', () => {
     it('should be a function', () => {

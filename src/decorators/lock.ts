@@ -21,8 +21,8 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { IMQLock, AcquiredLock } from '..';
-import { signature } from '../helpers';
+import { IMQLock, AcquiredLock } from '../index.js';
+import { signature } from '../helpers/index.js';
 
 export interface LockOptions {
     disabled?: boolean;

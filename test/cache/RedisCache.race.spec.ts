@@ -1,12 +1,12 @@
 /*!
  * RedisCache concurrent-initialization tests
  */
-import '../mocks';
+import '../mocks/index.js';
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { RedisCache } from '../..';
-import { RedisClientMock } from '../mocks';
-import { logger } from '../mocks';
+import { RedisCache } from '../../index.js';
+import { RedisClientMock } from '../mocks/index.js';
+import { logger } from '../mocks/index.js';
 
 describe('cache/RedisCache concurrent init', () => {
     beforeEach(async () => {

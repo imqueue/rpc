@@ -19,17 +19,17 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-export * from './decorators';
-export * from './cache';
-export * from './IMQDelay';
-export * from './IMQCache';
-export * from './IMQRPCOptions';
-export * from './IMQRPCDescription';
-export * from './IMQRPCError';
-export * from './IMQRPCRequest';
-export * from './IMQRPCResponse';
-export * from './IMQLock';
-export * from './IMQService';
-export * from './IMQClient';
-export * from './IMQMetadata';
-export * from './IMQRequestContext';
+export * from './decorators/index.js';
+export * from './cache/index.js';
+export * from './IMQDelay.js';
+export * from './IMQCache.js';
+export * from './IMQRPCOptions.js';
+export * from './IMQRPCDescription.js';
+export * from './IMQRPCError.js';
+export * from './IMQRPCRequest.js';
+export * from './IMQRPCResponse.js';
+export * from './IMQLock.js';
+export * from './IMQService.js';
+export * from './IMQClient.js';
+export * from './IMQMetadata.js';
+export * from './IMQRequestContext.js';

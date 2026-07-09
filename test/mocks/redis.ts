@@ -21,7 +21,8 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { mockModule } from './moduleMock';
+import { mock } from 'node:test';
+import { moduleMockOptions } from './moduleMock.js';
 import { EventEmitter } from 'node:events';
 import * as crypto from 'node:crypto';
 
@@ -51,7 +52,7 @@ export class RedisClientMock extends EventEmitter {
         RedisClientMock.__constructed++;
         setTimeout(() => {
             this.emit('ready', this);
-        });
+        }).unref();
 
         if (options.connectionName) {
             this.__name = options.connectionName;
@@ -87,7 +88,7 @@ export class RedisClientMock extends EventEmitter {
             }
             setTimeout(() => {
                 delete RedisClientMock.__keys[key];
-            }, expire);
+            }, expire).unref();
         }
 
         const cb = args.pop();
@@ -139,7 +140,7 @@ export class RedisClientMock extends EventEmitter {
                 this.__rt = setTimeout(
                     () => resolve(this.brpop(key, timeout, cb)),
                     timeout || 100,
-                );
+                ).unref();
             });
         } else {
             const result = [key, q.shift()];
@@ -167,7 +168,7 @@ export class RedisClientMock extends EventEmitter {
                 this.__rt = setTimeout(
                     () => resolve(this.brpoplpush(from, to, timeout, cb)),
                     timeout || 100,
-                );
+                ).unref();
             });
         } else {
             toQ.push(fromQ.shift());
@@ -289,7 +290,7 @@ export class RedisClientMock extends EventEmitter {
         setTimeout(() => {
             const toKey = key.split(/:/).slice(0, 2).join(':');
             this.lpush(toKey, value);
-        }, timeout);
+        }, timeout).unref();
         this.cbExecute(cb);
         return true;
     }
@@ -316,13 +317,16 @@ export class RedisClientMock extends EventEmitter {
 
 const Redis = RedisClientMock;
 
-// __esModule marks this as an ES-module shape so core's esModuleInterop
-// default import (`import Redis from 'ioredis'`) resolves to the constructor
-// rather than the wrapper object. Native module mocking cannot merge named
-// exports onto a class default, so the whole ESM-shaped namespace object is
-// registered as the module's export (for CJS consumers it IS what
-// `require('ioredis')` returns).
-mockModule('ioredis', { __esModule: true, Redis, default: Redis });
+// The mock must serve both worlds: ESM sources bind the named `Redis`
+// export directly, while CommonJS-style consumers read properties off the
+// default (`module.exports`) object — so both shapes are registered.
+mock.module(
+    'ioredis',
+    moduleMockOptions({
+        default: { __esModule: true, Redis, default: Redis },
+        Redis,
+    }),
+);
 
 // @ts-ignore
 export * from 'ioredis';

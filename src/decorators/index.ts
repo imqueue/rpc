@@ -23,13 +23,13 @@
  */
 // must load first: installs the Symbol.metadata polyfill required by the
 // standard-decorator metadata used across the decorators below
-import './metadata';
+import './metadata.js';
 
-export * from './expose';
-export * from './classType';
-export * from './remote';
-export * from './lock';
-export * from './cache';
-export * from './property';
-export * from './indexed';
-export * from './logged';
+export * from './expose.js';
+export * from './classType.js';
+export * from './remote.js';
+export * from './lock.js';
+export * from './cache.js';
+export * from './property.js';
+export * from './indexed.js';
+export * from './logged.js';

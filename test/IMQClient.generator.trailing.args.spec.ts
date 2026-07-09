@@ -4,7 +4,13 @@
 import * as fs from 'node:fs';
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { IMQService, IMQClient, IMQDelay, IMQMetadata, expose } from '..';
+import {
+    IMQService,
+    IMQClient,
+    IMQDelay,
+    IMQMetadata,
+    expose,
+} from '../index.js';
 
 // The generated client imports from '@imqueue/rpc'; the package.json `exports`
 // field lets that specifier self-resolve to this in-tree build, so no module

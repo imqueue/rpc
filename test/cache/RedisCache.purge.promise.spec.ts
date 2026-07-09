@@ -1,7 +1,7 @@
 /*!
  * RedisCache additional coverage: purge() and set() with Promise
  */
-import { RedisCache } from '../..';
+import { RedisCache } from '../../index.js';
 import { describe, it, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 

@@ -21,17 +21,18 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { logger } from './mocks';
+import { logger } from './mocks/index.js';
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { IMQService, IMQRPCRequest, Description, expose } from '..';
+import { IMQService, IMQRPCRequest, Description, expose } from '../index.js';
 import { randomUUID as uuid } from 'node:crypto';
 
 // require (not import): at runtime node:cluster's module.exports is the Cluster
 // instance the code under test shares, but its module *type* omits those
 // instance members (isMaster/listeners/…), so `any` via require avoids casting
 // every mocked access
-const cluster: any = require('node:cluster');
+import clusterModule = require('node:cluster');
+const cluster: any = clusterModule;
 
 class TestService extends IMQService {
     @expose()

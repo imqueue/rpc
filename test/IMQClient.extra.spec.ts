@@ -1,10 +1,10 @@
 /*!
  * IMQClient Extra Unit Tests (non-RPC, using send stubs)
  */
-import './mocks';
+import './mocks/index.js';
 import { describe, it, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { logger } from './mocks';
+import { logger } from './mocks/index.js';
 import {
     IMQClient,
     IMQDelay,
@@ -12,7 +12,7 @@ import {
     remote,
     AFTER_HOOK_ERROR,
     BEFORE_HOOK_ERROR,
-} from '..';
+} from '../index.js';
 
 class ExtraClient extends IMQClient {
     @remote()

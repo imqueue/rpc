@@ -22,7 +22,7 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import { JsonObject } from '@imqueue/core';
-import { IMQMetadata } from './IMQMetadata';
+import { IMQMetadata } from './IMQMetadata.js';
 
 /**
  * Request message data structure to be handled by a service.
