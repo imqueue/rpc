@@ -50,15 +50,26 @@ import {
     writeFile,
     SIGNALS,
 } from './helpers';
-import { transpile, type CompilerOptions } from 'typescript';
 import { EventEmitter } from 'node:events';
 import { Script } from 'node:vm';
+import { spawnSync } from 'node:child_process';
+import {
+    mkdtempSync,
+    writeFileSync,
+    readFileSync,
+    existsSync,
+    rmSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, dirname } from 'node:path';
 import { IMQBeforeCall, IMQAfterCall } from './IMQRPCOptions';
 
 // Loaded via require (not a static import) so that consumers which type-check
 // this source through a file: link do not need `resolveJsonModule` enabled.
-const tsOptions = require('../tsconfig.json')
-    .compilerOptions as CompilerOptions;
+const tsOptions = require('../tsconfig.json').compilerOptions as Record<
+    string,
+    unknown
+>;
 const RX_SEMICOLON: RegExp = /;+$/g;
 
 /**
@@ -755,6 +766,78 @@ function toComment(typedef: string, promised: boolean = false): string {
 }
 
 /**
+ * Transpiles generated client TypeScript source to CommonJS JavaScript.
+ *
+ * TypeScript 7 (native port) removed the in-process `transpile()`/`transpileModule()`
+ * API; its `typescript/unstable/*` replacement is not a stable runtime contract.
+ * Instead this shells out to the bundled `tsc` CLI in transform-only mode
+ * (`noCheck`, `noEmitOnError:false`) — the same "emit regardless of type or
+ * module-resolution errors" behaviour the old single-file transpile provided,
+ * built on the stable CLI rather than the unstable programmatic API.
+ *
+ * @param {string} src - generated client source
+ * @returns {string} - emitted CommonJS JavaScript
+ */
+function transpileClient(src: string): string {
+    const dir = mkdtempSync(join(tmpdir(), 'imq-client-'));
+
+    try {
+        const tsFile = join(dir, '__client__.ts');
+        const jsFile = join(dir, '__client__.js');
+        const cfgFile = join(dir, 'tsconfig.json');
+
+        writeFileSync(tsFile, src);
+        writeFileSync(
+            cfgFile,
+            JSON.stringify({
+                compilerOptions: {
+                    ...tsOptions,
+                    // transform-only: always emit, ignoring type and
+                    // module-resolution errors (the generated client references
+                    // `@imqueue/rpc` types that need not resolve in this temp
+                    // dir)
+                    noCheck: true,
+                    noEmitOnError: false,
+                    skipLibCheck: true,
+                    declaration: false,
+                    declarationMap: false,
+                    sourceMap: false,
+                    inlineSources: false,
+                    types: [],
+                    rootDir: dir,
+                    outDir: dir,
+                },
+                files: ['__client__.ts'],
+            }),
+        );
+
+        // resolve the compiler entry via the package root (its `exports` map
+        // blocks `typescript/lib/*`, so build a raw path that Node runs
+        // directly)
+        const tscJs = join(
+            dirname(require.resolve('typescript/package.json')),
+            'lib',
+            'tsc.js',
+        );
+        const result = spawnSync(process.execPath, [tscJs, '-p', cfgFile], {
+            encoding: 'utf8',
+        });
+
+        if (!existsSync(jsFile)) {
+            throw new Error(
+                'IMQClient: client transpilation produced no output' +
+                    (result.stdout ? `\n${result.stdout}` : '') +
+                    (result.stderr ? `\n${result.stderr}` : ''),
+            );
+        }
+
+        return readFileSync(jsFile, 'utf8');
+    } finally {
+        rmSync(dir, { recursive: true, force: true });
+    }
+}
+
+/**
  * Compiles client source code and returns loaded module
  *
  * @param {string} name
@@ -770,7 +853,7 @@ async function compile(
     const path = options.path;
     const srcFile = `${path}/${name}.ts`;
     const jsFile = `${path}/${name}.js`;
-    const js = transpile(src, tsOptions);
+    const js = transpileClient(src);
 
     if (options.write) {
         if (!(await fileExists(path))) {

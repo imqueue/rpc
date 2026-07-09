@@ -38,13 +38,31 @@
  * This script rewrites an lcov file in place: it drops the `DA`/`BRDA` records
  * for lines that contain no executable code (comments and blank lines), drops
  * all function records and malformed branch records, then recomputes the
- * `LF`/`LH`/`BRF`/`BRH` totals. It uses the TypeScript scanner (already a dev
- * dependency) to locate comments reliably — comment markers inside strings,
- * template literals and regexes are not misdetected. The result renders in
- * genhtml with accurate line + branch coverage and no warnings or errors.
+ * `LF`/`LH`/`BRF`/`BRH` totals. Comments are located with the TypeScript
+ * scanner (typescript is already a dependency) in trivia-emitting mode, with
+ * regex/template re-scanning so comment markers inside strings, template
+ * literals and regexes are not misdetected; statement structure (imports,
+ * variable statements, class headers) comes from the TypeScript 7 API server
+ * (`typescript/unstable/sync`), which parses the project's real sources. The
+ * result renders in genhtml with accurate line + branch coverage and no
+ * warnings or errors.
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import ts from 'typescript';
+import { resolve } from 'node:path';
+import {
+    createScanner,
+    isArrowFunction,
+    isClassDeclaration,
+    isFunctionDeclaration,
+    isFunctionExpression,
+    isImportDeclaration,
+    isImportEqualsDeclaration,
+    isMethodDeclaration,
+    isPropertyDeclaration,
+    isVariableStatement,
+    SyntaxKind,
+} from 'typescript/unstable/ast';
+import { API } from 'typescript/unstable/sync';
 
 const lcovPath = process.argv[2] || 'coverage/lcov.info';
 
@@ -52,6 +70,30 @@ if (!existsSync(lcovPath)) {
     console.warn(`strip-comment-coverage: ${lcovPath} not found, skipping`);
     process.exit(0);
 }
+
+// token kinds after which a '/' is a division operator, not the start of a
+// regular expression literal; without parser context this is how the
+// regex/division ambiguity is resolved when scanning
+const NO_REGEX_AFTER = new Set([
+    SyntaxKind.Identifier,
+    SyntaxKind.PrivateIdentifier,
+    SyntaxKind.NumericLiteral,
+    SyntaxKind.BigIntLiteral,
+    SyntaxKind.StringLiteral,
+    SyntaxKind.NoSubstitutionTemplateLiteral,
+    SyntaxKind.TemplateTail,
+    SyntaxKind.RegularExpressionLiteral,
+    SyntaxKind.ThisKeyword,
+    SyntaxKind.SuperKeyword,
+    SyntaxKind.TrueKeyword,
+    SyntaxKind.FalseKeyword,
+    SyntaxKind.NullKeyword,
+    SyntaxKind.CloseParenToken,
+    SyntaxKind.CloseBracketToken,
+    SyntaxKind.CloseBraceToken,
+    SyntaxKind.PlusPlusToken,
+    SyntaxKind.MinusMinusToken,
+]);
 
 /**
  * Returns the set of 1-based line numbers in the given source that hold no
@@ -62,39 +104,70 @@ if (!existsSync(lcovPath)) {
  */
 function nonCodeLines(text) {
     const commentChars = new Uint8Array(text.length);
-    // Collect every comment range from the parsed tree. A standalone
-    // ts.createScanner is unreliable here — without parser context it can
-    // mis-scan a stray `/` as a regex literal and swallow the comments inside
-    // it — so walk all tokens and take their leading/trailing comment trivia,
-    // which every comment in the file belongs to.
-    const sf = ts.createSourceFile('x.ts', text, ts.ScriptTarget.Latest, true);
-    const seen = new Set();
-    const mark = pos => {
-        for (const get of [
-            ts.getLeadingCommentRanges,
-            ts.getTrailingCommentRanges,
-        ]) {
-            for (const range of get(text, pos) || []) {
-                const key = `${range.pos}:${range.end}`;
+    // Scan with trivia emitted, so comments arrive as their own tokens. The
+    // scanner alone cannot tell a regex literal from a division nor a
+    // template-substitution '}' from a closing brace, so both are re-scanned
+    // explicitly — comment markers inside regexes and template literals are
+    // therefore not misdetected.
+    const scanner = createScanner(false, undefined, text);
+    const BRACE = 0;
+    const TEMPLATE = 1;
+    const stack = [];
+    let prev = SyntaxKind.Unknown;
+    let token;
 
-                if (seen.has(key)) {
-                    continue;
+    while ((token = scanner.scan()) !== SyntaxKind.EndOfFile) {
+        if (
+            (token === SyntaxKind.SlashToken ||
+                token === SyntaxKind.SlashEqualsToken) &&
+            !NO_REGEX_AFTER.has(prev)
+        ) {
+            token = scanner.reScanSlashToken();
+        }
+
+        switch (token) {
+            case SyntaxKind.OpenBraceToken:
+                stack.push(BRACE);
+                break;
+
+            case SyntaxKind.TemplateHead:
+                stack.push(TEMPLATE);
+                break;
+
+            case SyntaxKind.CloseBraceToken:
+                if (stack[stack.length - 1] === TEMPLATE) {
+                    token = scanner.reScanTemplateToken(false);
+
+                    if (token === SyntaxKind.TemplateTail) {
+                        stack.pop();
+                    }
+                } else {
+                    stack.pop();
                 }
+                break;
 
-                seen.add(key);
-
-                for (let i = range.pos; i < range.end; i++) {
+            case SyntaxKind.SingleLineCommentTrivia:
+            case SyntaxKind.MultiLineCommentTrivia:
+                for (
+                    let i = scanner.getTokenStart();
+                    i < scanner.getTokenEnd();
+                    i++
+                ) {
                     commentChars[i] = 1;
                 }
-            }
+                break;
         }
-    };
-    const visit = node => {
-        mark(node.getFullStart());
-        node.getChildren(sf).forEach(visit);
-    };
 
-    visit(sf);
+        // the regex heuristic needs the last meaningful token, not trivia
+        if (
+            token !== SyntaxKind.SingleLineCommentTrivia &&
+            token !== SyntaxKind.MultiLineCommentTrivia &&
+            token !== SyntaxKind.WhitespaceTrivia &&
+            token !== SyntaxKind.NewLineTrivia
+        ) {
+            prev = token;
+        }
+    }
 
     const lines = text.split('\n');
     const result = new Set();
@@ -140,16 +213,10 @@ function nonCodeLines(text) {
  * Method/accessor/constructor bodies are never touched, so genuinely unreached
  * code still shows up.
  *
- * @param {string} text
+ * @param {import('typescript/unstable/ast').SourceFile} sf
  * @returns {Set<number>}
  */
-function importLines(text) {
-    const sf = ts.createSourceFile(
-        'x.ts',
-        text,
-        ts.ScriptTarget.Latest,
-        false,
-    );
+function importLines(sf) {
     const result = new Set();
     const lineAt = pos => sf.getLineAndCharacterOfPosition(pos).line;
     const addRange = (start, end) => {
@@ -165,10 +232,10 @@ function importLines(text) {
             }
 
             if (
-                ts.isFunctionExpression(n) ||
-                ts.isArrowFunction(n) ||
-                ts.isFunctionDeclaration(n) ||
-                ts.isMethodDeclaration(n)
+                isFunctionExpression(n) ||
+                isArrowFunction(n) ||
+                isFunctionDeclaration(n) ||
+                isMethodDeclaration(n)
             ) {
                 found = true;
 
@@ -184,18 +251,15 @@ function importLines(text) {
     };
 
     for (const stmt of sf.statements) {
-        if (
-            ts.isImportDeclaration(stmt) ||
-            ts.isImportEqualsDeclaration(stmt)
-        ) {
+        if (isImportDeclaration(stmt) || isImportEqualsDeclaration(stmt)) {
             addRange(stmt.getStart(sf), stmt.getEnd());
-        } else if (ts.isVariableStatement(stmt)) {
+        } else if (isVariableStatement(stmt)) {
             if (hasFunction(stmt)) {
                 result.add(lineAt(stmt.getStart(sf)) + 1);
             } else {
                 addRange(stmt.getStart(sf), stmt.getEnd());
             }
-        } else if (ts.isClassDeclaration(stmt)) {
+        } else if (isClassDeclaration(stmt)) {
             // class header (`class X extends Y {`): everything up to the first
             // member, or the whole thing for an empty class
             const headerEnd = stmt.members.length
@@ -208,10 +272,7 @@ function importLines(text) {
 
             // type-only fields (definite-assignment / uninitialized) emit no JS
             for (const member of stmt.members) {
-                if (
-                    ts.isPropertyDeclaration(member) &&
-                    !member.initializer
-                ) {
+                if (isPropertyDeclaration(member) && !member.initializer) {
                     addRange(member.getStart(sf), member.getEnd());
                 }
             }
@@ -219,6 +280,33 @@ function importLines(text) {
     }
 
     return result;
+}
+
+// The TypeScript 7 API server (spawned once, on first use) parses the
+// project's sources; unlike TS 5/6 there is no in-process parser to feed
+// file text into, but these are real project files, so the project-based
+// API fits. Files outside the project resolve to no source file and only
+// get comment/blank-line stripping.
+let apiSession;
+
+/**
+ * Returns the parsed source file for a given path from the project's
+ * program, or undefined when unavailable.
+ *
+ * @param {string} sourceFile - path as recorded in the lcov file
+ * @returns {import('typescript/unstable/ast').SourceFile | undefined}
+ */
+function projectSourceFile(sourceFile) {
+    if (!apiSession) {
+        const api = new API({ cwd: process.cwd() });
+        const snapshot = api.updateSnapshot({
+            openProjects: [resolve('tsconfig.json')],
+        });
+
+        apiSession = { api, project: snapshot.getProjects()[0] };
+    }
+
+    return apiSession.project?.program.getSourceFile(resolve(sourceFile));
 }
 
 const B64 =
@@ -339,8 +427,9 @@ function coverableInfo(sourceFile) {
         // drops type-only lines (interfaces, type aliases) which emit nothing;
         // the import check drops the mis-mapped import artifact.
         const text = readFileSync(sourceFile, 'utf8');
+        const sf = projectSourceFile(sourceFile);
         const nonCode = nonCodeLines(text);
-        const imports = importLines(text);
+        const imports = sf ? importLines(sf) : new Set();
         const keep = new Set(
             [...emitted].filter(
                 line => !nonCode.has(line) && !imports.has(line),
@@ -349,10 +438,13 @@ function coverableInfo(sourceFile) {
         info = { mode: 'keep', set: keep };
     } else if (sourceFile && existsSync(sourceFile)) {
         const text = readFileSync(sourceFile, 'utf8');
+        const sf = projectSourceFile(sourceFile);
         const skip = nonCodeLines(text);
 
-        for (const line of importLines(text)) {
-            skip.add(line);
+        if (sf) {
+            for (const line of importLines(sf)) {
+                skip.add(line);
+            }
         }
 
         info = { mode: 'drop', set: skip };
@@ -457,6 +549,7 @@ for (const line of readFileSync(lcovPath, 'utf8').split('\n')) {
     }
 }
 
+apiSession?.api.close();
 writeFileSync(lcovPath, output.join(''));
 console.info(
     `strip-comment-coverage: removed ${strippedLines} comment/blank line ` +

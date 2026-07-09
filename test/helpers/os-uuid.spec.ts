@@ -27,8 +27,9 @@ import assert from 'node:assert/strict';
 import { osUuid } from '../../src/helpers';
 
 // The helper under test reads the live `require('node:child_process')` object at
-// call time, so we mock that same object (not an `import * as` namespace copy).
-const childProcess: typeof import('node:child_process') = require('node:child_process');
+// call time, so we mock that same object via import-equals (an `import * as`
+// namespace copy under esModuleInterop would not be the object it reads).
+import childProcess = require('node:child_process');
 
 // osUuid memoizes its result at module level, so the per-platform parsing
 // tests below load a FRESH copy of the module after mocking the platform and

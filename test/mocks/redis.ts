@@ -21,7 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import mock from 'mock-require';
+import { mockModule } from './moduleMock';
 import { EventEmitter } from 'node:events';
 import * as crypto from 'node:crypto';
 
@@ -318,8 +318,11 @@ const Redis = RedisClientMock;
 
 // __esModule marks this as an ES-module shape so core's esModuleInterop
 // default import (`import Redis from 'ioredis'`) resolves to the constructor
-// rather than the wrapper object
-mock('ioredis', { __esModule: true, Redis, default: Redis });
+// rather than the wrapper object. Native module mocking cannot merge named
+// exports onto a class default, so the whole ESM-shaped namespace object is
+// registered as the module's export (for CJS consumers it IS what
+// `require('ioredis')` returns).
+mockModule('ioredis', { __esModule: true, Redis, default: Redis });
 
 // @ts-ignore
 export * from 'ioredis';

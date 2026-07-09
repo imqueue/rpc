@@ -240,6 +240,42 @@ describe('decorators/expose()', () => {
         );
     });
 
+    it('should keep parsing after a regex literal following a keyword', () => {
+        class RegexBraceClass {
+            // `/\{+/` follows `return`, where a slash starts a regex, not a
+            // division; the unbalanced `{` inside must not corrupt the brace
+            // tracking that locates the next member
+            public tricky(v: string) {
+                return /\{+/.test(v);
+            }
+
+            /**
+             * Documented after regex
+             *
+             * @return {string} - marker
+             */
+            public documented() {
+                return 'ok';
+            }
+        }
+
+        const descriptor = Object.getOwnPropertyDescriptor(
+            RegexBraceClass.prototype,
+            'documented',
+        );
+
+        expose()(RegexBraceClass.prototype, 'documented', descriptor);
+
+        assert.equal(
+            description.RegexBraceClass.methods.documented.description,
+            'Documented after regex',
+        );
+        assert.equal(
+            description.RegexBraceClass.methods.documented.returns.tsType,
+            'string',
+        );
+    });
+
     it('should register the method via the legacy signature', () => {
         class LegacyExposeClass {
             /**
@@ -270,6 +306,37 @@ describe('decorators/expose()', () => {
         assert.equal(
             description.LegacyExposeClass.methods.legacyMethod.description,
             'Legacy documented method',
+        );
+    });
+
+    it('should tolerate an unparseable class source', () => {
+        class UnparseableExposeClass {
+            public nativeLike() {}
+        }
+
+        // a bound/native function's toString is not valid JavaScript
+        // (`[native code]` is a syntax error); the parser must swallow it and
+        // still register the method with default metadata
+        Object.defineProperty(UnparseableExposeClass, 'toString', {
+            value: () => 'function nativeLike() { [native code] }',
+        });
+
+        const descriptor = Object.getOwnPropertyDescriptor(
+            UnparseableExposeClass.prototype,
+            'nativeLike',
+        );
+
+        assert.doesNotThrow(() =>
+            expose()(
+                UnparseableExposeClass.prototype,
+                'nativeLike',
+                descriptor,
+            ),
+        );
+        assert.notEqual(description.UnparseableExposeClass, undefined);
+        assert.notEqual(
+            description.UnparseableExposeClass.methods.nativeLike,
+            undefined,
         );
     });
 });

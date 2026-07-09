@@ -21,7 +21,6 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import mockRequire from 'mock-require';
 import { describe, it, before, after, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { logger } from './mocks';
@@ -34,9 +33,10 @@ import {
     remote,
 } from '..';
 import * as fs from 'node:fs';
-import * as imqRpc from '..';
 
-mockRequire('@imqueue/rpc', imqRpc);
+// The generated client imports from '@imqueue/rpc'; the package.json `exports`
+// field lets that specifier self-resolve to this in-tree build, so no module
+// mock is needed to make the compiled client load.
 
 class TestService extends IMQService {
     @expose()

@@ -21,7 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import mockRequire from 'mock-require';
+import { mockModule } from '../mocks';
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -62,8 +62,10 @@ let mkdir: (path: string) => Promise<void>;
 let writeFile: (path: string, content: string) => Promise<void>;
 
 describe('fs helpers', () => {
+    let fsCtl: { restore(): void };
+
     before(function before() {
-        mockRequire('node:fs', fsMock);
+        fsCtl = mockModule('node:fs', fsMock);
         delete require.cache[require.resolve('../../src/helpers/fs')];
         const fs = require('../../src/helpers/fs');
         fileExists = fs.fileExists;
@@ -71,7 +73,8 @@ describe('fs helpers', () => {
         writeFile = fs.writeFile;
     });
     after(() => {
-        mockRequire.stop('node:fs');
+        fsCtl.restore();
+        delete require.cache[require.resolve('../../src/helpers/fs')];
     });
 
     it('should check file existance', () =>

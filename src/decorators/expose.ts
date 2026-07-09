@@ -21,16 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import {
-    createSourceFile,
-    getLeadingCommentRanges,
-    isClassDeclaration,
-    isIdentifier,
-    isMethodDeclaration,
-    ScriptKind,
-    ScriptTarget,
-    SyntaxKind,
-} from 'typescript';
+import { parse, type Comment, type Options } from 'acorn';
 import { ArgDescription, ReturnValueDescription, IMQRPCDescription } from '..';
 
 type CommentMetadata = {
@@ -159,64 +150,97 @@ function parseComment(src: string): CommentMetadata {
 }
 
 /**
- * Finds and parses methods and their comment blocks for a given class
+ * Finds and parses methods and their comment blocks for a given class.
+ *
+ * The class source (from `Function.prototype.toString`) is always compiled
+ * JavaScript, so it is parsed with acorn; a method's doc is the last block
+ * comment between the previous class member (or the class body start) and
+ * the method itself, i.e. the last block comment in its leading trivia.
  *
  * @param {string} name - class name
  * @param {string} src - class source code
  */
-function parseDescriptions(name: string, src: string) {
-    // parsed with the TypeScript compiler, which is already a runtime
-    // dependency (used for client generation) — no parent pointers needed,
-    // only class members and their leading comment trivia are read
-    const sourceFile = createSourceFile(
-        `${name}.js`,
-        src,
-        ScriptTarget.Latest,
-        false,
-        ScriptKind.JS,
-    );
+function parseDescriptions(name: string, src: string): void {
+    const comments: Comment[] = [];
+    const options: Options = {
+        // 'latest' so we can parse whatever modern syntax the configured
+        // compilation target emits into the class source we introspect
+        ecmaVersion: 'latest',
+        allowReserved: true,
+        onComment: comments,
+    };
 
     // the local `inherits` is a placeholder only: the public description's
     // `inherits` is derived from the runtime prototype chain in
-    // buildMethodDescription(), never from the parsed source
+    // buildMethodDescription(), never from the parsed source (standard
+    // decorators compile the heritage clause to a helper like `_classSuper`,
+    // so the source name is unusable)
     descriptions[name] = {
         inherits: 'Function',
     };
 
-    for (const statement of sourceFile.statements) {
+    let body: any[];
+
+    try {
+        body = (parse(src, options) as any).body;
+    } catch {
+        // tolerate unparseable sources (e.g. bound or native functions) the
+        // same way the previous error-tolerant parsers did
+        return;
+    }
+
+    for (const node of body) {
         if (
-            !isClassDeclaration(statement) ||
-            !statement.name ||
-            statement.name.text !== name
+            !(
+                node &&
+                node.type === 'ClassDeclaration' &&
+                node.id &&
+                node.id.name === name &&
+                node.body &&
+                node.body.type === 'ClassBody'
+            )
         ) {
             continue;
         }
 
-        for (const member of statement.members) {
+        const members: any[] = node.body.body;
+
+        for (let i = 0; i < members.length; i++) {
+            const member = members[i];
+
+            // plain (non-accessor, non-constructor) methods with literal
+            // identifier names only — same filter the previous
+            // implementations applied
             if (
-                !isMethodDeclaration(member) ||
-                !member.name ||
-                !isIdentifier(member.name)
+                member.type !== 'MethodDefinition' ||
+                member.kind !== 'method' ||
+                member.computed ||
+                !member.key ||
+                member.key.type !== 'Identifier'
             ) {
                 continue;
             }
 
-            // the method's doc is the last block comment in its leading
-            // trivia; member.pos starts right after the previous token, so
-            // comments belonging to earlier members can never match
-            const blocks = (
-                getLeadingCommentRanges(src, member.pos) || []
-            ).filter(range => range.kind === SyntaxKind.MultiLineCommentTrivia);
+            // the doc block must lie after the previous member of any kind
+            // (so comments inside earlier bodies and field initializers can
+            // never match) and before the method itself
+            const lowerBound: number = i
+                ? members[i - 1].end
+                : node.body.start + 1;
+            const blocks = comments.filter(
+                comment =>
+                    comment.type === 'Block' &&
+                    comment.start >= lowerBound &&
+                    comment.end <= member.start,
+            );
 
             if (!blocks.length) {
                 continue;
             }
 
-            const block = blocks[blocks.length - 1];
-
-            descriptions[name][member.name.text] = {
-                // comment body without the enclosing /* and */ delimiters
-                comment: parseComment(src.slice(block.pos + 2, block.end - 2)),
+            descriptions[name][member.key.name] = {
+                // acorn comment values exclude the /* and */ delimiters
+                comment: parseComment(blocks[blocks.length - 1].value),
             };
         }
     }
