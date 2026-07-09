@@ -24,10 +24,10 @@
 import { mock } from 'node:test';
 import { moduleMockOptions } from './moduleMock.js';
 import { EventEmitter } from 'node:events';
-import * as crypto from 'node:crypto';
+import { createHash, type Hash } from 'node:crypto';
 
 function sha1(str: string) {
-    let sha: crypto.Hash = crypto.createHash('sha1');
+    let sha: Hash = createHash('sha1');
     sha.update(str);
     return sha.digest('hex');
 }
@@ -52,7 +52,7 @@ export class RedisClientMock extends EventEmitter {
         RedisClientMock.__constructed++;
         setTimeout(() => {
             this.emit('ready', this);
-        }).unref();
+        });
 
         if (options.connectionName) {
             this.__name = options.connectionName;
@@ -65,8 +65,25 @@ export class RedisClientMock extends EventEmitter {
         this.status = 'ready';
     }
 
-    public end() {}
-    public async quit(): Promise<void> {}
+    public end() {
+        this.disconnectMock();
+    }
+
+    public async quit(): Promise<void> {
+        this.disconnectMock();
+    }
+
+    // Stops the blocking-pop polling loop: with the connection gone no
+    // timer may be rescheduled, so a finished test process can exit
+    // instead of being kept alive by an orphaned polling timeout.
+    private disconnectMock(): void {
+        this.connected = false;
+
+        if (this.__rt) {
+            clearTimeout(this.__rt);
+            this.__rt = undefined;
+        }
+    }
 
     public async set(...args: any[]): Promise<boolean> {
         let [key, val, units, expire, nx] = args;
@@ -88,7 +105,7 @@ export class RedisClientMock extends EventEmitter {
             }
             setTimeout(() => {
                 delete RedisClientMock.__keys[key];
-            }, expire).unref();
+            }, expire);
         }
 
         const cb = args.pop();
@@ -136,11 +153,17 @@ export class RedisClientMock extends EventEmitter {
         if (!q.length) {
             this.__rt && clearTimeout(this.__rt);
 
+            if (!this.connected) {
+                // disconnected: stay pending forever without scheduling a
+                // timer, so the event loop is free to drain
+                return new Promise(() => undefined);
+            }
+
             return new Promise(resolve => {
                 this.__rt = setTimeout(
                     () => resolve(this.brpop(key, timeout, cb)),
                     timeout || 100,
-                ).unref();
+                );
             });
         } else {
             const result = [key, q.shift()];
@@ -164,11 +187,16 @@ export class RedisClientMock extends EventEmitter {
         if (!fromQ.length) {
             this.__rt && clearTimeout(this.__rt);
 
+            if (!this.connected) {
+                // see brpop(): no rescheduling after disconnect
+                return new Promise(() => undefined);
+            }
+
             return new Promise(resolve => {
                 this.__rt = setTimeout(
                     () => resolve(this.brpoplpush(from, to, timeout, cb)),
                     timeout || 100,
-                ).unref();
+                );
             });
         } else {
             toQ.push(fromQ.shift());
@@ -290,7 +318,7 @@ export class RedisClientMock extends EventEmitter {
         setTimeout(() => {
             const toKey = key.split(/:/).slice(0, 2).join(':');
             this.lpush(toKey, value);
-        }, timeout).unref();
+        }, timeout);
         this.cbExecute(cb);
         return true;
     }

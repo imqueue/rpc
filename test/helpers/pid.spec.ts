@@ -26,21 +26,27 @@ import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { pid, forgetPid, IMQ_TMP_DIR } from '../../src/helpers/index.js';
 import { randomUUID as uuid } from 'node:crypto';
-import * as fs from 'node:fs';
+import {
+    existsSync,
+    lstatSync,
+    readdirSync,
+    rmdirSync,
+    unlinkSync,
+} from 'node:fs';
 
 function rmdirr(path: string) {
-    if (fs.existsSync(path)) {
-        fs.readdirSync(path).forEach(file => {
+    if (existsSync(path)) {
+        readdirSync(path).forEach(file => {
             const curPath = `${path}/${file}`;
 
-            if (fs.lstatSync(curPath).isDirectory()) {
+            if (lstatSync(curPath).isDirectory()) {
                 rmdirr(curPath);
             } else {
-                fs.unlinkSync(curPath);
+                unlinkSync(curPath);
             }
         });
 
-        fs.rmdirSync(path);
+        rmdirSync(path);
     }
 }
 
@@ -72,7 +78,7 @@ describe('helpers/pid()', () => {
         assert.equal(pid(name, TEST_PID_DIR), 0);
         assert.equal(pid(name, TEST_PID_DIR), 1);
         assert.equal(pid(name, TEST_PID_DIR), 2);
-        fs.unlinkSync(`${TEST_PID_DIR}/${name}-1.pid`);
+        unlinkSync(`${TEST_PID_DIR}/${name}-1.pid`);
         assert.equal(pid(name, TEST_PID_DIR), 1);
     });
 });
@@ -97,7 +103,7 @@ describe('helpers/forgetPid()', () => {
 
         forgetPid(name, id, logger, TEST_PID_DIR);
 
-        assert.ok(!fs.existsSync(`${TEST_PID_DIR}/${name}-0.pid`));
+        assert.ok(!existsSync(`${TEST_PID_DIR}/${name}-0.pid`));
     });
 
     it('should ignore a missing pid file', () => {
