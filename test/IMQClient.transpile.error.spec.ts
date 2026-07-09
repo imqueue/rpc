@@ -54,15 +54,11 @@ describe('IMQClient client transpiler failure', () => {
         // stub spawnSync so the tsc CLI never runs and emits no .js; the
         // transpiler must detect the missing output and throw, echoing the
         // captured stdout/stderr
-        t.mock.method(
-            childProcess,
-            'spawnSync',
-            (() => ({
-                stdout: 'boom-out',
-                stderr: 'boom-err',
-                status: 1,
-            })) as any,
-        );
+        t.mock.method(childProcess, 'spawnSync', (() => ({
+            stdout: 'boom-out',
+            stderr: 'boom-err',
+            status: 1,
+        })) as any);
 
         await assert.rejects(
             IMQClient.create('TranspileErrService', {
