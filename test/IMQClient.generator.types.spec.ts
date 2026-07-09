@@ -32,7 +32,7 @@ import {
     property,
     classType,
     indexed,
-} from '..';
+} from '../index.js';
 
 // The generated client imports from '@imqueue/rpc'; the package.json `exports`
 // field lets that specifier self-resolve to this in-tree build, so no module

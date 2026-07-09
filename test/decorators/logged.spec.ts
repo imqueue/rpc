@@ -1,6 +1,6 @@
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { logged } from '../../src/decorators/logged';
+import { logged } from '../../src/decorators/logged.js';
 
 describe('decorators/logged()', () => {
     it('should be a function and return decorator function', () => {

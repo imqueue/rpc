@@ -1,7 +1,7 @@
 /*!
  * IMQClient console logger fallback branches coverage
  */
-import './mocks';
+import './mocks/index.js';
 import { describe, it, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -11,7 +11,7 @@ import {
     remote,
     AFTER_HOOK_ERROR,
     BEFORE_HOOK_ERROR,
-} from '..';
+} from '../index.js';
 
 class ConsoleClient extends IMQClient {
     @remote()

@@ -22,7 +22,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import '../test/mocks';
+import '../test/mocks/index.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -37,8 +37,8 @@ import {
     currentMetadata,
     runWithRequest,
     IMQRPCDescription,
-} from '..';
-import { signature } from '../src/helpers';
+} from '../index.js';
+import { signature } from '../src/helpers/index.js';
 
 describe('legacy decorator signatures', () => {
     // legacy form: (target, propertyKey, descriptor) with no TC39 context

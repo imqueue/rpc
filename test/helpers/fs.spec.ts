@@ -21,8 +21,8 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { mockModule } from '../mocks';
-import { describe, it, before, after } from 'node:test';
+import { moduleMockOptions } from '../mocks/index.js';
+import { describe, it, before, after, mock } from 'node:test';
 import assert from 'node:assert/strict';
 
 const fsMock = {
@@ -64,17 +64,26 @@ let writeFile: (path: string, content: string) => Promise<void>;
 describe('fs helpers', () => {
     let fsCtl: { restore(): void };
 
-    before(function before() {
-        fsCtl = mockModule('node:fs', fsMock);
-        delete require.cache[require.resolve('../../src/helpers/fs')];
-        const fs = require('../../src/helpers/fs');
+    before(async function before() {
+        // both named exports (for ESM `import { access } from 'node:fs'`)
+        // and the default namespace (for CJS-style consumers) are mocked
+        fsCtl = mock.module(
+            'node:fs',
+            moduleMockOptions({ ...fsMock, default: fsMock }),
+        );
+
+        // a fresh, query-busted copy links its 'node:fs' import against the
+        // module mock registered above (the ES module registry is immutable,
+        // so the copy already imported by the package cannot be re-bound)
+        const href = new URL('../../src/helpers/fs.js', import.meta.url).href;
+        const fs = await import(`${href}?fsmock=1`);
+
         fileExists = fs.fileExists;
         mkdir = fs.mkdir;
         writeFile = fs.writeFile;
     });
     after(() => {
         fsCtl.restore();
-        delete require.cache[require.resolve('../../src/helpers/fs')];
     });
 
     it('should check file existance', () =>

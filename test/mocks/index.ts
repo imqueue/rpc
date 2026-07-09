@@ -21,6 +21,6 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-export * from './logger';
-export * from './redis';
-export * from './moduleMock';
+export * from './logger.js';
+export * from './redis.js';
+export * from './moduleMock.js';
