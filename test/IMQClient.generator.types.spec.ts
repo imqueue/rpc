@@ -23,7 +23,6 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import * as fs from 'node:fs';
-import mockRequire from 'mock-require';
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -34,9 +33,10 @@ import {
     classType,
     indexed,
 } from '..';
-import * as imqRpc from '..';
 
-mockRequire('@imqueue/rpc', imqRpc);
+// The generated client imports from '@imqueue/rpc'; the package.json `exports`
+// field lets that specifier self-resolve to this in-tree build, so no module
+// mock is needed to make the compiled client load.
 
 const CLIENTS_PATH = './test/clients-generator-types';
 

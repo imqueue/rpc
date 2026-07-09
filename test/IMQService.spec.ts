@@ -27,6 +27,10 @@ import assert from 'node:assert/strict';
 import { IMQService, IMQRPCRequest, Description, expose } from '..';
 import { randomUUID as uuid } from 'node:crypto';
 
+// require (not import): at runtime node:cluster's module.exports is the Cluster
+// instance the code under test shares, but its module *type* omits those
+// instance members (isMaster/listeners/…), so `any` via require avoids casting
+// every mocked access
 const cluster: any = require('node:cluster');
 
 class TestService extends IMQService {

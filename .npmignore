@@ -1,6 +1,7 @@
 .gitignore
 .travis.yml
 .dockerignore
+.github
 
 .ssh/
 dist/
@@ -39,3 +40,14 @@ test/
 !*.d.ts
 
 *.tgz
+
+# Dev/tooling — never part of the published package.
+# NOTE: tsconfig.json is intentionally NOT ignored — IMQClient reads it at
+# runtime (require('../tsconfig.json')) to transpile generated clients.
+scripts/
+.oxlintrc.json
+.oxfmtrc.json
+.agent-out/
+# debug* are manual dev scripts; `!*.d.ts` above re-includes their declaration
+# files, so re-exclude those here (a later rule wins)
+debug*.d.ts

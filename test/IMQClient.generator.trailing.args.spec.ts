@@ -2,15 +2,13 @@
  * IMQClient generator trailing args removal coverage test
  */
 import * as fs from 'node:fs';
-import mockRequire from 'mock-require';
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { IMQService, IMQClient, IMQDelay, IMQMetadata, expose } from '..';
-import * as imqRpc from '..';
 
-// The generated client imports from '@imqueue/rpc'; map it to this package so
-// the compiled-and-required client resolves without a self node_modules link.
-mockRequire('@imqueue/rpc', imqRpc);
+// The generated client imports from '@imqueue/rpc'; the package.json `exports`
+// field lets that specifier self-resolve to this in-tree build, so no module
+// mock is needed to make the compiled-and-required client resolve.
 
 const CLIENTS_PATH = './test/clients-generator-trailing';
 
