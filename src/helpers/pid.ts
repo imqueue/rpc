@@ -23,7 +23,7 @@
  */
 import { resolve } from 'node:path';
 import { existsSync, mkdirSync, writeFileSync, unlinkSync } from 'node:fs';
-import { ILogger } from '@imqueue/core';
+import { type ILogger } from '@imqueue/core';
 
 /**
  * OS signals that should trigger pid file cleanup on process termination.

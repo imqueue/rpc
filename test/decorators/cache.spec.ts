@@ -25,7 +25,7 @@ import { logger } from '../mocks/index.js';
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { RedisCache, cache, IMQCache } from '../../index.js';
-import { ILogger } from '@imqueue/core';
+import { type ILogger } from '@imqueue/core';
 
 class CacheTestClass {
     private logger: ILogger = logger;

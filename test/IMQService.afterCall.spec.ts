@@ -27,7 +27,7 @@ import { randomUUID as uuid } from 'node:crypto';
 import { logger } from './mocks/index.js';
 import {
     IMQService,
-    IMQRPCRequest,
+    type IMQRPCRequest,
     expose,
     AFTER_HOOK_ERROR,
 } from '../index.js';

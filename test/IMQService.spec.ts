@@ -24,7 +24,7 @@
 import { logger } from './mocks/index.js';
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { IMQService, IMQRPCRequest, Description, expose } from '../index.js';
+import { IMQService, type IMQRPCRequest, Description, expose } from '../index.js';
 import { randomUUID as uuid } from 'node:crypto';
 
 // require (not import): at runtime node:cluster's module.exports is the Cluster

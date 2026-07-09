@@ -21,9 +21,9 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { DEFAULT_IMQ_OPTIONS, IMQOptions } from '@imqueue/core';
-import { IMQRPCRequest } from './IMQRPCRequest.js';
-import { IMQRPCResponse } from './IMQRPCResponse.js';
+import { DEFAULT_IMQ_OPTIONS, type IMQOptions } from '@imqueue/core';
+import { type IMQRPCRequest } from './IMQRPCRequest.js';
+import { type IMQRPCResponse } from './IMQRPCResponse.js';
 import { IMQService } from './IMQService.js';
 import { IMQClient } from './IMQClient.js';
 
