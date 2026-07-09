@@ -21,7 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { registerType } from './property';
+import { registerType } from './property.js';
 
 /**
  * Implements the '@classType' decorator factory.

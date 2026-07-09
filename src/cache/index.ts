@@ -21,5 +21,5 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-export * from './ICache';
-export * from './RedisCache';
+export * from './ICache.js';
+export * from './RedisCache.js';

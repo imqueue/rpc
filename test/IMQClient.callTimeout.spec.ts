@@ -1,11 +1,11 @@
 /*!
  * IMQClient per-call timeout tests
  */
-import './mocks';
+import './mocks/index.js';
 import { describe, it, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { IMQClient, IMQDelay, remote } from '..';
-import { logger } from './mocks';
+import { IMQClient, IMQDelay, remote } from '../index.js';
+import { logger } from './mocks/index.js';
 
 class TimeoutClient extends IMQClient {
     @remote()

@@ -21,8 +21,8 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { JsonObject } from '@imqueue/core';
-import { IMQRPCError, IMQRPCRequest } from '.';
+import { type JsonObject } from '@imqueue/core';
+import { type IMQRPCError, type IMQRPCRequest } from './index.js';
 
 /**
  * Response message data structure that a service replies with to handled

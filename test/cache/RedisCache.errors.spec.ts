@@ -1,7 +1,7 @@
 /*!
  * RedisCache error branches: methods before init should throw
  */
-import { RedisCache, REDIS_CLIENT_INIT_ERROR } from '../..';
+import { RedisCache, REDIS_CLIENT_INIT_ERROR } from '../../index.js';
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 

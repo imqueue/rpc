@@ -21,11 +21,11 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { Redis, logger } from '../mocks';
+import { Redis, logger } from '../mocks/index.js';
 import { describe, it, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { RedisCache } from '../..';
-import { IRedisClient } from '@imqueue/core';
+import { RedisCache } from '../../index.js';
+import { type IRedisClient } from '@imqueue/core';
 import { randomUUID as uuid } from 'node:crypto';
 
 describe('cache/RedisCache', () => {

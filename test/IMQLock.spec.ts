@@ -21,10 +21,10 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import './mocks';
+import './mocks/index.js';
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { IMQLock, AcquiredLock } from '..';
+import { IMQLock, type AcquiredLock } from '../index.js';
 
 const LOCK_TIMEOUT = 100;
 const ORIGINAL_LOCK_TIMEOUT = IMQLock.deadlockTimeout;
@@ -54,8 +54,6 @@ async function deadLocked() {
 }
 
 describe('IMQLock', () => {
-    (this as any).timeout = 30000;
-
     before(() => {
         IMQLock.deadlockTimeout = LOCK_TIMEOUT;
     });

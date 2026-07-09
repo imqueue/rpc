@@ -21,25 +21,31 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import '../mocks';
+import '../mocks/index.js';
 import { describe, it, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { osUuid } from '../../src/helpers';
+import { osUuid } from '../../src/helpers/index.js';
 
 // The helper under test reads the live `require('node:child_process')` object at
 // call time, so we mock that same object via import-equals (an `import * as`
 // namespace copy under esModuleInterop would not be the object it reads).
 import childProcess = require('node:child_process');
+import { syncBuiltinESMExports } from 'node:module';
 
 // osUuid memoizes its result at module level, so the per-platform parsing
 // tests below load a FRESH copy of the module after mocking the platform and
 // execSync — otherwise the first test's cached id would leak into the rest.
-const OS_UUID_PATH = require.resolve('../../src/helpers/os-uuid');
+// The ES module registry is immutable, so freshness comes from a unique
+// query string; syncBuiltinESMExports() publishes the execSync stub to the
+// named-import binding the fresh copy links against.
+let osUuidReload = 0;
 
-function freshOsUuid(): () => string {
-    delete require.cache[OS_UUID_PATH];
+async function freshOsUuid(): Promise<() => string> {
+    syncBuiltinESMExports();
 
-    return require(OS_UUID_PATH).osUuid;
+    const href = new URL('../../src/helpers/os-uuid.js', import.meta.url).href;
+
+    return (await import(`${href}?reload=${++osUuidReload}`)).osUuid;
 }
 
 describe('helpers/osUuid()', () => {
@@ -48,6 +54,7 @@ describe('helpers/osUuid()', () => {
 
     afterEach(() => {
         mock.restoreAll();
+        syncBuiltinESMExports();
         Object.defineProperty(process, 'platform', { value: realPlatform });
         Object.defineProperty(process, 'arch', { value: realArch });
         delete process.env.PROCESSOR_ARCHITEW6432;
@@ -69,13 +76,13 @@ describe('helpers/osUuid()', () => {
         assert.equal(id, id.toLowerCase());
     });
 
-    it('should memoize the machine id and shell out only once', () => {
+    it('should memoize the machine id and shell out only once', async () => {
         const spy = mock.method(
             childProcess,
             'execSync',
             () => 'ab12cd34ef567890abcdef1234567890\n',
         );
-        const uuid = freshOsUuid();
+        const uuid = await freshOsUuid();
 
         assert.equal(uuid(), uuid());
         assert.equal(
@@ -85,7 +92,7 @@ describe('helpers/osUuid()', () => {
         );
     });
 
-    it('should read and parse the darwin IOPlatformUUID', () => {
+    it('should read and parse the darwin IOPlatformUUID', async () => {
         Object.defineProperty(process, 'platform', { value: 'darwin' });
         const spy = mock.method(
             childProcess,
@@ -94,14 +101,17 @@ describe('helpers/osUuid()', () => {
                 '  "IOPlatformUUID" = "AB12CD34-0000-1111-2222-33445566EE77"\n',
         );
 
-        assert.equal(freshOsUuid()(), 'ab12cd34-0000-1111-2222-33445566ee77');
+        assert.equal(
+            (await freshOsUuid())(),
+            'ab12cd34-0000-1111-2222-33445566ee77',
+        );
         assert.match(
             spy.mock.calls[0].arguments[0] as string,
             /ioreg -rd1 -c IOPlatformExpertDevice/,
         );
     });
 
-    it('should read and parse the win32 MachineGuid', () => {
+    it('should read and parse the win32 MachineGuid', async () => {
         Object.defineProperty(process, 'platform', { value: 'win32' });
         const spy = mock.method(
             childProcess,
@@ -111,14 +121,14 @@ describe('helpers/osUuid()', () => {
                 '    MachineGuid    REG_SZ    AB12CD34-DEAD-BEEF\r\n',
         );
 
-        assert.equal(freshOsUuid()(), 'ab12cd34-dead-beef');
+        assert.equal((await freshOsUuid())(), 'ab12cd34-dead-beef');
         assert.match(
             spy.mock.calls[0].arguments[0] as string,
             /REG\.exe QUERY .*Cryptography \/v MachineGuid/,
         );
     });
 
-    it('should read and parse the linux machine-id', () => {
+    it('should read and parse the linux machine-id', async () => {
         Object.defineProperty(process, 'platform', { value: 'linux' });
         const spy = mock.method(
             childProcess,
@@ -126,31 +136,36 @@ describe('helpers/osUuid()', () => {
             () => 'AB12CD34EF567890ABCDEF1234567890\n',
         );
 
-        assert.equal(freshOsUuid()(), 'ab12cd34ef567890abcdef1234567890');
+        assert.equal(
+            (await freshOsUuid())(),
+            'ab12cd34ef567890abcdef1234567890',
+        );
         assert.match(
             spy.mock.calls[0].arguments[0] as string,
             /\/etc\/machine-id/,
         );
     });
 
-    it('should build the freebsd command', () => {
+    it('should build the freebsd command', async () => {
         Object.defineProperty(process, 'platform', { value: 'freebsd' });
         const spy = mock.method(childProcess, 'execSync', () => 'ABCDEF12\n');
 
-        assert.equal(freshOsUuid()(), 'abcdef12');
+        assert.equal((await freshOsUuid())(), 'abcdef12');
         assert.match(
             spy.mock.calls[0].arguments[0] as string,
             /kenv -q smbios\.system\.uuid/,
         );
     });
 
-    it('should throw for an unsupported platform', () => {
+    it('should throw for an unsupported platform', async () => {
         Object.defineProperty(process, 'platform', { value: 'aix' });
 
-        assert.throws(() => freshOsUuid()(), /Unsupported platform/);
+        const uuid = await freshOsUuid();
+
+        assert.throws(() => uuid(), /Unsupported platform/);
     });
 
-    it('should use the sysnative redirector for 32-bit on 64-bit windows', () => {
+    it('should use the sysnative redirector for 32-bit on 64-bit windows', async () => {
         Object.defineProperty(process, 'platform', { value: 'win32' });
         Object.defineProperty(process, 'arch', { value: 'ia32' });
         process.env.PROCESSOR_ARCHITEW6432 = 'AMD64';
@@ -160,7 +175,7 @@ describe('helpers/osUuid()', () => {
             () => 'MachineGuid  REG_SZ  AB12CD34\r\n',
         );
 
-        freshOsUuid()();
+        (await freshOsUuid())();
 
         assert.match(spy.mock.calls[0].arguments[0] as string, /sysnative/);
     });

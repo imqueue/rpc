@@ -1,10 +1,23 @@
 /*!
  * IMQClient generator trailing args removal coverage test
  */
-import * as fs from 'node:fs';
+import {
+    existsSync,
+    lstatSync,
+    readFileSync,
+    readdirSync,
+    rmdirSync,
+    unlinkSync,
+} from 'node:fs';
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { IMQService, IMQClient, IMQDelay, IMQMetadata, expose } from '..';
+import {
+    IMQService,
+    IMQClient,
+    IMQDelay,
+    IMQMetadata,
+    expose,
+} from '../index.js';
 
 // The generated client imports from '@imqueue/rpc'; the package.json `exports`
 // field lets that specifier self-resolve to this in-tree build, so no module
@@ -31,16 +44,16 @@ describe('IMQClient.generator trailing args removal (IMQDelay/IMQMetadata)', () 
     let service: GenTrailingService;
 
     function rmdirr(path: string) {
-        if (fs.existsSync(path)) {
-            fs.readdirSync(path).forEach(file => {
+        if (existsSync(path)) {
+            readdirSync(path).forEach(file => {
                 const curPath = `${path}/${file}`;
-                if (fs.lstatSync(curPath).isDirectory()) {
+                if (lstatSync(curPath).isDirectory()) {
                     rmdirr(curPath);
                 } else {
-                    fs.unlinkSync(curPath);
+                    unlinkSync(curPath);
                 }
             });
-            fs.rmdirSync(path);
+            rmdirSync(path);
         }
     }
 
@@ -67,8 +80,8 @@ describe('IMQClient.generator trailing args removal (IMQDelay/IMQMetadata)', () 
 
         // Read generated TypeScript to verify the signature
         const tsPath = `${CLIENTS_PATH}/GenTrailingService.ts`;
-        assert.equal(fs.existsSync(tsPath), true);
-        const src = fs.readFileSync(tsPath, 'utf8');
+        assert.equal(existsSync(tsPath), true);
+        const src = readFileSync(tsPath, 'utf8');
 
         // The generated method should not keep original parameter names 'meta' or 'delay'
         // as they are stripped and replaced by imqMetadata/imqDelay at the end once.

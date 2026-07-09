@@ -21,10 +21,10 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import '../mocks';
+import '../mocks/index.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { remote } from '../..';
+import { remote } from '../../index.js';
 
 describe('decorators/remote()', () => {
     it('should be a function', () => {

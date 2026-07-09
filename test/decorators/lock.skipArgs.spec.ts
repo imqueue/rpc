@@ -1,7 +1,7 @@
-import '../mocks';
+import '../mocks/index.js';
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { lock } from '../..';
+import { lock } from '../../index.js';
 
 class SkipArgsClass {
     public calls: number = 0;
