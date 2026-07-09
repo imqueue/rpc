@@ -22,7 +22,14 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import * as fs from 'node:fs';
+import {
+    existsSync,
+    lstatSync,
+    readFileSync,
+    readdirSync,
+    rmdirSync,
+    unlinkSync,
+} from 'node:fs';
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -32,7 +39,7 @@ import {
     property,
     classType,
     indexed,
-} from '..';
+} from '../index.js';
 
 // The generated client imports from '@imqueue/rpc'; the package.json `exports`
 // field lets that specifier self-resolve to this in-tree build, so no module
@@ -81,17 +88,17 @@ class GenTypesService extends IMQService {
 }
 
 function rmdirr(path: string): void {
-    if (fs.existsSync(path)) {
-        fs.readdirSync(path).forEach(file => {
+    if (existsSync(path)) {
+        readdirSync(path).forEach(file => {
             const curPath = `${path}/${file}`;
 
-            if (fs.lstatSync(curPath).isDirectory()) {
+            if (lstatSync(curPath).isDirectory()) {
                 rmdirr(curPath);
             } else {
-                fs.unlinkSync(curPath);
+                unlinkSync(curPath);
             }
         });
-        fs.rmdirSync(path);
+        rmdirSync(path);
     }
 }
 
@@ -118,10 +125,7 @@ describe('IMQClient.generator type interfaces', () => {
 
         assert.equal(result, null);
 
-        const src = fs.readFileSync(
-            `${CLIENTS_PATH}/GenTypesService.ts`,
-            'utf8',
-        );
+        const src = readFileSync(`${CLIENTS_PATH}/GenTypesService.ts`, 'utf8');
 
         // registered types become interfaces; an inheriting type uses extends
         assert.match(src, /export interface GenPoint\s*\{/);

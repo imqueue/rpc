@@ -23,7 +23,7 @@
  */
 import { describe, it, before, after, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { logger } from './mocks';
+import { logger } from './mocks/index.js';
 import {
     IMQClient,
     IMQService,
@@ -31,8 +31,15 @@ import {
     Description,
     expose,
     remote,
-} from '..';
-import * as fs from 'node:fs';
+} from '../index.js';
+import {
+    access,
+    existsSync,
+    lstatSync,
+    readdirSync,
+    rmdirSync,
+    unlinkSync,
+} from 'node:fs';
 
 // The generated client imports from '@imqueue/rpc'; the package.json `exports`
 // field lets that specifier self-resolve to this in-tree build, so no module
@@ -73,18 +80,18 @@ class TestServiceClient extends IMQClient {
 }
 
 function rmdirr(path: string) {
-    if (fs.existsSync(path)) {
-        fs.readdirSync(path).forEach(file => {
+    if (existsSync(path)) {
+        readdirSync(path).forEach(file => {
             const curPath = `${path}/${file}`;
 
-            if (fs.lstatSync(curPath).isDirectory()) {
+            if (lstatSync(curPath).isDirectory()) {
                 rmdirr(curPath);
             } else {
-                fs.unlinkSync(curPath);
+                unlinkSync(curPath);
             }
         });
 
-        fs.rmdirSync(path);
+        rmdirSync(path);
     }
 }
 
@@ -213,7 +220,7 @@ describe('IMQClient', () => {
                 assert.ok(cli instanceof IMQClient);
 
                 const notExists = await new Promise(resolve =>
-                    fs.access(`${CLIENTS_PATH}/TestService.ts`, resolve),
+                    access(`${CLIENTS_PATH}/TestService.ts`, resolve),
                 );
                 assert.equal(!notExists, true, 'TestService.ts does not exit');
 
@@ -237,7 +244,7 @@ describe('IMQClient', () => {
                 assert.ok(cli instanceof IMQClient);
 
                 const notExists = await new Promise(resolve =>
-                    fs.access(`${CLIENTS_PATH}/TestService.ts`, resolve),
+                    access(`${CLIENTS_PATH}/TestService.ts`, resolve),
                 );
                 assert.equal(!notExists, false, 'TestService.ts exits');
 

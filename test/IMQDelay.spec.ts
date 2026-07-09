@@ -21,10 +21,10 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import './mocks';
+import './mocks/index.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { IMQDelay } from '..';
+import { IMQDelay } from '../index.js';
 
 describe('IMQDelay', () => {
     it('should be a class', () => {

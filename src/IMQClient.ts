@@ -22,17 +22,17 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import IMQ, {
-    IMessageQueue,
-    ILogger,
-    JsonObject,
-    AnyJson,
+    type IMessageQueue,
+    type ILogger,
+    type JsonObject,
+    type AnyJson,
     IMQ_SHUTDOWN_TIMEOUT,
 } from '@imqueue/core';
 import {
     DEFAULT_IMQ_CLIENT_OPTIONS,
-    IMQClientOptions,
-    IMQRPCResponse,
-    IMQRPCRequest,
+    type IMQClientOptions,
+    type IMQRPCResponse,
+    type IMQRPCRequest,
     IMQDelay,
     IMQError,
     remote,
@@ -40,7 +40,7 @@ import {
     IMQMetadata,
     BEFORE_HOOK_ERROR,
     AFTER_HOOK_ERROR,
-} from '.';
+} from './index.js';
 import {
     pid,
     forgetPid,
@@ -49,7 +49,7 @@ import {
     mkdir,
     writeFile,
     SIGNALS,
-} from './helpers';
+} from './helpers/index.js';
 import { EventEmitter } from 'node:events';
 import { Script } from 'node:vm';
 import { spawnSync } from 'node:child_process';
@@ -60,16 +60,20 @@ import {
     existsSync,
     rmSync,
 } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
-import { IMQBeforeCall, IMQAfterCall } from './IMQRPCOptions';
+import { type IMQBeforeCall, type IMQAfterCall } from './IMQRPCOptions.js';
 
-// Loaded via require (not a static import) so that consumers which type-check
+// CommonJS require scoped to this module: resolves the typescript package
+// and loads generated CommonJS client modules from the ESM host
+const cjsRequire = createRequire(import.meta.url);
+
+// Read as a file (not a static import) so that consumers which type-check
 // this source through a file: link do not need `resolveJsonModule` enabled.
-const tsOptions = require('../tsconfig.json').compilerOptions as Record<
-    string,
-    unknown
->;
+const tsOptions = JSON.parse(
+    readFileSync(new URL('../tsconfig.json', import.meta.url), 'utf8'),
+).compilerOptions as Record<string, unknown>;
 const RX_SEMICOLON: RegExp = /;+$/g;
 
 /**
@@ -815,7 +819,7 @@ function transpileClient(src: string): string {
         // blocks `typescript/lib/*`, so build a raw path that Node runs
         // directly)
         const tscJs = join(
-            dirname(require.resolve('typescript/package.json')),
+            dirname(cjsRequire.resolve('typescript/package.json')),
             'lib',
             'tsc.js',
         );
@@ -865,7 +869,7 @@ async function compile(
 
     if (options.compile) {
         const script = new Script(js);
-        const context = { exports: {}, require };
+        const context = { exports: {}, require: cjsRequire };
 
         script.runInNewContext(context, { filename: jsFile });
 

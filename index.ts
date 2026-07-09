@@ -19,5 +19,5 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-export * from './src';
+export * from './src/index.js';
 export * from '@imqueue/core';

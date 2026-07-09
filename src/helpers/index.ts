@@ -20,7 +20,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-export * from './signature';
-export * from './os-uuid';
-export * from './pid';
-export * from './fs';
+export * from './signature.js';
+export * from './os-uuid.js';
+export * from './pid.js';
+export * from './fs.js';
