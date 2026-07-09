@@ -21,10 +21,10 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { logger } from '../mocks';
+import { logger } from '../mocks/index.js';
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { pid, forgetPid, IMQ_TMP_DIR } from '../../src/helpers';
+import { pid, forgetPid, IMQ_TMP_DIR } from '../../src/helpers/index.js';
 import { randomUUID as uuid } from 'node:crypto';
 import * as fs from 'node:fs';
 

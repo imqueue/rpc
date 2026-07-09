@@ -3,11 +3,11 @@
  * handlers when destroyed, so long-lived processes that create and destroy
  * clients/services do not leak listeners.
  */
-import './mocks';
+import './mocks/index.js';
 import { describe, it, mock, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { IMQClient, IMQService, expose, remote } from '..';
-import { logger } from './mocks';
+import { IMQClient, IMQService, expose, remote } from '../index.js';
+import { logger } from './mocks/index.js';
 
 class SignalCleanupClient extends IMQClient {
     @remote()

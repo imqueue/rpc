@@ -43,13 +43,13 @@ import {
     AFTER_HOOK_ERROR,
     BEFORE_HOOK_ERROR,
     DEFAULT_IMQ_METRICS_SERVER_OPTIONS,
-} from '.';
-import { SIGNALS } from './helpers';
+} from './index.js';
+import { SIGNALS } from './helpers/index.js';
 import { cpus } from 'node:os';
 import cluster, { type Worker } from 'node:cluster';
-import { ArgDescription } from './IMQRPCDescription';
-import { IMQBeforeCall, IMQAfterCall } from './IMQRPCOptions';
-import { runWithRequest } from './IMQRequestContext';
+import { ArgDescription } from './IMQRPCDescription.js';
+import { IMQBeforeCall, IMQAfterCall } from './IMQRPCOptions.js';
+import { runWithRequest } from './IMQRequestContext.js';
 import { createServer, type Server } from 'node:http';
 
 export class Description {

@@ -21,10 +21,10 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { logger } from '../mocks';
+import { logger } from '../mocks/index.js';
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { RedisCache, cache, IMQCache } from '../..';
+import { RedisCache, cache, IMQCache } from '../../index.js';
 import { ILogger } from '@imqueue/core';
 
 class CacheTestClass {

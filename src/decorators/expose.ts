@@ -22,7 +22,11 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import { parse, type Comment, type Options } from 'acorn';
-import { ArgDescription, ReturnValueDescription, IMQRPCDescription } from '..';
+import {
+    ArgDescription,
+    ReturnValueDescription,
+    IMQRPCDescription,
+} from '../index.js';
 
 type CommentMetadata = {
     [key: string]: string | ArgDescription[] | ReturnValueDescription;

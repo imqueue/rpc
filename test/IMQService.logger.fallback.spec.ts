@@ -10,7 +10,7 @@ import {
     expose,
     BEFORE_HOOK_ERROR,
     AFTER_HOOK_ERROR,
-} from '..';
+} from '../index.js';
 
 class FallbackLoggerService extends IMQService {
     @expose()

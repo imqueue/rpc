@@ -21,8 +21,8 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { Thunk, IMQRPCDescription } from '..';
-import { registerType } from './property';
+import { Thunk, IMQRPCDescription } from '../index.js';
+import { registerType } from './property.js';
 
 /**
  * Implements '@indexed' decorator factory

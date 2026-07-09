@@ -1,11 +1,11 @@
 /*!
  * IMQClient singleQueue lifecycle tests
  */
-import './mocks';
+import './mocks/index.js';
 import { describe, it, afterEach, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { IMQClient, remote } from '..';
-import { logger } from './mocks';
+import { IMQClient, remote } from '../index.js';
+import { logger } from './mocks/index.js';
 
 class SingleQueueClient extends IMQClient {
     @remote()

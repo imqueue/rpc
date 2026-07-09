@@ -24,8 +24,13 @@
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID as uuid } from 'node:crypto';
-import { logger } from './mocks';
-import { IMQService, IMQRPCRequest, expose, BEFORE_HOOK_ERROR } from '..';
+import { logger } from './mocks/index.js';
+import {
+    IMQService,
+    IMQRPCRequest,
+    expose,
+    BEFORE_HOOK_ERROR,
+} from '../index.js';
 
 class HookTestService extends IMQService {
     @expose()

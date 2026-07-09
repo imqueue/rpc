@@ -29,13 +29,13 @@ import {
     Redis,
 } from '@imqueue/core';
 import { hostname } from 'node:os';
-import { ICache } from '.';
+import { ICache } from './index.js';
 
 export interface IRedisCacheOptions extends Partial<IMQOptions> {
     conn?: IRedisClient;
 }
 
-export const DEFAULT_REDIS_CACHE_OPTIONS = {
+export const DEFAULT_REDIS_CACHE_OPTIONS: IMQOptions = {
     ...DEFAULT_IMQ_OPTIONS,
     prefix: 'imq-cache',
 };

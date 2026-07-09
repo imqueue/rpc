@@ -22,8 +22,8 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { IMQMetadata } from './IMQMetadata';
-import { IMQRPCRequest } from './IMQRPCRequest';
+import { IMQMetadata } from './IMQMetadata.js';
+import { IMQRPCRequest } from './IMQRPCRequest.js';
 
 const storage = new AsyncLocalStorage<IMQRPCRequest>();
 

@@ -23,7 +23,7 @@
  */
 import { describe, it, before, after, mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { logger } from './mocks';
+import { logger } from './mocks/index.js';
 import {
     IMQClient,
     IMQService,
@@ -31,7 +31,7 @@ import {
     Description,
     expose,
     remote,
-} from '..';
+} from '../index.js';
 import * as fs from 'node:fs';
 
 // The generated client imports from '@imqueue/rpc'; the package.json `exports`

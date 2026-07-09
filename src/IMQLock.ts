@@ -41,7 +41,7 @@ export interface IMQLockMetadata {
  *
  * @example
  * ~~~typescript
- * import { IMQLock, AcquiredLock } from '.';
+ * import { IMQLock, AcquiredLock } from './index.js';
  *
  * async function doSomething(): Promise<number | AcquiredLock<number>> {
  *     const lock: AcquiredLock<number> = await IMQLock.acquire<number>('doSomething');

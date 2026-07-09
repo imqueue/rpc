@@ -3,7 +3,7 @@
  */
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { IMQLock } from '..';
+import { IMQLock } from '../index.js';
 
 describe('IMQLock acquire() timeout with unstringifiable metadata', () => {
     const KEY = 'circular-metadata-key';

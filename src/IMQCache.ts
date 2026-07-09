@@ -21,7 +21,15 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { ICache, ICacheAdapter, ICacheConstructor } from '.';
+import { RedisCache } from './cache/index.js';
+import { ICache, ICacheAdapter, ICacheConstructor } from './index.js';
+
+// ES modules provide no synchronous dynamic loading, so the built-in cache
+// adapters registrable by name are enumerated statically; custom adapters
+// are still registrable by class or instance
+const BUILT_IN_ADAPTERS: { [name: string]: ICacheConstructor } = {
+    RedisCache: RedisCache as unknown as ICacheConstructor,
+};
 
 /**
  * Generic cache registry
@@ -46,9 +54,15 @@ export class IMQCache {
 
         if (typeof adapter === 'string') {
             if (!self.adapters[adapter]) {
-                self.adapters[adapter] = <ICache>(
-                    new (require(`${__dirname}/cache/${adapter}.js`)[adapter])()
-                );
+                const Adapter = BUILT_IN_ADAPTERS[adapter];
+
+                if (!Adapter) {
+                    throw new TypeError(
+                        `IMQCache: unknown cache adapter requested: ${adapter}`,
+                    );
+                }
+
+                self.adapters[adapter] = new Adapter() as unknown as ICache;
             }
         } else {
             if (!self.adapters[(adapter as ICacheConstructor).name]) {

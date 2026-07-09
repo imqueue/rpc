@@ -21,13 +21,15 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import './mocks';
+import './mocks/index.js';
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 // live module object so mock.method() patches the same spawnSync the client
-// transpiler reads at call time
+// transpiler reads at call time; under ESM the transpiler's named-import
+// binding only picks the patch up after syncBuiltinESMExports()
 import childProcess = require('node:child_process');
-import { IMQService, IMQClient, expose } from '..';
+import { syncBuiltinESMExports } from 'node:module';
+import { IMQService, IMQClient, expose } from '../index.js';
 
 // Own spec file (hence own process): generating a client makes exactly one
 // getDescription() round-trip; a second create() in the same process would hang
@@ -59,6 +61,12 @@ describe('IMQClient client transpiler failure', () => {
             stderr: 'boom-err',
             status: 1,
         })) as any);
+        syncBuiltinESMExports();
+        t.after(() => {
+            // t.mock auto-restores the CJS object; the ESM bindings must be
+            // re-synced separately or the stub would leak into other tests
+            setImmediate(() => syncBuiltinESMExports());
+        });
 
         await assert.rejects(
             IMQClient.create('TranspileErrService', {
