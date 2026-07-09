@@ -21,8 +21,11 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { IMQCache, ICache, RedisCache, ICacheConstructor } from '..';
-import { signature } from '../helpers';
+// cache classes are imported from their defining modules (not the package
+// barrel) to avoid a circular-import TDZ on the module-scope default options
+import { type ICache, type ICacheConstructor, RedisCache } from '../cache/index.js';
+import { IMQCache } from '../IMQCache.js';
+import { signature } from '../helpers/index.js';
 
 export interface CacheDecoratorOptions {
     adapter?: string | ICache | ICacheConstructor;

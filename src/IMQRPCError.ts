@@ -21,7 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { JsonObject } from '@imqueue/core';
+import { type JsonObject } from '@imqueue/core';
 
 export const BEFORE_HOOK_ERROR = 'Before call hook error:';
 export const AFTER_HOOK_ERROR = 'After call hook error:';

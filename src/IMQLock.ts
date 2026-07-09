@@ -21,7 +21,7 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { ILogger } from '@imqueue/core';
+import { type ILogger } from '@imqueue/core';
 
 export type AcquiredLock<T> = T | boolean;
 export type IMQLockTask = [(...args: any[]) => any, (...args: any[]) => any];
@@ -41,7 +41,7 @@ export interface IMQLockMetadata {
  *
  * @example
  * ~~~typescript
- * import { IMQLock, AcquiredLock } from '.';
+ * import { IMQLock, AcquiredLock } from './index.js';
  *
  * async function doSomething(): Promise<number | AcquiredLock<number>> {
  *     const lock: AcquiredLock<number> = await IMQLock.acquire<number>('doSomething');

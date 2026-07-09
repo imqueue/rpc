@@ -22,34 +22,34 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import IMQ, {
-    JsonObject,
-    ILogger,
-    IMessageQueue,
+    type JsonObject,
+    type ILogger,
+    type IMessageQueue,
     profile,
     IMQ_SHUTDOWN_TIMEOUT,
 } from '@imqueue/core';
 import {
-    TypesDescription,
+    type TypesDescription,
     IMQRPCDescription,
-    IMQRPCRequest,
-    IMQRPCResponse,
-    IMQServiceOptions,
+    type IMQRPCRequest,
+    type IMQRPCResponse,
+    type IMQServiceOptions,
     IMQError,
     expose,
-    ICache,
-    ServiceClassDescription,
-    MethodsCollectionDescription,
+    type ICache,
+    type ServiceClassDescription,
+    type MethodsCollectionDescription,
     DEFAULT_IMQ_SERVICE_OPTIONS,
     AFTER_HOOK_ERROR,
     BEFORE_HOOK_ERROR,
     DEFAULT_IMQ_METRICS_SERVER_OPTIONS,
-} from '.';
-import { SIGNALS } from './helpers';
+} from './index.js';
+import { SIGNALS } from './helpers/index.js';
 import { cpus } from 'node:os';
 import cluster, { type Worker } from 'node:cluster';
-import { ArgDescription } from './IMQRPCDescription';
-import { IMQBeforeCall, IMQAfterCall } from './IMQRPCOptions';
-import { runWithRequest } from './IMQRequestContext';
+import { type ArgDescription } from './IMQRPCDescription.js';
+import { type IMQBeforeCall, type IMQAfterCall } from './IMQRPCOptions.js';
+import { runWithRequest } from './IMQRequestContext.js';
 import { createServer, type Server } from 'node:http';
 
 export class Description {

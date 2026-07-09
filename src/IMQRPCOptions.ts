@@ -21,11 +21,11 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
-import { DEFAULT_IMQ_OPTIONS, IMQOptions } from '@imqueue/core';
-import { IMQRPCRequest } from './IMQRPCRequest';
-import { IMQRPCResponse } from './IMQRPCResponse';
-import { IMQService } from './IMQService';
-import { IMQClient } from './IMQClient';
+import { DEFAULT_IMQ_OPTIONS, type IMQOptions } from '@imqueue/core';
+import { type IMQRPCRequest } from './IMQRPCRequest.js';
+import { type IMQRPCResponse } from './IMQRPCResponse.js';
+import { IMQService } from './IMQService.js';
+import { IMQClient } from './IMQClient.js';
 
 /**
  * Hook invoked before a service method call is dispatched.
