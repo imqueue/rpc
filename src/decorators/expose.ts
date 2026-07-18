@@ -99,9 +99,7 @@ function argumentNames(fn: (...args: any[]) => any): string[] {
  * @return {{ tsType: string, rest: string } | null} - captured type and the
  *   remaining definition (name + description), or null when there is no type
  */
-function extractType(
-    tagDef: string,
-): { tsType: string; rest: string } | null {
+function extractType(tagDef: string): { tsType: string; rest: string } | null {
     const start = tagDef.indexOf('{');
 
     // a type is only a type when it leads the definition; a `{` preceded by
