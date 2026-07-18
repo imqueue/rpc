@@ -21,6 +21,8 @@
  * purchase a proprietary commercial license. Please contact us at
  * <support@imqueue.com> to get commercial licensing options.
  */
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
 import { parse, type Comment, type Options } from 'acorn';
 import {
     type ArgDescription,
@@ -56,6 +58,21 @@ const RX_TAG = /(@[^@]+)/g;
 const RX_LI_CLEANUP = /^\s*-\s*/;
 const RX_SPACE_SPLIT = / /;
 const RX_OPTIONAL = /^\[(.*?)\]$/;
+// member head that may follow a doc block in original (possibly TypeScript)
+// source: optional decorators and modifiers, then the method name right
+// before its (possibly generic) argument list
+const RX_SOURCE_METHOD =
+    /^\s*(?:@[\w$.]+(?:\([^)]*\))?\s*)*(?:(?:public|protected|private|static|override|abstract|async)\s+)*([\w$]+)\s*(?:<[^>]*>)?\s*\(/;
+const RX_JSDOC_BLOCK = /\/\*\*([\s\S]*?)\*\//g;
+
+// path of this very module — used to skip own frames during caller capture
+const OWN_PATH: string = (() => {
+    try {
+        return fileURLToPath(import.meta.url);
+    } catch {
+        return '';
+    }
+})();
 
 /**
  * Lookup and returns a list of argument names for a given function
@@ -286,6 +303,158 @@ function parseDescriptions(name: string, src: string): void {
 }
 
 /**
+ * Extracts method JSDoc blocks from original source text of a given class.
+ *
+ * The text may be TypeScript (type annotations, generics, modifiers,
+ * decorators), which acorn cannot parse — so extraction is textual: the
+ * search is narrowed to the class region (from the class declaration to the
+ * next class declaration or EOF), and each doc block is attributed to the
+ * method whose declaration head immediately follows it. When several blocks
+ * precede a method, the closest one wins, matching the runtime parser.
+ *
+ * @param {string} src - source file text (TypeScript or JavaScript)
+ * @param {string} className - class to extract method docs for
+ * @return {{ [method: string]: string }} - map of method name to raw JSDoc
+ *   block body (delimiters excluded, as acorn reports comment values)
+ */
+export function parseSourceComments(
+    src: string,
+    className: string,
+): { [method: string]: string } {
+    const comments: { [method: string]: string } = {};
+    const classRx = new RegExp(`\\bclass\\s+${className}\\b`);
+    const classMatch = classRx.exec(src);
+
+    if (!classMatch) {
+        return comments;
+    }
+
+    const start = classMatch.index + classMatch[0].length;
+    const nextClass = /\bclass\s+[\w$]+/g;
+
+    nextClass.lastIndex = start;
+
+    const next = nextClass.exec(src);
+    const region = src.slice(start, next ? next.index : src.length);
+
+    let match: RegExpExecArray | null;
+
+    RX_JSDOC_BLOCK.lastIndex = 0;
+
+    while ((match = RX_JSDOC_BLOCK.exec(region))) {
+        const head = region
+            .slice(match.index + match[0].length)
+            .match(RX_SOURCE_METHOD);
+
+        if (head && head[1] !== 'constructor') {
+            comments[head[1]] = match[1];
+        }
+    }
+
+    return comments;
+}
+
+// per-path cache of source file reads used by the dev-mode fallback;
+// null marks an unreadable path so it is only attempted once
+const sourceFileCache: { [path: string]: string | null } = {};
+
+/**
+ * Reads and caches a source file, returning null when unreadable.
+ *
+ * @param {string} path - absolute source file path
+ * @return {string | null}
+ */
+function readSourceFile(path: string): string | null {
+    if (!(path in sourceFileCache)) {
+        try {
+            sourceFileCache[path] = readFileSync(path, 'utf8');
+        } catch {
+            sourceFileCache[path] = null;
+        }
+    }
+
+    return sourceFileCache[path];
+}
+
+/**
+ * Captures the file path of the code that invoked the expose() factory —
+ * physically the module defining the decorated class. Own and internal
+ * frames are skipped. Returns an empty string when no frame is usable
+ * (e.g. bundled builds without source maps).
+ *
+ * @return {string}
+ */
+function captureCallerPath(): string {
+    const stack: string = new Error().stack || '';
+
+    for (const line of stack.split('\n').slice(1)) {
+        const match = line.match(
+            /\(?((?:file:\/\/)?[^()\s]+?\.[cm]?[jt]sx?)(?::\d+){0,2}\)?$/,
+        );
+
+        if (!match) {
+            continue;
+        }
+
+        let path = match[1];
+
+        if (path.startsWith('file://')) {
+            try {
+                path = fileURLToPath(path);
+            } catch {
+                continue;
+            }
+        }
+
+        if (
+            path === OWN_PATH ||
+            path.startsWith('node:') ||
+            path.includes('node_modules')
+        ) {
+            continue;
+        }
+
+        return path;
+    }
+
+    return '';
+}
+
+/**
+ * Dev-mode fallback: when the runtime class source yields no JSDoc (a
+ * comment-stripping transpiler like tsx/esbuild), re-extract method docs
+ * from the defining source file on disk. Runtime source always wins when
+ * it carries any JSDoc; extraction misses leave methods at their current
+ * (untyped) state, so behavior never degrades below the status quo.
+ *
+ * @param {string} className - class to describe
+ * @param {string} sourcePath - captured defining file path
+ */
+function applySourceFallback(className: string, sourcePath: string): void {
+    const hasJsdoc = Object.keys(descriptions[className] || {}).some(
+        key => key !== 'inherits',
+    );
+
+    if (hasJsdoc || !sourcePath) {
+        return;
+    }
+
+    const src = readSourceFile(sourcePath);
+
+    if (!src) {
+        return;
+    }
+
+    const comments = parseSourceComments(src, className);
+
+    for (const method of Object.keys(comments)) {
+        descriptions[className][method] = {
+            comment: parseComment(comments[method]),
+        };
+    }
+}
+
+/**
  * Helper function to make easy descriptions parts extractions
  *
  * @param {string} prop - property name to extract
@@ -322,17 +491,25 @@ function get<T>(
  * @param {Function} ctor - class that declares the method
  * @param {string} methodName - exposed method name
  * @param {(...args: any[]) => any} fn - the method implementation
+ * @param {string} [sourcePath] - defining file path captured at decoration
  */
 function buildMethodDescription(
     ctor: Function,
     methodName: string,
     fn: (...args: any[]) => any,
+    sourcePath?: string,
 ): void {
     const className: string = ctor.name;
     const argNames: string[] = argumentNames(fn);
 
     if (!descriptions[className]) {
         parseDescriptions(className, ctor.toString());
+
+        // dev-mode: a comment-stripping transpiler leaves no JSDoc in the
+        // runtime source — recover method docs from the file on disk
+        if (sourcePath) {
+            applySourceFallback(className, sourcePath);
+        }
     }
 
     const args: ArgDescription[] = get<ArgDescription[]>(
@@ -402,6 +579,11 @@ function buildMethodDescription(
  * @return {(value: any, context: ClassMethodDecoratorContext) => void}
  */
 export function expose(): any {
+    // the factory executes at class-definition time inside the defining
+    // module, so the caller frame points at the service source file — used
+    // as the dev-mode fallback when runtime comments are stripped
+    const sourcePath: string = captureCallerPath();
+
     // Dual-mode: standard (TC39) invocations pass a context object with a
     // `kind` property; legacy ones pass (target, propertyKey, descriptor).
     return function exposeDecorator(
@@ -432,7 +614,7 @@ export function expose(): any {
                     ? proto.constructor
                     : this.constructor;
 
-                buildMethodDescription(ctor, methodName, value);
+                buildMethodDescription(ctor, methodName, value, sourcePath);
             });
 
             return;
@@ -444,6 +626,7 @@ export function expose(): any {
             target.constructor,
             String(context),
             descriptor.value,
+            sourcePath,
         );
 
         return descriptor;
