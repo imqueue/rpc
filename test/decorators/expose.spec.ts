@@ -24,11 +24,7 @@
 import '../mocks/index.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-    expose,
-    parseSourceComments,
-    IMQRPCDescription,
-} from '../../index.js';
+import { expose, parseSourceComments, IMQRPCDescription } from '../../index.js';
 
 const description = IMQRPCDescription.serviceDescription;
 
@@ -289,10 +285,7 @@ describe('decorators/expose()', () => {
              * @param {{ x: number, y: number }} point - a point value
              * @return {string} - a marker like `{ ok }`
              */
-            public search(
-                query: string,
-                point: { x: number; y: number },
-            ) {
+            public search(query: string, point: { x: number; y: number }) {
                 return `${query}:${point.x}`;
             }
         }
