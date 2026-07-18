@@ -24,7 +24,11 @@
 import '../mocks/index.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { expose, IMQRPCDescription } from '../../index.js';
+import {
+    expose,
+    parseSourceComments,
+    IMQRPCDescription,
+} from '../../index.js';
 
 const description = IMQRPCDescription.serviceDescription;
 
@@ -274,6 +278,126 @@ describe('decorators/expose()', () => {
             description.RegexBraceClass.methods.documented.returns.tsType,
             'string',
         );
+    });
+
+    it('should isolate the JSDoc type from braces in the description and keep object-literal types', () => {
+        class BraceTypeClass {
+            /**
+             * Searches items
+             *
+             * @param {string} query - filter, for example `{ id, name }`
+             * @param {{ x: number, y: number }} point - a point value
+             * @return {string} - a marker like `{ ok }`
+             */
+            public search(
+                query: string,
+                point: { x: number; y: number },
+            ) {
+                return `${query}:${point.x}`;
+            }
+        }
+
+        const descriptor = Object.getOwnPropertyDescriptor(
+            BraceTypeClass.prototype,
+            'search',
+        );
+
+        expose()(BraceTypeClass.prototype, 'search', descriptor);
+
+        const method = description.BraceTypeClass.methods.search;
+
+        // a `}` inside the description must not extend the captured type
+        assert.equal(method.arguments[0].tsType, 'string');
+        assert.equal(method.arguments[0].name, 'query');
+        // object-literal types (nested braces) must be preserved intact
+        assert.equal(method.arguments[1].tsType, '{ x: number, y: number }');
+        assert.equal(method.arguments[1].name, 'point');
+        // a `}` inside the @return description must not corrupt the return type
+        assert.equal(method.returns.tsType, 'string');
+    });
+
+    it('should extract method JSDoc from TypeScript source text', () => {
+        // original .ts source: type annotations, generics, visibility
+        // modifiers and decorators — none of which acorn can parse
+        const src = [
+            'export class TsSourceClass extends IMQService {',
+            '    /**',
+            '     * Authenticates a user',
+            '     *',
+            '     * @param {AuthenticateArgs} args - like `{ login, password }`',
+            '     * @return {Promise<Authentication>} - session data',
+            '     */',
+            '    @expose()',
+            '    public async authenticate(',
+            '        args: AuthenticateArgs,',
+            '    ): Promise<Authentication> {',
+            '        return {} as Authentication;',
+            '    }',
+            '',
+            '    /**',
+            '     * @param {{ x: number, y: number }} point - a point',
+            '     * @return {number}',
+            '     */',
+            '    protected calc<T>(point: { x: number; y: number }): number {',
+            '        return 0;',
+            '    }',
+            '}',
+            'class UnrelatedClass {',
+            '    /** @return {string} */',
+            '    public other() { return ""; }',
+            '}',
+        ].join('\n');
+
+        const comments = parseSourceComments(src, 'TsSourceClass');
+
+        assert.ok(comments.authenticate, 'authenticate doc not found');
+        assert.match(comments.authenticate, /@param \{AuthenticateArgs\}/);
+        assert.match(
+            comments.authenticate,
+            /@return \{Promise<Authentication>\}/,
+        );
+        assert.ok(comments.calc, 'calc doc not found');
+        assert.match(comments.calc, /\{\{ x: number, y: number \}\}/);
+        // members of other classes in the same file must not leak in
+        assert.equal(comments.other, undefined);
+    });
+
+    it('should fall back to on-disk source when runtime comments are stripped', () => {
+        class DevModeStrippedClass {
+            /**
+             * Does dev things
+             *
+             * @param {string} input - input value
+             * @return {number} - result code
+             */
+            public devMethod(input: string) {
+                return input.length;
+            }
+        }
+
+        // simulate a comment-stripping dev transpiler (tsx/esbuild): the
+        // runtime class source carries no JSDoc, while this file on disk
+        // (located via the stack captured by the expose() factory) does
+        Object.defineProperty(DevModeStrippedClass, 'toString', {
+            value: () =>
+                'class DevModeStrippedClass {\n' +
+                '    devMethod(input) { return input.length; }\n' +
+                '}',
+        });
+
+        const descriptor = Object.getOwnPropertyDescriptor(
+            DevModeStrippedClass.prototype,
+            'devMethod',
+        );
+
+        expose()(DevModeStrippedClass.prototype, 'devMethod', descriptor);
+
+        const method = description.DevModeStrippedClass.methods.devMethod;
+
+        assert.equal(method.description, 'Does dev things');
+        assert.equal(method.arguments[0].name, 'input');
+        assert.equal(method.arguments[0].tsType, 'string');
+        assert.equal(method.returns.tsType, 'number');
     });
 
     it('should register the method via the legacy signature', () => {
