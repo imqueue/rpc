@@ -53,7 +53,6 @@ const RX_COMMA_SPLIT = /\s*,\s*/;
 const RX_MULTILINE_CLEANUP = /\*?\n +\* ?/g;
 const RX_DESCRIPTION = /^([\s\S]*?)@/;
 const RX_TAG = /(@[^@]+)/g;
-const RX_TYPE = /\{([\s\S]+)\}/;
 const RX_LI_CLEANUP = /^\s*-\s*/;
 const RX_SPACE_SPLIT = / /;
 const RX_OPTIONAL = /^\[(.*?)\]$/;
@@ -71,6 +70,43 @@ function argumentNames(fn: (...args: any[]) => any): string[] {
         .split(RX_COMMA_SPLIT)
         .map(arg => arg.trim().replace(RX_ARG_NAMES, '$1'))
         .filter(arg => arg);
+}
+
+/**
+ * Extracts a leading JSDoc `{type}` from a tag definition. Braces are matched
+ * by depth, so object-literal types (e.g. `{{ x: number }}`) are captured whole
+ * and a later `}` in the description cannot extend the captured type. The type,
+ * if present, must be the leading token of the definition.
+ *
+ * @param {string} tagDef - tag definition text following the tag name
+ * @return {{ tsType: string, rest: string } | null} - captured type and the
+ *   remaining definition (name + description), or null when there is no type
+ */
+function extractType(
+    tagDef: string,
+): { tsType: string; rest: string } | null {
+    const start = tagDef.indexOf('{');
+
+    // a type is only a type when it leads the definition; a `{` preceded by
+    // any non-whitespace belongs to the description, not to a type
+    if (start === -1 || tagDef.slice(0, start).trim() !== '') {
+        return null;
+    }
+
+    let depth = 0;
+
+    for (let i = start; i < tagDef.length; i++) {
+        if (tagDef[i] === '{') {
+            depth++;
+        } else if (tagDef[i] === '}' && --depth === 0) {
+            return {
+                tsType: tagDef.slice(start + 1, i),
+                rest: tagDef.slice(i + 1).trim(),
+            };
+        }
+    }
+
+    return null; // unbalanced braces — treat as having no parseable type
 }
 
 /**
@@ -105,17 +141,16 @@ function parseComment(src: string): CommentMetadata {
         let parts = tag.split(RX_SPACE_SPLIT);
         let tagName = parts.shift();
         let tagDef = parts.join(' ');
-        let typeMatch = tagDef.match(RX_TYPE);
+        let typeInfo = extractType(tagDef);
         let tsType = '',
             name = '',
             description = '',
             type = '';
         let isOptional = false;
 
-        if (typeMatch) {
-            tsType = typeMatch[1];
-            tagDef = tagDef.replace(RX_TYPE, '').trim();
-            parts = tagDef.split(/ /);
+        if (typeInfo) {
+            tsType = typeInfo.tsType;
+            parts = typeInfo.rest.split(/ /);
         }
 
         name = (parts.shift() || '').replace(RX_LI_CLEANUP, '');
