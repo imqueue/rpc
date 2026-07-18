@@ -276,6 +276,42 @@ describe('decorators/expose()', () => {
         );
     });
 
+    it('should isolate the JSDoc type from braces in the description and keep object-literal types', () => {
+        class BraceTypeClass {
+            /**
+             * Searches items
+             *
+             * @param {string} query - filter, for example `{ id, name }`
+             * @param {{ x: number, y: number }} point - a point value
+             * @return {string} - a marker like `{ ok }`
+             */
+            public search(
+                query: string,
+                point: { x: number; y: number },
+            ) {
+                return `${query}:${point.x}`;
+            }
+        }
+
+        const descriptor = Object.getOwnPropertyDescriptor(
+            BraceTypeClass.prototype,
+            'search',
+        );
+
+        expose()(BraceTypeClass.prototype, 'search', descriptor);
+
+        const method = description.BraceTypeClass.methods.search;
+
+        // a `}` inside the description must not extend the captured type
+        assert.equal(method.arguments[0].tsType, 'string');
+        assert.equal(method.arguments[0].name, 'query');
+        // object-literal types (nested braces) must be preserved intact
+        assert.equal(method.arguments[1].tsType, '{ x: number, y: number }');
+        assert.equal(method.arguments[1].name, 'point');
+        // a `}` inside the @return description must not corrupt the return type
+        assert.equal(method.returns.tsType, 'string');
+    });
+
     it('should register the method via the legacy signature', () => {
         class LegacyExposeClass {
             /**
