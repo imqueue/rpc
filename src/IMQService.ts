@@ -48,7 +48,11 @@ import { SIGNALS } from './helpers/index.js';
 import { cpus } from 'node:os';
 import cluster, { type Worker } from 'node:cluster';
 import { type ArgDescription } from './IMQRPCDescription.js';
-import { type IMQBeforeCall, type IMQAfterCall } from './IMQRPCOptions.js';
+import {
+    type IMQBeforeCall,
+    type IMQAfterCall,
+    type IMQWrapCall,
+} from './IMQRPCOptions.js';
 import { runWithRequest } from './IMQRequestContext.js';
 import { createServer, type Server } from 'node:http';
 
@@ -270,11 +274,24 @@ export abstract class IMQService {
         }
 
         try {
-            response.data = this[method].apply(this, args);
+            // Run the method through the optional `wrapCall` around-hook so a
+            // hook can execute it within its own scope (e.g. an OpenTelemetry
+            // context). Without a hook the method is invoked directly, exactly
+            // as before.
+            const invoke = async (): Promise<any> => {
+                const result = this[method].apply(this, args);
 
-            if (response.data && response.data.then) {
-                response.data = await response.data;
-            }
+                return result && result.then ? await result : result;
+            };
+
+            const wrapCall = this.options.wrapCall as
+                | IMQWrapCall<IMQService>
+                | undefined;
+
+            response.data =
+                typeof wrapCall === 'function'
+                    ? await wrapCall.call(this, request, response, invoke)
+                    : await invoke();
         } catch (err: any) {
             response.error = IMQError(
                 err.code || 'IMQ_RPC_CALL_ERROR',

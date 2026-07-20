@@ -50,6 +50,28 @@ export interface IMQAfterCall<_T> {
 }
 
 /**
+ * Around hook wrapping the actual service method invocation. It receives the
+ * request/response and a `next` callback that runs the method and resolves to
+ * its return value; it MUST call `next()` (returning its resolved value) to
+ * produce the response data. Unlike `beforeCall`/`afterCall`, this lets a hook
+ * run the method inside its own scope — e.g. establishing an OpenTelemetry
+ * context so any spans the method (and its downstream calls) create nest under
+ * the request span. When unset, the method is invoked directly.
+ *
+ * @param {IMQRPCRequest} req - the incoming request
+ * @param {IMQRPCResponse} res - the response being prepared
+ * @param {() => Promise<any>} next - runs the method, resolves to its result
+ * @return {Promise<any>} - the value to use as the response data
+ */
+export interface IMQWrapCall<_T> {
+    (
+        req: IMQRPCRequest,
+        res: IMQRPCResponse,
+        next: () => Promise<any>,
+    ): Promise<any>;
+}
+
+/**
  * Options for the built-in metrics server.
  */
 export interface IMQMetricsServerOptions {
@@ -67,6 +89,7 @@ export interface IMQServiceOptions extends IMQOptions {
     metricsServer?: IMQMetricsServerOptions;
     beforeCall?: IMQBeforeCall<IMQService>;
     afterCall?: IMQAfterCall<IMQService>;
+    wrapCall?: IMQWrapCall<IMQService>;
 }
 
 /**
