@@ -1,7 +1,7 @@
 {
   "name": "@imqueue/rpc",
   "version": "3.3.0",
-  "description": "RPC-like client-service implementation over messaging queue",
+  "description": "Type-safe RPC framework for Node.js & TypeScript microservices over a Redis message queue — self-describing services generate their own strongly-typed clients (@imqueue framework)",
   "keywords": [
     "redis",
     "redis-queue",
@@ -10,7 +10,14 @@
     "service",
     "rpc-service",
     "rpc",
-    "message-queue"
+    "message-queue",
+    "typescript",
+    "nodejs",
+    "microservices",
+    "typed-rpc",
+    "soa",
+    "inter-service-communication",
+    "imqueue"
   ],
   "scripts": {
     "clean-compiled": "npm run clean-js && npm run clean-typedefs && npm run clean-maps",
@@ -39,7 +46,8 @@
   "bugs": {
     "url": "https://github.com/imqueue/rpc/issues"
   },
-  "homepage": "https://imqueue.com/",
+  "homepage": "https://imqueue.org/",
+  "funding": "https://imqueue.com/",
   "author": "imqueue.com <support@imqueue.com> (https://imqueue.com)",
   "license": "GPL-3.0-only",
   "dependencies": {
