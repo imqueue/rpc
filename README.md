@@ -6,6 +6,13 @@ RPC-like client-service implementation over messaging queue. This module
 provides base set of abstract classes and decorators to build services and 
 clients for them.
 
+**Documentation:** full guides, tutorial and API reference at
+[imqueue.org](https://imqueue.org/). Commercial licensing & support for
+closed-source products at [imqueue.com](https://imqueue.com/). Related packages:
+[@imqueue/core](https://github.com/imqueue/core) (the message queue this builds
+on) and [@imqueue/cli](https://github.com/imqueue/cli) (scaffolding & client
+generation).
+
 ## Why?
 
 To provide fast and reliable way of communication between backend services.
