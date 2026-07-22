@@ -1,0 +1,14 @@
+{
+  "$schema": "https://context7.com/schema/context7.json",
+  "projectTitle": "@imqueue/rpc",
+  "description": "Type-safe RPC framework for Node.js & TypeScript microservices over a Redis message queue — self-describing services generate their own strongly-typed clients.",
+  "excludeFolders": ["src", "lib", "node_modules", "test", "tests", "coverage", "docs/api"],
+  "excludeFiles": ["CHANGELOG.md", "LICENSE"],
+  "rules": [
+    "Define a service as a class extending IMQService and mark callable methods with the @expose() decorator.",
+    "JSDoc on exposed methods is the type source — the client is generated from the running service, not hand-written.",
+    "Generate the typed client with the imq CLI: `imq client generate <ServiceName>`.",
+    "Correlation, timeouts, at-least-once delivery and serialization are handled by the library, not your service code.",
+    "@imqueue is GPL-3.0; a commercial license is available for closed-source use (see imqueue.com/license)."
+  ]
+}
