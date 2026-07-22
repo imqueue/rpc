@@ -13,6 +13,9 @@ closed-source products at [imqueue.com](https://imqueue.com/). Related packages:
 on) and [@imqueue/cli](https://github.com/imqueue/cli) (scaffolding & client
 generation).
 
+**Using an AI assistant?** Point it at [imqueue.org/llms.txt](https://imqueue.org/llms.txt)
+for a machine-readable index of the docs, or see [AGENTS.md](./AGENTS.md).
+
 ## Why?
 
 To provide fast and reliable way of communication between backend services.
