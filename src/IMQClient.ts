@@ -204,6 +204,14 @@ export abstract class IMQClient extends EventEmitter {
             if (!isFinite(delay) || isNaN(delay) || delay < 0) {
                 delay = 0;
             }
+
+            // The metadata slot sits between the declared arguments and the
+            // delay, so callers who only need a delay may skip it with an
+            // explicit `undefined`. Drop it here, or it would travel on as a
+            // real call argument and break the service-side args count check.
+            if (args.length && args[args.length - 1] === undefined) {
+                args.pop();
+            }
         }
 
         if (args[args.length - 1] instanceof IMQMetadata) {
