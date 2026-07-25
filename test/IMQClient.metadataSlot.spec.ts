@@ -115,10 +115,7 @@ describe('IMQClient metadata slot', () => {
     it('should accept a delay passed in place of the metadata slot', async () => {
         await startClient();
 
-        assert.equal(
-            await client.ping('A', new IMQDelay(100) as any),
-            'pong',
-        );
+        assert.equal(await client.ping('A', new IMQDelay(100) as any), 'pong');
         assert.deepEqual(sent.request.args, ['A']);
         assert.equal(sent.delay, 100);
     });
