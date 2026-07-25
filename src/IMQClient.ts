@@ -674,8 +674,11 @@ export namespace ${namespaceName} {\n`;
         ];
         let retType = ret.tsType.replace(/\r?\n/g, ' ').replace(/\s{2,}/g, ' ');
 
-        for (let i = 1; i <= 2; i++) {
-            const arg = args[args.length - i];
+        // drop framework args the service declared itself, so that they are not
+        // duplicated by the canonical pair appended below; the last element is
+        // re-read on every pass, as the array shrinks as they are removed
+        for (let i = 0; i < addArgs.length; i++) {
+            const arg = args[args.length - 1];
 
             if (arg && ~['IMQDelay', 'IMQMetadata'].indexOf(arg.type)) {
                 args.pop(); // remove it
