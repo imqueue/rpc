@@ -81,6 +81,40 @@ describe('helpers/pid()', () => {
         unlinkSync(`${TEST_PID_DIR}/${name}-1.pid`);
         assert.equal(pid(name, TEST_PID_DIR), 1);
     });
+
+    it('should not re-use an identifier this process gave back', () => {
+        const name: string = 'TestPidFile';
+
+        // the identifier is the only part of a client's queue name that tells
+        // two clients of the same service apart, and the queue of a destroyed
+        // client still has a reader blocked on it, which would swallow the
+        // first reply addressed to whoever took the name over next
+        assert.equal(pid(name, TEST_PID_DIR), 0);
+
+        forgetPid(name, 0, logger, TEST_PID_DIR);
+
+        assert.equal(pid(name, TEST_PID_DIR), 1);
+
+        forgetPid(name, 1, logger, TEST_PID_DIR);
+
+        assert.equal(pid(name, TEST_PID_DIR), 2);
+    });
+
+    it('should keep retired identifiers apart per name and directory', () => {
+        const other: string = `${IMQ_TMP_DIR}/${uuid()}`;
+
+        try {
+            assert.equal(pid('One', TEST_PID_DIR), 0);
+            forgetPid('One', 0, logger, TEST_PID_DIR);
+
+            // a different service name is unaffected...
+            assert.equal(pid('Two', TEST_PID_DIR), 0);
+            // ...as is the same name kept somewhere else
+            assert.equal(pid('One', other), 0);
+        } finally {
+            rmdirr(other);
+        }
+    });
 });
 
 describe('helpers/forgetPid()', () => {

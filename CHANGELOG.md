@@ -6,6 +6,28 @@ log.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **A client created after another one was destroyed lost its first reply.**
+  `pid()` allocates the lowest free identifier, and that identifier is the only
+  part of a client's queue name that separates two clients of the same service
+  on one host — so an identifier released by `forgetPid()` handed the whole
+  queue name to the next client. The reader of the destroyed client stays
+  blocked on that queue past `destroy()`, consumes the first message addressed
+  to its successor and discards it, leaving the caller waiting forever with no
+  error. Identifiers this process has given back are no longer re-used.
+
+  This is what made `IMQClient.create()` look broken: generating a client
+  starts a temporary client to read the service description and destroys it, so
+  the first call through *any* client built afterwards in that process — a
+  runtime-generated one or a statically generated one — never returned. The
+  second call onwards worked, because only one message is swallowed.
+
+  Identifiers freed by another process, or left behind by one that died, are
+  still re-used as before.
+
 ## [3.4.0] - 2026-07-26
 
 ### Changed
