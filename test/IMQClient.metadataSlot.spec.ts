@@ -130,14 +130,45 @@ describe('IMQClient metadata slot', () => {
         assert.equal(sent.delay, 0);
     });
 
-    it('should drop only the metadata slot, not declared arguments', async () => {
+    it('should drop every trailing placeholder on a delayed call', async () => {
         await startClient();
 
+        // the skipped optional argument and the skipped metadata slot are both
+        // placeholders the caller only spelled out to reach the delay in the
+        // last position; either one delivered would arrive as `null` and defeat
+        // a declared default
         assert.equal(
             await client.greet('A', undefined, undefined, new IMQDelay(100)),
             'pong',
         );
-        assert.deepEqual(sent.request.args, ['A', undefined]);
+        assert.deepEqual(sent.request.args, ['A']);
+        assert.equal(sent.delay, 100);
+    });
+
+    it('should drop a placeholder even when metadata is given', async () => {
+        await startClient();
+
+        const metadata = new IMQMetadata({ traceId: 'x' });
+
+        // the drop runs after both framework slots are stripped, so whether a
+        // placeholder is delivered no longer depends on passing metadata
+        assert.equal(
+            await client.greet('A', undefined, metadata, new IMQDelay(100)),
+            'pong',
+        );
+        assert.deepEqual(sent.request.args, ['A']);
+        assert.deepEqual(sent.request.metadata, metadata);
+        assert.equal(sent.delay, 100);
+    });
+
+    it('should keep declared arguments that hold real values', async () => {
+        await startClient();
+
+        assert.equal(
+            await client.greet('A', 'hi', undefined, new IMQDelay(100)),
+            'pong',
+        );
+        assert.deepEqual(sent.request.args, ['A', 'hi']);
         assert.equal(sent.delay, 100);
     });
 });

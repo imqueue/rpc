@@ -196,26 +196,33 @@ export abstract class IMQClient extends EventEmitter {
         const from = this.queueName;
         const to = this.serviceName;
         let delay: number = 0;
+        let delayed = false;
         let metadata: IMQMetadata | undefined;
 
         if (args[args.length - 1] instanceof IMQDelay) {
             delay = args.pop().ms;
+            delayed = true;
 
             if (!isFinite(delay) || isNaN(delay) || delay < 0) {
                 delay = 0;
-            }
-
-            // The metadata slot sits between the declared arguments and the
-            // delay, so callers who only need a delay may skip it with an
-            // explicit `undefined`. Drop it here, or it would travel on as a
-            // real call argument and break the service-side args count check.
-            if (args.length && args[args.length - 1] === undefined) {
-                args.pop();
             }
         }
 
         if (args[args.length - 1] instanceof IMQMetadata) {
             metadata = args.pop();
+        }
+
+        // On a delayed call a trailing `undefined` is a placeholder, never a
+        // value: it is either the skipped metadata slot or a skipped optional
+        // argument, both of which the caller has to spell out to reach the delay
+        // in the last position. Delivering it would serialize to `null`, defeat
+        // a declared default and, for a method whose params are all required,
+        // fail the service-side args count check. Both framework slots are gone
+        // by now, so this runs the same whether or not metadata was passed.
+        if (delayed) {
+            while (args.length && args[args.length - 1] === undefined) {
+                args.pop();
+            }
         }
 
         const request: IMQRPCRequest = {
