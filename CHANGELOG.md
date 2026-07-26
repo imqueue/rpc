@@ -6,6 +6,18 @@ log.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.4.4] - 2026-07-26
+
+### Changed
+
+- Raised the `@imqueue/core` dependency to `^3.2.4`, which stops a destroyed
+  queue's reader from swallowing one message addressed to the next owner of its
+  queue name. That is the same failure 3.4.2 addressed from this side, and the
+  two are complementary: 3.4.2 stops a queue name being handed over within a
+  process at all, while core 3.2.4 removes the stale consumer however the name
+  changes hands — including from another process, which nothing here can
+  prevent.
+
 ## [3.4.3] - 2026-07-26
 
 ### Changed
