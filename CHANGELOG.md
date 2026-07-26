@@ -6,7 +6,13 @@ log.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.4.3] - 2026-07-26
+
+### Changed
+
+- Raised the `@imqueue/core` dependency to `^3.2.3`.
+
+## [3.4.2] - 2026-07-26
 
 ### Fixed
 
