@@ -103,21 +103,35 @@ const serviceDescriptions: Map<string, Description> = new Map<
  * Returns collection of class methods metadata even those are inherited
  * from a chain of parent classes
  *
- * @param className -
+ * @param ctor - constructor of the class to collect exposed methods for
  */
-function getClassMethods(className: string): MethodsCollectionDescription {
-    let methods: MethodsCollectionDescription = {};
-    let classInfo: ServiceClassDescription =
-        IMQRPCDescription.serviceDescription[className];
+function getClassMethods(ctor: Function): MethodsCollectionDescription {
+    const methods: MethodsCollectionDescription = {};
 
-    if (
-        classInfo.inherits &&
-        IMQRPCDescription.serviceDescription[classInfo.inherits]
+    // Resolve the chain from the runtime prototype chain rather than from the
+    // registry's `inherits` links. @expose() only registers the class that
+    // *declares* a method, so a class exposing nothing of its own has no
+    // registry entry at all — walking `inherits` would either dereference
+    // undefined or stop dead at that gap and lose the ancestors' methods.
+    const chain: Function[] = [];
+
+    for (
+        let current: unknown = ctor;
+        typeof current === 'function';
+        current = Object.getPrototypeOf(current)
     ) {
-        Object.assign(methods, getClassMethods(classInfo.inherits));
+        chain.unshift(current as Function);
     }
 
-    Object.assign(methods, classInfo.methods);
+    // root-first, so a subclass method overrides a same-named parent one
+    for (const link of chain) {
+        const info: ServiceClassDescription | undefined =
+            IMQRPCDescription.serviceDescription[link.name];
+
+        if (info) {
+            Object.assign(methods, info.methods);
+        }
+    }
 
     return methods;
 }
@@ -536,7 +550,7 @@ export abstract class IMQService {
             description = {
                 service: {
                     name: this.name,
-                    methods: getClassMethods(this.constructor.name),
+                    methods: getClassMethods(this.constructor),
                 },
                 types: IMQRPCDescription.typesDescription,
             };
