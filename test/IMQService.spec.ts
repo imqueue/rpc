@@ -156,6 +156,64 @@ describe('IMQService', () => {
 
             await service.destroy();
         });
+
+        it('works for a subclass that exposes nothing of its own', async () => {
+            // @expose() registers only the class that *declares* a method, so
+            // this subclass has no entry in the description registry at all.
+            // It must still inherit its parent's exposed methods rather than
+            // throwing, because processRequest() calls describe() on every
+            // request and swallows the rejection — leaving callers hanging.
+            class BareSubclass extends TestService {}
+
+            const service = new BareSubclass({ logger }, uuid());
+
+            await service.start();
+
+            const description: Description = service.describe();
+
+            assert.notEqual(
+                description.service.methods.exposed,
+                undefined,
+                'inherits the parent class exposed methods',
+            );
+            assert.notEqual(
+                description.service.methods.describe,
+                undefined,
+                'inherits the framework describe method',
+            );
+            assert.equal(description.service.methods.unexposed, undefined);
+
+            await service.destroy();
+        });
+
+        it('keeps parent methods when an intermediate class exposes nothing', async () => {
+            class Middle extends TestService {}
+            class Leaf extends Middle {
+                @expose()
+                public leafOnly() {
+                    return 'leaf';
+                }
+            }
+
+            const service = new Leaf({ logger }, uuid());
+
+            await service.start();
+
+            const description: Description = service.describe();
+
+            assert.notEqual(
+                description.service.methods.leafOnly,
+                undefined,
+                'own method is present',
+            );
+            assert.notEqual(
+                description.service.methods.exposed,
+                undefined,
+                'a gap in the chain does not lose grandparent methods',
+            );
+
+            await service.destroy();
+        });
     });
 
     describe('handleRequest()', () => {
