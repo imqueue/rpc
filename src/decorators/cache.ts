@@ -31,14 +31,58 @@ import {
 import { IMQCache } from '../IMQCache.js';
 import { signature } from '../helpers/index.js';
 
+/**
+ * Per-method options for the {@link cache} decorator.
+ */
 export interface CacheDecoratorOptions {
+    /**
+     * Cache adapter as a constructor, an instance, or a built-in adapter name.
+     *
+     * @defaultValue RedisCache
+     *
+     * @remarks
+     * Only built-in adapters can be referenced by name — currently just
+     * `'RedisCache'`. Any other string throws a `TypeError`.
+     */
     adapter?: string | ICache | ICacheConstructor;
-    ttl?: number; // time-to-live, in milliseconds
-    nx?: boolean; // write only if the key does not already exist in the cache
+    /**
+     * Time-to-live in milliseconds.
+     *
+     * @remarks
+     * Omitted or non-positive means the entry never expires. A non-integer value is
+     * rejected by Redis, which makes the write throw rather than return falsy.
+     */
+    ttl?: number;
+    /**
+     * Store only when the key does not already exist.
+     *
+     * @remarks
+     * Honoured by the built-in Redis adapter, but outside the {@link ICache}
+     * interface, so custom adapters may ignore it. When it suppresses a write, the
+     * existing value and its remaining TTL are left untouched.
+     */
+    nx?: boolean;
 }
 
+/**
+ * The type of the {@link cache} export: a decorator factory that also carries
+ * process-wide defaults.
+ */
 export interface CacheDecorator {
+    /**
+     * @param options - per-method cache options, merged over
+     *        {@link CacheDecorator.globalOptions}
+     * @returns a dual-mode method decorator that replaces the method with an `async`
+     *          wrapper — so a decorated synchronous method returns a promise
+     */
     (options?: CacheDecoratorOptions): (...args: any[]) => any;
+    /**
+     * Process-wide defaults, merged under each call's own options.
+     *
+     * @remarks
+     * Merging happens when a decorator is applied, so this must be set before any
+     * decorated class is imported.
+     */
     globalOptions?: CacheDecoratorOptions;
 }
 
@@ -50,9 +94,9 @@ export interface CacheDecorator {
  * decorator is dual-mode: it works both as a standard (TC39) and as a legacy
  * method decorator.
  *
- * @param {CacheDecoratorOptions} [options] - per-method cache options (adapter,
+ * @param options - per-method cache options (adapter,
  *  ttl, nx); merged over `cache.globalOptions`
- * @return {Function} - a dual-mode method decorator
+ * @returns a dual-mode method decorator
  */
 export const cache: CacheDecorator = function (
     options?: CacheDecoratorOptions,

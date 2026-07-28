@@ -51,7 +51,7 @@ export const IMQ_PID_DIR = resolve(IMQ_TMP_DIR, '.imq-rpc');
  * which outlives `destroy()` and consumes the first message addressed to the
  * new owner — that reply is then lost, and its caller waits forever.
  *
- * Identifiers freed by *another* process (or left behind by one that died) are
+ * Identifiers freed by another process (or left behind by one that died) are
  * still re-used, which is what keeps names dense across restarts.
  */
 const retiredIds = new Map<string, Set<number>>();
@@ -61,9 +61,8 @@ const retiredIds = new Map<string, Set<number>>();
  * path so that pid files kept in different directories cannot influence each
  * other.
  *
- * @param {string} name - name of the service
- * @param {string} path - directory the pid files are stored in
- * @returns {string}
+ * @param name - name of the service
+ * @param path - directory the pid files are stored in
  */
 function retiredKey(name: string, path: string): string {
     return `${path}/${name}`;
@@ -76,9 +75,9 @@ function retiredKey(name: string, path: string): string {
  * Identifiers this process has released through `forgetPid()` are skipped, see
  * `retiredIds`.
  *
- * @param {string} name - name of the service to create the pid file for
- * @param {string} [path] - directory to store the pid file in
- * @returns {number} - the allocated increment-based identifier
+ * @param name - name of the service to create the pid file for
+ * @param path - directory to store the pid file in
+ * @returns the allocated increment-based identifier
  */
 export function pid(name: string, path: string = IMQ_PID_DIR): number {
     const pidFile = `${path}/${name}`;
@@ -123,10 +122,10 @@ export function pid(name: string, path: string = IMQ_PID_DIR): number {
  * the identifier as retired so that `pid()` does not hand it out again for the
  * lifetime of this process, see `retiredIds`.
  *
- * @param {string} name - name of the service whose pid file to remove
- * @param {number} id - increment-based identifier of the pid file
- * @param {ILogger} logger - logger instance
- * @param {string} [path] - directory the pid file is stored in
+ * @param name - name of the service whose pid file to remove
+ * @param id - increment-based identifier of the pid file
+ * @param logger - logger instance
+ * @param path - directory the pid file is stored in
  */
 export function forgetPid(
     name: string,

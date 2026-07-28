@@ -27,9 +27,13 @@
  */
 export class IMQDelay {
     /**
-     * Returns this delay converted to milliseconds.
+     * Returns {@link IMQDelay.timer} converted to milliseconds.
      *
-     * @return {number}
+     * @remarks
+     * Not rounded, so a fractional `timer` yields a fractional result. If
+     * {@link IMQDelay.unit} has been set to a value outside the supported set —
+     * possible from untyped callers — the result is `undefined`; a client treats any
+     * non-finite or negative value as no delay.
      */
     public get ms(): number {
         switch (this.unit) {
@@ -47,12 +51,20 @@ export class IMQDelay {
     }
 
     /**
-     * @param {number} timer - delay value expressed in the given unit
-     * @param {'ms' | 's' | 'm' | 'h' | 'd'} unit - time unit of the timer
-     *                                              value, defaults to 'ms'
+     * @param timer - delay value expressed in the given unit
+     * @param unit - time unit of the timer value; defaults to `'ms'`
      */
     constructor(
+        /**
+         * The delay magnitude, expressed in {@link IMQDelay.unit}. Mutable after
+         * construction, and read by {@link IMQDelay.ms}.
+         */
         public timer: number,
+        /**
+         * Time unit of {@link IMQDelay.timer} — milliseconds, seconds, minutes,
+         * hours or days. Defaults to `'ms'`, meaning `timer` is already a
+         * millisecond count.
+         */
         public unit: 'ms' | 's' | 'm' | 'h' | 'd' = 'ms',
     ) {}
 }

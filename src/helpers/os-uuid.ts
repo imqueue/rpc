@@ -28,8 +28,6 @@ import { createHash } from 'node:crypto';
  * Returns the base path to the Windows registry query tool, accounting for
  * 32-bit processes running on 64-bit Windows (which must go through the
  * "sysnative" redirector to reach the real System32).
- *
- * @returns {string}
  */
 function winRegBase(): string {
     const useSysnative =
@@ -47,8 +45,6 @@ function winRegBase(): string {
 /**
  * Returns the platform-specific shell command that emits the raw machine
  * identifier. Mirrors the commands used by the node-machine-id package.
- *
- * @returns {string}
  */
 function idCommand(): string {
     switch (process.platform) {
@@ -75,8 +71,7 @@ function idCommand(): string {
 /**
  * Extracts the bare GUID from the raw command output for the current platform.
  *
- * @param {string} raw - unprocessed command output
- * @returns {string}
+ * @param raw - unprocessed command output
  */
 function parseId(raw: string): string {
     switch (process.platform) {
@@ -102,9 +97,8 @@ function parseId(raw: string): string {
  * parses out the GUID, and, unless the original id is requested, returns its
  * sha256 hash.
  *
- * @param {boolean} [original] - when true returns the raw machine GUID,
+ * @param original - when true returns the raw machine GUID,
  *  otherwise returns its sha256 hash
- * @returns {string}
  */
 function machineIdSync(original?: boolean): string {
     const id = parseId(execSync(idCommand()).toString());
@@ -120,8 +114,6 @@ let cachedUuid: string | undefined;
 /**
  * Returns the machine UUID. The underlying platform command runs only once
  * per process; subsequent calls return the memoized value.
- *
- * @returns {string}
  */
 export function osUuid(): string {
     if (cachedUuid === undefined) {

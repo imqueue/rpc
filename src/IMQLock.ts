@@ -23,43 +23,103 @@
  */
 import { type ILogger } from '@imqueue/core';
 
+/**
+ * What {@link IMQLock.acquire} resolves to: the literal `true` when this caller
+ * acquired the lock and must perform the work, or the value the lock holder passed
+ * to {@link IMQLock.release} when this caller had to wait.
+ *
+ * @remarks
+ * Because the acquired case is the literal `true`, it cannot be told apart from a
+ * resolved value of `true`. Always use {@link IMQLock.locked} immediately after
+ * awaiting to decide whether you are the holder — never inspect the returned
+ * value.
+ */
 export type AcquiredLock<T> = T | boolean;
+
+/**
+ * Internal representation of one queued waiter: its promise's
+ * `[resolve, reject]` pair, selected by {@link IMQLock.release} according to
+ * whether an error was supplied.
+ */
 export type IMQLockTask = [(...args: any[]) => any, (...args: any[]) => any];
+
+/**
+ * The FIFO queue of callers waiting on a single lock key, drained in arrival
+ * order when the lock is released.
+ */
 export type IMQLockQueue = Array<IMQLockTask>;
+
+/**
+ * Diagnostic description of a locked call.
+ *
+ * @remarks
+ * Used only to enrich the deadlock-timeout error message. Values that cannot be
+ * serialized degrade to a placeholder rather than failing.
+ */
 export interface IMQLockMetadataItem {
+    /**
+     * Name of the class whose method holds the lock.
+     */
     className: string;
+    /**
+     * Name of the locked method.
+     */
     methodName: string | symbol;
+    /**
+     * Arguments the locked method was called with.
+     */
     args: any[];
 }
+
+/**
+ * Map from lock key to the metadata describing the call currently associated with
+ * that key.
+ */
 export interface IMQLockMetadata {
+    /**
+     * Metadata for the given lock key.
+     */
     [key: string]: IMQLockMetadataItem;
 }
 
 /**
- * Class IMQLock.
- * Implements promise-based locks.
+ * In-process, promise-based locks used to collapse concurrent identical calls: the
+ * first caller executes the work while later callers for the same key wait and are
+ * then resolved with the first caller's result.
+ *
+ * @remarks
+ * These are not distributed locks. The lock table is a set of plain static
+ * objects held in memory, and nothing here touches Redis, the network or any
+ * shared store. Separate processes, cluster workers and service replicas each
+ * maintain their own independent locks and will run the guarded code
+ * concurrently. {@link lock} inherits the same limitation. Use a Redis- or
+ * database-backed lock if you need mutual exclusion across processes.
+ *
+ * Keys are used verbatim, with no prefixing or namespacing, so they are global to
+ * the process and unrelated call sites sharing a string share a lock.
  *
  * @example
- * ~~~typescript
- * import { IMQLock, AcquiredLock } from './index.js';
+ * ```typescript
+ * import { IMQLock, type AcquiredLock } from '@imqueue/rpc';
  *
  * async function doSomething(): Promise<number | AcquiredLock<number>> {
- *     const lock: AcquiredLock<number> = await IMQLock.acquire<number>('doSomething');
+ *     const lock: AcquiredLock<number> =
+ *         await IMQLock.acquire<number>('doSomething');
  *
+ *     // locked() is the only reliable way to tell holder from waiter
  *     if (IMQLock.locked('doSomething')) {
- *         // skipping error handling this way can cause dead-locks,
- *         // so it is always good to wrap locked calls in try/catch!
- *         // BTW, IMQLock uses timeouts to avoid dead-locks
+ *         // always wrap locked work in try/catch and release on both paths,
+ *         // otherwise waiters hang until the deadlock timeout fires
  *         try {
- *             // this code is called only once across multiple async calls,
- *             // so all promises will be resolved with the same value
+ *             // runs only once across all concurrent calls; every waiter
+ *             // resolves with this same value
  *             const res = Math.random();
- *             IMQLock.release('doSomething', res);
- *             return res;
- *         }
  *
- *         catch (err) {
- *              // release acquired locks with error
+ *             IMQLock.release('doSomething', res);
+ *
+ *             return res;
+ *         } catch (err) {
+ *             // reject every waiter with the same error
  *             IMQLock.release('doSomething', null, err);
  *             throw err;
  *         }
@@ -68,13 +128,10 @@ export interface IMQLockMetadata {
  *     return lock;
  * }
  *
- * (async () => {
- *     for (let i = 0; i < 10; ++i) {
- *         // run doSomething() asynchronously 10 times
- *         doSomething().then((res) => console.log(res));
- *     }
- * })();
- * ~~~
+ * for (let i = 0; i < 10; ++i) {
+ *     doSomething().then(res => console.log(res));
+ * }
+ * ```
  */
 export class IMQLock {
     private static acquiredLocks: { [key: string]: boolean } = {};
@@ -83,26 +140,21 @@ export class IMQLock {
 
     /**
      * Deadlock timeout in milliseconds
-     *
-     * @type {number}
      */
     public static deadlockTimeout: number = 10000;
 
     /**
      * Logger used to log errors that appear during locked calls
-     *
-     * @type {ILogger}
      */
     public static logger: ILogger = console;
 
     /**
      * Acquires a lock for a given key.
      *
-     * @param {string} key - key to acquire the lock for
-     * @param {(...args: any[]) => any} [callback] - callback invoked on
+     * @param key - key to acquire the lock for
+     * @param callback - callback invoked on
      *                                               lock resolution
-     * @param {IMQLockMetadataItem} [metadata] - metadata for the locked call
-     * @returns {Promise<AcquiredLock<T>>}
+     * @param metadata - metadata for the locked call
      */
     public static async acquire<T>(
         key: string,
@@ -180,10 +232,9 @@ export class IMQLock {
     /**
      * Releases a previously acquired lock for a given key.
      *
-     * @param {string} key - key to release the lock for
-     * @param {T} [value] - value to resolve pending calls with
-     * @param {E} [err] - error to reject pending calls with
-     * @returns {void}
+     * @param key - key to release the lock for
+     * @param value - value to resolve pending calls with
+     * @param err - error to reject pending calls with
      */
     public static release<T, E>(key: string, value?: T, err?: E): void {
         const queue: IMQLockQueue = IMQLock.queues[key];
@@ -204,8 +255,7 @@ export class IMQLock {
     /**
      * Returns true if the given key is locked, false otherwise.
      *
-     * @param {string} key - key to check the lock state for
-     * @returns {boolean}
+     * @param key - key to check the lock state for
      */
     public static locked(key: string): boolean {
         return !!IMQLock.acquiredLocks[key];

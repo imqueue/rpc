@@ -77,14 +77,79 @@ const tsOptions = JSON.parse(
 const RX_SEMICOLON: RegExp = /;+$/g;
 
 /**
- * Class IMQClient - base abstract class for service clients.
+ * Base class for service clients.
+ *
+ * Subclass it and declare every remote method as
+ * `@remote() async m(...args) \{ return await this.remoteCall<T>(...arguments); \}`,
+ * or let {@link IMQClient.create} generate the subclass from a running service's
+ * description.
+ *
+ * @remarks
+ * Abstractness is enforced at runtime as well as by the type system: constructing
+ * `IMQClient` directly throws a `TypeError`.
+ *
+ * Instances are `EventEmitter`s. Besides ordinary calls, any response that no
+ * longer has a pending caller is emitted as an event named after the remote
+ * method, carrying the raw {@link IMQRPCResponse} — the escape hatch for replies to
+ * calls made by a process that has since died.
+ *
+ * The identity properties pair up as follows: {@link IMQClient.serviceName} is
+ * where calls go, {@link IMQClient.queueName} is where answers come back,
+ * {@link IMQClient.name} identifies this client, {@link IMQClient.hostName}
+ * identifies the machine plus instance, and {@link IMQClient.id} is the per-host
+ * instance slot.
  */
 export abstract class IMQClient extends EventEmitter {
+    /**
+     * The effective options for this client: {@link DEFAULT_IMQ_CLIENT_OPTIONS}
+     * merged with the values passed to the constructor.
+     */
     public readonly options: IMQClientOptions;
+    /**
+     * Per-host instance slot number — not an OS process id.
+     *
+     * @remarks
+     * Allocated by claiming the lowest free pid file under `$TMPDIR/.imq-rpc`; the
+     * file itself contains the real `process.pid`. Ids released by
+     * {@link IMQClient.destroy} are not re-issued within the same process.
+     */
     public readonly id: number;
+    /**
+     * This client's unique identity, `"<baseName>-<hostName>"`.
+     *
+     * @remarks
+     * Also used as the name of the dedicated subscription queue in `singleQueue`
+     * mode.
+     */
     public readonly name: string;
+    /**
+     * Machine-scoped identity, `"<osUuid>-<id>:client"`, where `osUuid` is a hash of
+     * the OS machine id.
+     *
+     * @remarks
+     * This is not a network hostname. The `:client` suffix is what makes the
+     * default `cleanupFilter` of `'*:client'` match client queues. In `singleQueue`
+     * mode it is inherited from the shared queue's name instead.
+     */
     public readonly hostName: string;
+    /**
+     * The remote side: the queue every request is addressed to, and the pub/sub
+     * channel {@link IMQClient.subscribe} listens on.
+     *
+     * @remarks
+     * Defaults to this client's base name with a trailing `Client` removed, so
+     * `UserClient` talks to the queue `User`.
+     */
     public readonly serviceName: string;
+    /**
+     * The local side: the queue replies come back on, and the value placed in
+     * `request.from`.
+     *
+     * @remarks
+     * Equals {@link IMQClient.name}, or {@link IMQClient.hostName} when
+     * `singleQueue` is enabled. Also the channel {@link IMQClient.broadcast}
+     * publishes to.
+     */
     public readonly queueName: string;
 
     private readonly baseName: string;
@@ -105,11 +170,28 @@ export abstract class IMQClient extends EventEmitter {
     } = {};
 
     /**
-     * Class constructor
+     * Constructs a client.
      *
-     * @param {Partial<IMQClientOptions>} options
-     * @param {string} serviceName
-     * @param {string} name
+     * @param options - client options, merged over
+     *        {@link DEFAULT_IMQ_CLIENT_OPTIONS}
+     * @param serviceName - the queue calls are addressed to. Defaults to this
+     *        client's own name with a trailing `Client` removed.
+     * @param name - this client's base name. Defaults to the constructor's name, so
+     *        pass it explicitly if your build renames classes — a minifier would
+     *        otherwise silently retarget the RPC.
+     * @throws TypeError when {@link IMQClient} is constructed directly rather than
+     *         through a subclass
+     *
+     * @remarks
+     * Construction has side effects. It reserves an instance id by creating a pid
+     * file under `$TMPDIR/.imq-rpc`, opens its message queue (two in `singleQueue`
+     * mode), raises the process max-listener limit once per process, and installs
+     * `SIGTERM`/`SIGINT`/`SIGHUP`/`SIGQUIT` handlers that destroy the client and
+     * then exit the process after `IMQ_SHUTDOWN_TIMEOUT`. Any library embedding
+     * a client inherits that process-terminating behaviour.
+     *
+     * Only {@link IMQClient.destroy} releases the pid file and removes those
+     * handlers.
      */
     public constructor(
         options?: Partial<IMQClientOptions>,
@@ -184,11 +266,34 @@ export abstract class IMQClient extends EventEmitter {
     }
 
     /**
-     * Sends call to remote service method
+     * Sends a call to the remote service method.
      *
-     * @param {...any[]} args
-     * @template T
-     * @returns {Promise<T>}
+     * Intended to be invoked as `this.remoteCall<T>(...arguments)` from a method
+     * decorated with {@link remote}, which appends the method name for you.
+     *
+     * @typeParam T - the type the remote method resolves to
+     * @param args - the method's own arguments, followed by the remote method
+     *        name as the last element. An optional trailing {@link IMQDelay}
+     *        (delivery delay) and {@link IMQMetadata} (tracing metadata) are
+     *        consumed by the framework and never reach the service; on a delayed
+     *        call, trailing `undefined` placeholders are dropped so service-side
+     *        defaults still apply.
+     * @returns the service's response payload, cast to `T`
+     *
+     * @remarks
+     * {@link IMQClient.start} must have completed first. Otherwise the request is
+     * sent but no reply router is installed, so the returned promise never
+     * settles.
+     *
+     * Rejections are plain {@link IMQRPCError} objects, not `Error`
+     * instances — `err instanceof Error` is false, and `err.stack` describes the
+     * remote process. The code is `IMQ_RPC_CALL_ERROR` for a service-side failure
+     * and `IMQ_RPC_CALL_TIMEOUT` once {@link IMQClientOptions.callTimeout} elapses
+     * (plus any requested delay). With `callTimeout` unset — the default — a hung
+     * service leaves the promise pending indefinitely.
+     *
+     * `beforeCall` and `afterCall` hook failures are logged as warnings and
+     * otherwise ignored.
      */
     protected async remoteCall<T>(...args: any[]): Promise<T> {
         const logger = this.options.logger || console;
@@ -305,30 +410,50 @@ export abstract class IMQClient extends EventEmitter {
     }
 
     /**
-     * Adds subscription to service event channel
+     * Subscribes to the service's event channel, named after
+     * {@link IMQClient.serviceName} — the same channel a service's `publish()`
+     * writes to, so every client of that service receives every published payload.
      *
-     * @param {(data: JsonObject) => any} handler
-     * @return {Promise<void>}
+     * @param handler - invoked with the parsed JSON payload of each published
+     *        message
+     *
+     * @remarks
+     * This is fan-out, not a private channel. Subscribing uses a dedicated
+     * connection and does not require {@link IMQClient.start}. Calling it more
+     * than once registers additional handlers rather than replacing the existing
+     * one, and the subscription is re-established automatically on reconnect.
      */
     public async subscribe(handler: (data: JsonObject) => any): Promise<void> {
         return this.subscriptionImq.subscribe(this.serviceName, handler);
     }
 
     /**
-     * Destroys subscription channel to service
+     * Stops receiving service events: unsubscribes the channel, discards every
+     * handler registered through {@link IMQClient.subscribe}, and closes the
+     * dedicated subscription connection.
      *
-     * @return {Promise<void>}
+     * @remarks
+     * Safe when not subscribed, and it does not affect remote calls.
+     * {@link IMQClient.destroy} performs it automatically; afterwards
+     * {@link IMQClient.subscribe} can be used again with a fresh connection.
      */
     public async unsubscribe(): Promise<void> {
         return this.subscriptionImq.unsubscribe();
     }
 
     /**
-     * Broadcasts given payload to all other service clients subscribed.
-     * So this is like client-to-clients publishing.
+     * Publishes the given payload on this client's own queue channel
+     * ({@link IMQClient.queueName}).
      *
-     * @param {JsonObject} payload
-     * @return {Promise<void>}
+     * @param payload - data to publish
+     * @throws TypeError when the client's queue has no writer connection, i.e. when
+     *         called before {@link IMQClient.start}
+     *
+     * @remarks
+     * Note that {@link IMQClient.subscribe} listens on the service channel, so a
+     * broadcast is not received by other clients of the same service through the
+     * standard client API — a consumer must subscribe to this client's `queueName`
+     * channel explicitly.
      */
     public async broadcast(payload: JsonObject): Promise<void> {
         return this.imq.publish(payload, this.queueName);
@@ -336,8 +461,6 @@ export abstract class IMQClient extends EventEmitter {
 
     /**
      * Initializes client work
-     *
-     * @returns {Promise<void>}
      */
     public async start(): Promise<void> {
         this.imq.on('message', (message: any) => {
@@ -372,8 +495,6 @@ export abstract class IMQClient extends EventEmitter {
 
     /**
      * Stops client work
-     *
-     * @returns {Promise<void>}
      */
     public async stop(): Promise<void> {
         await this.imq.stop();
@@ -381,8 +502,6 @@ export abstract class IMQClient extends EventEmitter {
 
     /**
      * Destroys client
-     *
-     * @returns {Promise<void>}
      */
     public async destroy(): Promise<void> {
         if (this.destroyed) {
@@ -429,9 +548,8 @@ export abstract class IMQClient extends EventEmitter {
     /**
      * Returns service description metadata.
      *
-     * @param {IMQDelay} [_delay] - optional delivery delay; forwarded to the
+     * @param _delay - optional delivery delay; forwarded to the
      *  service through `arguments` by the `@remote` decorator
-     * @returns {Promise<Description>}
      */
     @remote()
     public async describe(_delay?: IMQDelay): Promise<Description> {
@@ -439,11 +557,46 @@ export abstract class IMQClient extends EventEmitter {
     }
 
     /**
-     * Creates client for a service with the given name
+     * Generates a client for the service registered under the given queue name and
+     * resolves to the generated namespace object — not to a client instance, and
+     * not to an {@link IMQClient}.
      *
-     * @param {string} name
-     * @param {Partial<IMQServiceOptions>} options
-     * @returns {IMQClient}
+     * @param name - name of the queue the target service listens on (its service
+     *        name, which is the class name by default). Also used as the base name
+     *        of the generated files.
+     * @param options - client options, merged over
+     *        {@link DEFAULT_IMQ_CLIENT_OPTIONS}
+     * @returns the generated namespace object, exposing the generated client class
+     *          (`<Service>Client`, with a trailing `Service` replaced by `Client`)
+     *          plus one interface per registered service type. It is produced at
+     *          runtime, so it is typed `any` — cast it or type the call site
+     *          yourself. Resolves to `null` instead when
+     *          {@link IMQClientOptions.compile} is false.
+     * @throws EvalError when the target service does not answer within
+     *         {@link IMQClientOptions.timeout} milliseconds
+     *
+     * @example
+     * ```typescript
+     * const ns = await IMQClient.create('UserService');
+     * const client = new ns.UserClient();
+     *
+     * await client.start();
+     * ```
+     *
+     * @remarks
+     * Generating a client requires the target service to be running: this sends
+     * a live description request over the queue and fails if no answer arrives in
+     * time.
+     *
+     * It always transpiles the generated source by spawning TypeScript
+     * synchronously, so the call blocks the event loop, and it rejects if
+     * transpilation emits nothing. When {@link IMQClientOptions.write} is set — the
+     * default — it writes both `<path>/<name>.ts` and `<path>/<name>.js`, silently
+     * overwriting any existing files, and creates `path` only one level deep.
+     *
+     * The identifiers inside the generated module come from the service's own
+     * reported class name, so if that differs from `name` the file name and the
+     * namespace/class names differ too.
      */
     public static async create(
         name: string,
@@ -462,10 +615,10 @@ export abstract class IMQClient extends EventEmitter {
  * Builds a call resolver that resolves the pending promise and then runs the
  * optional after-call hook.
  *
- * @param {(data: any) => void} resolve - the underlying promise resolver
- * @param {IMQRPCRequest} req - the originating request message
- * @param {IMQClient} client - the client the call belongs to
- * @return {(data: any, res: IMQRPCResponse) => void} - a hook-aware resolver
+ * @param resolve - the underlying promise resolver
+ * @param req - the originating request message
+ * @param client - the client the call belongs to
+ * @returns a hook-aware resolver
  */
 export function imqCallResolver(
     resolve: (data: any) => void,
@@ -495,10 +648,10 @@ export function imqCallResolver(
  * Builds a call rejector that rejects the pending promise and then runs the
  * optional after-call hook.
  *
- * @param {(err: any) => void} reject - the underlying promise rejector
- * @param {IMQRPCRequest} req - the originating request message
- * @param {IMQClient} client - the client the call belongs to
- * @return {(err: any, res?: IMQRPCResponse) => void} - a hook-aware rejector
+ * @param reject - the underlying promise rejector
+ * @param req - the originating request message
+ * @param client - the client the call belongs to
+ * @returns a hook-aware rejector
  */
 export function imqCallRejector(
     reject: (err: any) => void,
@@ -533,9 +686,8 @@ class GeneratorClient extends IMQClient {}
  * Fetches and returns service description using the timeout (to handle
  * situations when the service is not started)
  *
- * @param {string} name
- * @param {IMQClientOptions} options
- * @returns {Promise<Description>}
+ * @param name -
+ * @param options -
  */
 async function getDescription(
     name: string,
@@ -571,9 +723,8 @@ async function getDescription(
 /**
  * Client generator helper function
  *
- * @param {string} name
- * @param {IMQClientOptions} options
- * @returns {Promise<string>}
+ * @param name -
+ * @param options -
  */
 async function generator(
     name: string,
@@ -748,8 +899,7 @@ export namespace ${namespaceName} {\n`;
 /**
  * Return the promised typedef of a given type if its missing
  *
- * @param {string} typedef
- * @returns {string}
+ * @param typedef -
  */
 function promisedType(typedef: string): string {
     if (!typedef.startsWith('Promise<')) {
@@ -762,8 +912,7 @@ function promisedType(typedef: string): string {
 /**
  * Removes Promise from type definition if any
  *
- * @param {string} typedef
- * @returns {string}
+ * @param typedef -
  */
 function cleanType(typedef: string): string {
     return typedef.replace(/^Promise<([\s\S]+?)>$/, '$1');
@@ -772,9 +921,8 @@ function cleanType(typedef: string): string {
 /**
  * Type to comment
  *
- * @param {string} typedef
- * @param {boolean} [promised]
- * @returns {string}
+ * @param typedef -
+ * @param promised -
  */
 function toComment(typedef: string, promised: boolean = false): string {
     if (promised) {
@@ -797,8 +945,8 @@ function toComment(typedef: string, promised: boolean = false): string {
  * module-resolution errors" behaviour the old single-file transpile provided,
  * built on the stable CLI rather than the unstable programmatic API.
  *
- * @param {string} src - generated client source
- * @returns {string} - emitted CommonJS JavaScript
+ * @param src - generated client source
+ * @returns emitted CommonJS JavaScript
  */
 function transpileClient(src: string): string {
     const dir = mkdtempSync(join(tmpdir(), 'imq-client-'));
@@ -862,10 +1010,9 @@ function transpileClient(src: string): string {
 /**
  * Compiles client source code and returns loaded module
  *
- * @param {string} name
- * @param {string} src
- * @param {IMQClientOptions} options
- * @returns {any}
+ * @param name -
+ * @param src -
+ * @param options -
  */
 async function compile(
     name: string,
