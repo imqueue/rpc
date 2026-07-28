@@ -32,7 +32,11 @@
  */
 export interface ICacheConstructor {
     /**
+     * Constructs a cache adapter instance, ready to be initialized.
+     *
      * @param name - legacy, and never supplied by the registry
+     * @returns an uninitialized adapter — {@link ICache.init} must be called
+     *          before use
      */
     new (name?: string): ICache;
 }
