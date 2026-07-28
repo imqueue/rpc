@@ -580,7 +580,7 @@ export abstract class IMQService {
                         'queue_length',
                     ) || String(length);
 
-                res.setHeader('Content-Type', 'plain/text');
+                res.setHeader('Content-Type', 'text/plain');
                 res.setHeader('Content-Length', Buffer.byteLength(content));
                 res.writeHead(200);
                 res.end(content);

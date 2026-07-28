@@ -418,6 +418,13 @@ describe('IMQService metrics server', () => {
         try {
             const metrics = await fetch(`http://127.0.0.1:${port}/metrics`);
             assert.equal(metrics.status, 200);
+            // must be a valid MIME type — 'plain/text' is not one, and scrapers
+            // keying on content type see an unknown type
+            assert.equal(
+                metrics.headers.get('content-type'),
+                'text/plain',
+                'metrics are served as text/plain',
+            );
             // the default formatter renders a prometheus-style line
             assert.match(await metrics.text(), /7/);
 
