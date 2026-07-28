@@ -24,8 +24,12 @@
 import { type ILogger } from '@imqueue/core';
 
 /**
- * Names of the {@link ILogger} methods {@link logged} can use to record a caught
+ * Names of the `ILogger` methods {@link logged} can use to record a caught
  * error.
+ *
+ * @remarks
+ * `ILogger` is declared by `@imqueue/core` and is not re-exported here — import it
+ * from that package if you need the type. A plain `console` satisfies it.
  */
 export type LoggedLogLevel = 'info' | 'log' | 'warn' | 'error';
 
@@ -34,7 +38,7 @@ export type LoggedLogLevel = 'info' | 'log' | 'warn' | 'error';
  */
 export interface LoggedDecoratorOptions {
     /**
-     * Which {@link ILogger} method records the error.
+     * Which `ILogger` method records the error.
      *
      * @defaultValue 'error'
      *
