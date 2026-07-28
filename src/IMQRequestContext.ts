@@ -37,9 +37,8 @@ const storage = new AsyncLocalStorage<IMQRPCRequest>();
  * the call and automatically removed afterwards, which keeps concurrent
  * requests isolated from one another.
  *
- * @param {IMQRPCRequest} request - the request to bind for this execution
- * @param {() => T} fn - the work to run within the bound context
- * @return {T}
+ * @param request - the request to bind for this execution
+ * @param fn - the work to run within the bound context
  */
 export function runWithRequest<T>(request: IMQRPCRequest, fn: () => T): T {
     return storage.run(request, fn);
@@ -49,8 +48,6 @@ export function runWithRequest<T>(request: IMQRPCRequest, fn: () => T): T {
  * Returns the metadata of the in-flight IMQ request for the current async
  * execution, if any. Returns `undefined` outside of a `runWithRequest()` scope.
  * The transport carries metadata as an opaque bag; callers interpret its fields.
- *
- * @return {IMQMetadata | undefined}
  */
 export function currentMetadata(): IMQMetadata | undefined {
     return storage.getStore()?.metadata;

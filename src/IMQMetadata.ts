@@ -28,10 +28,18 @@ import { type AnyJson, type JsonObject } from '@imqueue/core';
  * Each property value must be a valid JSON value.
  */
 export class IMQMetadata {
+    /**
+     * Any string key mapping to any JSON value.
+     *
+     * @remarks
+     * The constructor performs a shallow copy of the source object's own
+     * enumerable string keys — symbol keys and inherited properties are not copied,
+     * and nested objects are shared by reference until serialization.
+     */
     [property: string]: AnyJson;
 
     /**
-     * @param {JsonObject} metadata - source object whose own enumerable
+     * @param metadata - source object whose own enumerable
      *                                properties are copied into this instance
      */
     constructor(metadata: JsonObject) {

@@ -31,15 +31,43 @@ import {
 import { hostname } from 'node:os';
 import { type ICache } from './index.js';
 
+/**
+ * Options accepted by {@link RedisCache.init}.
+ *
+ * @remarks
+ * This inherits the queue option shape, but the adapter only honours `host`,
+ * `port`, `username`, `password`, `prefix`, `logger` and `conn`. All other
+ * inherited queue options are accepted by the type and silently ignored.
+ */
 export interface IRedisCacheOptions extends Partial<IMQOptions> {
+    /**
+     * An existing Redis client to reuse — a running service's queue writer, for
+     * example — instead of opening a new connection.
+     *
+     * @remarks
+     * Honoured only while no shared connection exists yet.
+     */
     conn?: IRedisClient;
 }
 
+/**
+ * Default options for {@link RedisCache}: the standard queue defaults, with
+ * `prefix` overridden to `imq-cache` so cache keys never collide with queue keys
+ * under the `imq` prefix.
+ *
+ * @remarks
+ * User options are merged over these, so keys default to
+ * `imq-cache:RedisCache:<key>`.
+ */
 export const DEFAULT_REDIS_CACHE_OPTIONS: IMQOptions = {
     ...DEFAULT_IMQ_OPTIONS,
     prefix: 'imq-cache',
 };
 
+/**
+ * Message of the `TypeError` thrown by any {@link RedisCache} operation invoked
+ * before a connection has been established. Exported so callers can match on it.
+ */
 export const REDIS_CLIENT_INIT_ERROR = 'Redis client is not initialized!';
 
 /**
@@ -51,8 +79,28 @@ export class RedisCache implements ICache {
     // single promise instead of opening one connection each
     private static initPromise?: Promise<void>;
     private logger!: ILogger;
+    /**
+     * The effective options after merging user input over
+     * {@link DEFAULT_REDIS_CACHE_OPTIONS}.
+     *
+     * @remarks
+     * Populated only by {@link RedisCache.init} — it is `undefined` until then, which
+     * is why every instance must be initialized before use even when another instance
+     * already opened the shared connection.
+     */
     public options!: IRedisCacheOptions;
+    /**
+     * This adapter instance's name, `'RedisCache'`. Used as the registry key and as
+     * a segment of every cache key.
+     */
     public name: string = RedisCache.name;
+    /**
+     * True once {@link RedisCache.init} has completed successfully.
+     *
+     * @remarks
+     * Never reset: {@link RedisCache.destroy} closes the shared connection without
+     * clearing this flag.
+     */
     public ready: boolean = false;
 
     /**
@@ -60,8 +108,7 @@ export class RedisCache implements ICache {
      * shared between all instances; concurrent initializations share a single
      * connection attempt.
      *
-     * @param {IRedisCacheOptions} [options] - Redis cache options
-     * @returns {Promise<RedisCache>}
+     * @param options - Redis cache options
      */
     public async init(options?: IRedisCacheOptions): Promise<RedisCache> {
         this.options = {
@@ -142,8 +189,7 @@ export class RedisCache implements ICache {
     /**
      * Returns the fully qualified key name for a given generic key.
      *
-     * @param {string} key - generic key to qualify
-     * @returns {string}
+     * @param key - generic key to qualify
      */
     private key(key: string): string {
         return `${this.options.prefix}:${this.name}:${key}`;
@@ -152,8 +198,8 @@ export class RedisCache implements ICache {
     /**
      * Returns the value stored in the cache under a given key.
      *
-     * @param {string} key - key to read the value for
-     * @returns {Promise<any>} - stored value, or undefined if not found
+     * @param key - key to read the value for
+     * @returns stored value, or undefined if not found
      */
     public async get(key: string): Promise<any> {
         if (!RedisCache.redis) {
@@ -176,11 +222,10 @@ export class RedisCache implements ICache {
      * is created only if it does not exist yet. The given value can be any
      * JSON-compatible object and will be serialized automatically.
      *
-     * @param {string} key - key to store the value under
-     * @param {any} value - value to store
-     * @param {number} [ttl] - time-to-live in milliseconds
-     * @param {boolean} [nx] - store only if the key does not exist yet
-     * @returns {Promise<boolean>}
+     * @param key - key to store the value under
+     * @param value - value to store
+     * @param ttl - time-to-live in milliseconds
+     * @param nx - store only if the key does not exist yet
      */
     public async set(
         key: string,
@@ -214,8 +259,7 @@ export class RedisCache implements ICache {
     /**
      * Removes the value stored in the cache under the given key.
      *
-     * @param {string} key - key to remove
-     * @returns {Promise<boolean>}
+     * @param key - key to remove
      */
     public async del(key: string): Promise<boolean> {
         if (!RedisCache.redis) {
@@ -228,8 +272,7 @@ export class RedisCache implements ICache {
     /**
      * Purges all keys from the cache matching a given wildcard mask.
      *
-     * @param {string} keyMask - wildcard mask to match keys against
-     * @return {Promise<boolean>}
+     * @param keyMask - wildcard mask to match keys against
      */
     public async purge(keyMask: string): Promise<boolean> {
         if (!RedisCache.redis) {
@@ -254,8 +297,6 @@ export class RedisCache implements ICache {
 
     /**
      * Safely destroys the Redis connection.
-     *
-     * @returns {Promise<void>}
      */
     public static async destroy(): Promise<void> {
         RedisCache.initPromise = undefined;

@@ -25,11 +25,49 @@ import { type JsonObject } from '@imqueue/core';
 import { IMQMetadata } from './IMQMetadata.js';
 
 /**
- * Request message data structure to be handled by a service.
+ * Wire format of a remote call, produced by a client and consumed by a service.
+ *
+ * @remarks
+ * `from`, `method` and `args` are always present; `metadata` is absent — not
+ * `null` — when the caller passed none. The whole structure is JSON-serialized, so
+ * any `undefined` inside it is dropped in transit.
  */
 export interface IMQRPCRequest extends JsonObject {
+    /**
+     * Name of the caller's own queue — the call's reply address.
+     *
+     * @remarks
+     * The service publishes the response to exactly this queue, so it is not a
+     * human-readable client label. Rewriting it in a `beforeCall` hook redirects
+     * the reply.
+     */
     from: string;
+    /**
+     * Name of the service method to invoke.
+     *
+     * @remarks
+     * Not supplied by the caller: the {@link remote} decorator appends it to the
+     * argument list and the client pops it back off. The service uses it for the
+     * method lookup and to authorize the call against its exposed description.
+     */
     method: string;
+    /**
+     * Positional arguments for the method, applied in order.
+     *
+     * @remarks
+     * The client removes the trailing {@link IMQMetadata} and {@link IMQDelay}
+     * slots and, on a delayed call, any trailing `undefined` placeholders — so this
+     * array carries only real arguments. Its length is checked against the exposed
+     * method description before the method runs.
+     */
     args: any[];
+    /**
+     * Optional metadata attached by the caller.
+     *
+     * @remarks
+     * Absent rather than `null` when none was passed. Service code should read it
+     * through `currentMetadata()`; the value there is the JSON round-trip of the
+     * caller's bag, so it is a plain object, not an {@link IMQMetadata} instance.
+     */
     metadata?: IMQMetadata;
 }
