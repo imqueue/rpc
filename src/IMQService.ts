@@ -56,11 +56,41 @@ import {
 import { runWithRequest } from './IMQRequestContext.js';
 import { createServer, type Server } from 'node:http';
 
+/**
+ * The self-description a service serves to its clients, and the input to client
+ * generation.
+ *
+ * @remarks
+ * Declared as a class for historical reasons but never instantiated: a service
+ * returns a plain object literal, and a client receives its JSON round-trip. So do
+ * not use `new Description()` or `instanceof Description`.
+ *
+ * A service memoizes its description after the first request for it.
+ */
 export class Description {
+    /**
+     * The service itself: its name, and every exposed method with the inheritance
+     * chain already flattened.
+     */
     service!: {
+        /**
+         * The service name, which is also its queue name.
+         */
         name: string;
+        /**
+         * Every exposed method, keyed by name, with parent-class methods merged in
+         * and overridden by same-named subclass methods.
+         */
         methods: MethodsCollectionDescription;
     };
+    /**
+     * Every complex type registered in the service's process.
+     *
+     * @remarks
+     * This is the process-global type registry, embedded by reference and
+     * unfiltered — so it includes types this service does not use, and each becomes
+     * a generated interface in every client.
+     */
     types!: TypesDescription;
 }
 
@@ -73,22 +103,35 @@ const serviceDescriptions: Map<string, Description> = new Map<
  * Returns collection of class methods metadata even those are inherited
  * from a chain of parent classes
  *
- * @param {string} className
- * @return {MethodsCollectionDescription}
+ * @param ctor - constructor of the class to collect exposed methods for
  */
-function getClassMethods(className: string): MethodsCollectionDescription {
-    let methods: MethodsCollectionDescription = {};
-    let classInfo: ServiceClassDescription =
-        IMQRPCDescription.serviceDescription[className];
+function getClassMethods(ctor: Function): MethodsCollectionDescription {
+    const methods: MethodsCollectionDescription = {};
 
-    if (
-        classInfo.inherits &&
-        IMQRPCDescription.serviceDescription[classInfo.inherits]
+    // Resolve the chain from the runtime prototype chain rather than from the
+    // registry's `inherits` links. @expose() only registers the class that
+    // *declares* a method, so a class exposing nothing of its own has no
+    // registry entry at all — walking `inherits` would either dereference
+    // undefined or stop dead at that gap and lose the ancestors' methods.
+    const chain: Function[] = [];
+
+    for (
+        let current: unknown = ctor;
+        typeof current === 'function';
+        current = Object.getPrototypeOf(current)
     ) {
-        Object.assign(methods, getClassMethods(classInfo.inherits));
+        chain.unshift(current as Function);
     }
 
-    Object.assign(methods, classInfo.methods);
+    // root-first, so a subclass method overrides a same-named parent one
+    for (const link of chain) {
+        const info: ServiceClassDescription | undefined =
+            IMQRPCDescription.serviceDescription[link.name];
+
+        if (info) {
+            Object.assign(methods, info.methods);
+        }
+    }
 
     return methods;
 }
@@ -96,9 +139,8 @@ function getClassMethods(className: string): MethodsCollectionDescription {
 /**
  * Checks if given args match the given args description at least by args count
  *
- * @param {ArgDescription[]} argsInfo
- * @param {any[]} args
- * @returns {boolean}
+ * @param argsInfo -
+ * @param args -
  */
 function isValidArgsCount(argsInfo: ArgDescription[], args: any[]): boolean {
     return argsInfo.some(argInfo => argInfo.isOptional)
@@ -111,23 +153,78 @@ function isValidArgsCount(argsInfo: ArgDescription[], args: any[]): boolean {
  * Basic abstract service (server-side) implementation
  */
 export abstract class IMQService {
+    /**
+     * Allows methods to be dispatched dynamically by name.
+     *
+     * @remarks
+     * A consequence worth knowing: arbitrary property access on a service instance
+     * type-checks as `any`, so typos in subclass code are not caught by the
+     * compiler.
+     */
     [property: string]: any;
 
+    /**
+     * The underlying message queue this service consumes requests from.
+     */
     protected imq: IMessageQueue;
+    /**
+     * The effective logger — `options.logger`, defaulting to `console`.
+     */
     protected logger: ILogger;
+    /**
+     * The cache adapter used by cached methods.
+     *
+     * @remarks
+     * Never assigned by the service itself: it is populated lazily by the
+     * {@link cache} decorator on first use, so it is `undefined` on a service that
+     * has no cached methods.
+     */
     protected cache!: ICache;
+    /**
+     * The metrics HTTP server, present only while
+     * {@link IMQMetricsServerOptions.enabled} is set.
+     *
+     * @remarks
+     * {@link IMQService.destroy} does not close it — do that yourself, or the
+     * open listener keeps the process alive.
+     */
     protected metricsServer?: Server<any, any>;
     private readonly signalHandlers: Array<[string, (...args: any[]) => void]> =
         [];
 
+    /**
+     * This service's name, which is also its queue name and the key its description
+     * is cached under.
+     */
     public name: string;
+    /**
+     * The effective options for this service: {@link DEFAULT_IMQ_SERVICE_OPTIONS}
+     * merged with the values passed to the constructor.
+     */
     public options: IMQServiceOptions;
 
     /**
-     * Class constructor
+     * Constructs a service.
      *
-     * @param {Partial<IMQServiceOptions>} options
-     * @param {string} [name]
+     * @param options - service options, shallow-merged over
+     *        {@link DEFAULT_IMQ_SERVICE_OPTIONS}, except `metricsServer` which is
+     *        merged separately over
+     *        {@link DEFAULT_IMQ_METRICS_SERVER_OPTIONS}
+     * @param name - overrides the class name as the service/queue name, and as the
+     *        description cache key
+     * @throws TypeError when {@link IMQService} is instantiated directly. Note the
+     *         check is by resolved name, so passing `'IMQService'` as the `name` of a
+     *         subclass throws as well.
+     *
+     * @remarks
+     * Constructing a service installs process signal handlers for `SIGTERM`,
+     * `SIGINT`, `SIGHUP` and `SIGQUIT`. On any of them the service tears the queue
+     * down, closes the metrics server, and then force-exits with code 0 after
+     * `IMQ_SHUTDOWN_TIMEOUT` — a fixed timer, not a drain: requests still being
+     * processed are not awaited.
+     *
+     * The merged options are passed straight to the queue factory, so `vendor` and
+     * `cluster`/`clusterManagers` select the transport implementation.
      */
     constructor(options?: Partial<IMQServiceOptions>, name?: string) {
         this.name = name || this.constructor.name;
@@ -186,9 +283,8 @@ export abstract class IMQService {
     /**
      * Handles incoming request and produces corresponding response
      *
-     * @param {IMQRPCRequest} request - request message
-     * @param {string} id - message unique identifier
-     * @return {Promise<string>}
+     * @param request - request message
+     * @param id - message unique identifier
      */
     private async handleRequest(
         request: IMQRPCRequest,
@@ -310,7 +406,19 @@ export abstract class IMQService {
      * Initializes this instance of service and starts handling request
      * messages.
      *
-     * @return {Promise<IMessageQueue | undefined>}
+     * @returns the started message queue instance
+     *
+     * @remarks
+     * In single-process mode this starts the queue in the current process. With
+     * {@link IMQServiceOptions.multiProcess} the cluster primary forks
+     * `cpus().length * childrenPerCore` workers, each receiving its index in the
+     * `workerId` environment variable, and installs an exit watcher that terminates
+     * the process with code 1 as soon as one worker dies — workers are never
+     * respawned, so supervision is left to the process manager.
+     *
+     * Note that the primary also starts its own queue consumer and metrics listener
+     * after forking, so a service configured for N workers runs N+1 consumers and
+     * N+1 processes attempt to bind the metrics port.
      */
     @profile()
     public async start(): Promise<IMessageQueue | undefined> {
@@ -364,18 +472,28 @@ export abstract class IMQService {
     }
 
     /**
-     * Sends given data to service subscription channel
+     * Broadcasts data on this service's pub/sub channel, delivering it to every
+     * client currently subscribed to this service.
      *
-     * @param {JsonObject} data
+     * @param data - JSON-serializable payload to broadcast
+     * @throws TypeError when the service has not been started, so the queue's writer
+     *         is not connected
+     *
+     * @remarks
+     * Fire-and-forget: plain pub/sub with no persistence, ordering guarantee or
+     * delivery confirmation, so subscribers that are offline lose the message.
      */
     public async publish(data: JsonObject) {
         await this.imq.publish(data);
     }
 
     /**
-     * Stops service from handling messages
+     * Stops consuming messages from the queue.
      *
-     * @return {Promise<void>}
+     * @remarks
+     * Connections, signal handlers and the metrics server are all left in place —
+     * use {@link IMQService.destroy} for full teardown. Calling this first is not a
+     * prerequisite for `destroy()`.
      */
     @profile()
     public async stop(): Promise<void> {
@@ -383,9 +501,14 @@ export abstract class IMQService {
     }
 
     /**
-     * Destroys this instance of service
+     * Removes this instance's signal handlers, then unsubscribes and destroys the
+     * underlying queue.
      *
-     * @return {Promise<void>}
+     * @remarks
+     * It does not close the metrics server — if
+     * {@link IMQMetricsServerOptions.enabled} was set, close
+     * `service.metricsServer` yourself, otherwise the open listener keeps the
+     * process alive. In-flight requests are not awaited.
      */
     @profile()
     public async destroy(): Promise<void> {
@@ -401,9 +524,23 @@ export abstract class IMQService {
     }
 
     /**
-     * Returns service description metadata.
+     * Returns this service's description metadata — the exposed method list plus the
+     * registered complex types — synchronously.
      *
-     * @returns {Promise<Description>}
+     * @returns a plain object matching the {@link Description} shape, not a class
+     *          instance
+     *
+     * @remarks
+     * This method is itself exposed, so a remote caller invoking it through a
+     * generated client receives a `Promise<Description>` — but called locally it is
+     * not a promise and must not be awaited as one.
+     *
+     * The result is built once per service name and cached process-wide for the
+     * lifetime of the process, so methods attached after the first call are not
+     * reflected. The cache key is the service `name` while the method list is
+     * resolved from the concrete class name, so constructing two differently-classed
+     * services under the same `name` in one process makes them share a single
+     * description.
      */
     @expose()
     public describe(): Description {
@@ -413,7 +550,7 @@ export abstract class IMQService {
             description = {
                 service: {
                     name: this.name,
-                    methods: getClassMethods(this.constructor.name),
+                    methods: getClassMethods(this.constructor),
                 },
                 types: IMQRPCDescription.typesDescription,
             };
@@ -443,7 +580,7 @@ export abstract class IMQService {
                         'queue_length',
                     ) || String(length);
 
-                res.setHeader('Content-Type', 'plain/text');
+                res.setHeader('Content-Type', 'text/plain');
                 res.setHeader('Content-Length', Buffer.byteLength(content));
                 res.writeHead(200);
                 res.end(content);
@@ -469,10 +606,10 @@ export abstract class IMQService {
 /**
  * Sends IMQ response with support of after call optional hook
  *
- * @param {IMQRPCRequest} request - from message identifier
- * @param {IMQRPCResponse} response - response to send
- * @param {IMQService} service - imq service to bind
- * @return {Promise<string>} - send result message identifier
+ * @param request - from message identifier
+ * @param response - response to send
+ * @param service - imq service to bind
+ * @returns send result message identifier
  */
 export async function send(
     request: IMQRPCRequest,

@@ -101,8 +101,10 @@ describe('IMQClient.generator trailing args removal (IMQDelay/IMQMetadata)', () 
         // the real arg keeps its JSDoc-derived type (proves standard-decorator +
         // JSDoc reproduces correctly-typed client signatures, no empty types)
         assert.match(signature, /name\s*:\s*string/);
-        // a trailing framework arg is detected via its JSDoc type and stripped
+        // both trailing framework args are detected via their JSDoc types and
+        // stripped, so that neither is duplicated by the canonical pair
         assert.doesNotMatch(signature, /\bdelay\?\s*:\s*IMQDelay/);
+        assert.doesNotMatch(signature, /\bmeta\?\s*:\s*IMQMetadata/);
 
         // Cleanup
         await client.destroy();

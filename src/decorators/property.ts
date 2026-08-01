@@ -23,69 +23,28 @@
  */
 import { IMQRPCDescription } from '../index.js';
 
+/**
+ * A zero-argument function whose return value is resolved lazily.
+ *
+ * Used by {@link property} and {@link indexed} so a type definition can reference
+ * a class that is not yet initialized at decoration time — self-references and
+ * forward references.
+ *
+ * @remarks
+ * Detection is by the absence of a function name, so the thunk must be an
+ * anonymous function or arrow function. A named function is treated as a
+ * constructor instead, and resolves to its own name.
+ */
 export interface Thunk {
+    /**
+     * @returns the deferred value — a type definition or an index-signature string
+     */
     (): any;
 }
 
 /**
- * Implements '@property' decorator factory
- * This is used to specify complex service types to be exposed
- *
- * @example
- * ~~~typescript
- * import { property, expose, IMQService } from '@imqueue/rpc';
- *
- * class Address {
- *     @property('string')
- *     country: string;
- *
- *     @property('string')
- *     city: string;
- *
- *     @property('string')
- *     address: string;
- *
- *     @property('string', true)
- *     zipCode?: string; // this is optional
- * }
- *
- * class User {
- *     @property('string')
- *     firstName: string;
- *
- *     @property('string')
- *     lastName: string;
- *
- *     @property('string')
- *     email: string;
- *
- *     @property('Array<Address>', true)
- *     address?: Array<Address>;
- * }
- *
- * // now we can use those complex types as service methods args
- * // and them will be properly exposed to service clients
- *
- * class UserService extends IMQService {
- *
- *     @expose()
- *     public save(user: User) {
- *         // do smth with given user data to persis it
- *     }
- *
- *     @expose()
- *     public find(id: number): User {
- *        // find and return user
- *     }
- *
- * }
- * ~~~
- *
- * @return {(
- *    target: any,
- *    methodName: (string),
- *    descriptor: TypedPropertyDescriptor<(...args: any[]) => any>
- * ) => void}
+ * Internal record of one collected `@property` definition: the unresolved type
+ * argument and its optionality.
  */
 interface CollectedProperty {
     rawType: string | Thunk | any;
@@ -105,8 +64,8 @@ const PROPERTIES = Symbol('@imqueue/rpc:properties');
  * Resolves a @property type argument (string, constructor, thunk, or array
  * form) to its RPC type-definition string.
  *
- * @param {string | Thunk | any} input
- * @return {string}
+ * @param input - the type argument as given to `@property`
+ * @returns the resolved RPC type-definition string
  */
 function resolveTypeDef(input: string | Thunk | any): string {
     let type: any = input;
@@ -137,13 +96,26 @@ function resolveTypeDef(input: string | Thunk | any): string {
 }
 
 /**
- * Flushes @property definitions collected on a class into the RPC type
+ * Flushes `@property` definitions collected on a class into the RPC type
  * description. Invoked by class-level decorators once the class (and hence
  * its name) is available.
  *
- * @param {Function} ctor - the decorated class constructor
- * @param {DecoratorMetadata | undefined} metadata - shared decorator metadata
- * @param {string} [indexType] - optional index signature definition
+ * @param ctor - the decorated class constructor
+ * @param metadata - shared decorator metadata carrying the collected properties
+ * @param indexType - optional index signature definition, as raw source text
+ *
+ * @remarks
+ * Only the class's own collected properties are flushed — fields inherited
+ * from a base class are not copied, and are represented solely by `inherits`. So
+ * every class in a hierarchy that declares `@property` fields needs its own
+ * {@link classType} or {@link indexed}, or those fields are lost.
+ *
+ * `inherits` is re-derived from the runtime prototype chain on every call, and is
+ * the empty string for a class with no `extends`.
+ *
+ * Each property is installed as an accessor whose `type` is a memoising getter,
+ * so the type argument is resolved on first read rather than at decoration time.
+ * Existing entries are merged into, never cleared.
  */
 export function registerType(
     ctor: Function,
@@ -195,6 +167,71 @@ export function registerType(
     }
 }
 
+/**
+ * Marks a class field as part of an exposed complex type, so it is described to
+ * clients and appears in the generated client interfaces.
+ *
+ * @param type - the field's RPC type: a type-definition string (`'string'`,
+ *        `'Address'`, `'Array<Address>'`), a constructor (its `name` is used), a
+ *        single-element array such as `[Address]` (which yields `Address[]`), or
+ *        an anonymous {@link Thunk} returning any of those — required for
+ *        self- or forward-referencing types, since a thunk is not invoked until
+ *        the description is first read. A named function is treated as a
+ *        constructor, not a thunk.
+ * @param isOptional - marks the field optional in the generated type. Not
+ *        inferred from the TypeScript `?` modifier — pass `true` explicitly.
+ * @returns a dual-mode field decorator `(target, context) => any`, typed `any`
+ *          so one function serves both decorator protocols. Under standard (TC39)
+ *          decorators it records the field on the class's decorator metadata for a
+ *          later flush and returns `undefined`; under legacy decorators it writes
+ *          the field into the RPC type description immediately.
+ *
+ * @example
+ * ```typescript
+ * import { classType, property, expose, IMQService } from '@imqueue/rpc';
+ *
+ * // every class using @property also needs a class-level @classType()
+ * @classType()
+ * class Address {
+ *     @property('string')
+ *     country!: string;
+ *
+ *     @property('string', true)
+ *     zipCode?: string; // optional
+ * }
+ *
+ * @classType()
+ * class User {
+ *     @property('string')
+ *     firstName!: string;
+ *
+ *     // thunk + array form, for a forward reference
+ *     @property(() => [Address], true)
+ *     addresses?: Address[];
+ * }
+ *
+ * class UserService extends IMQService {
+ *     // exposed methods need a JSDoc block with typed @param/@returns tags —
+ *     // see the `expose` decorator
+ *     @expose()
+ *     public async save(user: User): Promise<boolean> {
+ *         return true;
+ *     }
+ * }
+ * ```
+ *
+ * @remarks
+ * Every class that uses `@property` must also carry a class-level
+ * {@link classType} — or {@link indexed}, which does the same flush — when
+ * compiling with standard (TC39) decorators, the protocol this package targets.
+ * Standard field decorators cannot see their class, so a class-level decorator is
+ * what registers the collected fields under the class name. Omitting it fails
+ * silently: the type simply never appears in the RPC type description, and
+ * generated clients reference an undeclared type.
+ *
+ * Passing a falsy `type` returns `undefined`, which TypeScript accepts as a no-op
+ * decoration — the field is then silently absent from the type description.
+ */
 export function property(
     type: string | Thunk | any,
     isOptional: boolean = false,

@@ -29,8 +29,42 @@ import { type IMQRPCError, type IMQRPCRequest } from './index.js';
  * requests.
  */
 export interface IMQRPCResponse extends JsonObject {
+    /**
+     * Correlation identifier: the queue-assigned message id of the request this
+     * response answers.
+     *
+     * @remarks
+     * This is not an address. The client matches it against its table of
+     * pending calls, so it must be echoed back exactly. The response is delivered
+     * to {@link IMQRPCRequest.from} instead.
+     */
     to: string;
+    /**
+     * The value the service method returned, as JSON.
+     *
+     * @remarks
+     * Despite the `JsonObject` annotation this may be any JSON value — primitive,
+     * array or object — and the key is absent from the delivered message when
+     * the method returned nothing. It is `null` on the initial response skeleton
+     * and stays `null` when the call failed.
+     */
     data: JsonObject | null;
+    /**
+     * `null` on success, otherwise the failure descriptor.
+     *
+     * @remarks
+     * The client checks this field first and rejects the call with it, ignoring
+     * {@link IMQRPCResponse.data} — so the two are effectively mutually exclusive.
+     */
     error: IMQRPCError | null;
+    /**
+     * The originating request, echoed back in full — method, arguments and
+     * metadata included.
+     *
+     * @remarks
+     * Always present: the client reads `request.method` when it cannot match the
+     * response to a pending call, in order to re-emit it as an event. Note that
+     * this round-trips every argument value back to the caller.
+     */
     request: IMQRPCRequest;
 }

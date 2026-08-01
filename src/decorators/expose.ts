@@ -77,8 +77,7 @@ const OWN_PATH: string = (() => {
 /**
  * Lookup and returns a list of argument names for a given function
  *
- * @param {(...args: any[]) => any} fn
- * @return {string[]}
+ * @param fn -
  */
 function argumentNames(fn: (...args: any[]) => any): string[] {
     let src: string = fn.toString();
@@ -95,8 +94,8 @@ function argumentNames(fn: (...args: any[]) => any): string[] {
  * and a later `}` in the description cannot extend the captured type. The type,
  * if present, must be the leading token of the definition.
  *
- * @param {string} tagDef - tag definition text following the tag name
- * @return {{ tsType: string, rest: string } | null} - captured type and the
+ * @param tagDef - tag definition text following the tag name
+ * @returns captured type and the
  *   remaining definition (name + description), or null when there is no type
  */
 function extractType(tagDef: string): { tsType: string; rest: string } | null {
@@ -127,8 +126,7 @@ function extractType(tagDef: string): { tsType: string; rest: string } | null {
 /**
  * Parses given multi-line comment block
  *
- * @param {string} src - class source code
- * @return {CommentMetadata}
+ * @param src - class source code
  */
 function parseComment(src: string): CommentMetadata {
     let cleanSrc = src.replace(RX_MULTILINE_CLEANUP, '\n').trim();
@@ -211,8 +209,8 @@ function parseComment(src: string): CommentMetadata {
  * comment between the previous class member (or the class body start) and
  * the method itself, i.e. the last block comment in its leading trivia.
  *
- * @param {string} name - class name
- * @param {string} src - class source code
+ * @param name - class name
+ * @param src - class source code
  */
 function parseDescriptions(name: string, src: string): void {
     const comments: Comment[] = [];
@@ -310,9 +308,9 @@ function parseDescriptions(name: string, src: string): void {
  * method whose declaration head immediately follows it. When several blocks
  * precede a method, the closest one wins, matching the runtime parser.
  *
- * @param {string} src - source file text (TypeScript or JavaScript)
- * @param {string} className - class to extract method docs for
- * @return {{ [method: string]: string }} - map of method name to raw JSDoc
+ * @param src - source file text (TypeScript or JavaScript)
+ * @param className - class to extract method docs for
+ * @returns map of method name to raw JSDoc
  *   block body (delimiters excluded, as acorn reports comment values)
  */
 export function parseSourceComments(
@@ -359,8 +357,7 @@ const sourceFileCache: { [path: string]: string | null } = {};
 /**
  * Reads and caches a source file, returning null when unreadable.
  *
- * @param {string} path - absolute source file path
- * @return {string | null}
+ * @param path - absolute source file path
  */
 function readSourceFile(path: string): string | null {
     if (!(path in sourceFileCache)) {
@@ -379,8 +376,6 @@ function readSourceFile(path: string): string | null {
  * physically the module defining the decorated class. Own and internal
  * frames are skipped. Returns an empty string when no frame is usable
  * (e.g. bundled builds without source maps).
- *
- * @return {string}
  */
 function captureCallerPath(): string {
     const stack: string = new Error().stack || '';
@@ -425,8 +420,8 @@ function captureCallerPath(): string {
  * it carries any JSDoc; extraction misses leave methods at their current
  * (untyped) state, so behavior never degrades below the status quo.
  *
- * @param {string} className - class to describe
- * @param {string} sourcePath - captured defining file path
+ * @param className - class to describe
+ * @param sourcePath - captured defining file path
  */
 function applySourceFallback(className: string, sourcePath: string): void {
     const hasJsdoc = Object.keys(descriptions[className] || {}).some(
@@ -455,11 +450,11 @@ function applySourceFallback(className: string, sourcePath: string): void {
 /**
  * Helper function to make easy descriptions parts extractions
  *
- * @param {string} prop - property name to extract
- * @param {string} className - class name to lookup
- * @param {string} method - method name to lookup
- * @param {any} defaults - a default value to use if nothing found
- * @return {T} - found value
+ * @param prop - property name to extract
+ * @param className - class name to lookup
+ * @param method - method name to lookup
+ * @param defaults - a default value to use if nothing found
+ * @returns found value
  */
 function get<T>(
     prop: string,
@@ -486,10 +481,10 @@ function get<T>(
  * preserved by `removeComments: false`); standard decorators provide no
  * runtime `design:type` metadata, so JSDoc is the sole type source.
  *
- * @param {Function} ctor - class that declares the method
- * @param {string} methodName - exposed method name
- * @param {(...args: any[]) => any} fn - the method implementation
- * @param {string} [sourcePath] - defining file path captured at decoration
+ * @param ctor - class that declares the method
+ * @param methodName - exposed method name
+ * @param fn - the method implementation
+ * @param sourcePath - defining file path captured at decoration
  */
 function buildMethodDescription(
     ctor: Function,
@@ -570,11 +565,63 @@ function buildMethodDescription(
 }
 
 /**
- * Expose decorator factory. Applied to a service method, it registers that
- * method in the RPC service description. (Complex argument/return types are
- * registered separately via the '@classType' decorator on those classes.)
+ * Makes a service method callable remotely by registering it in the RPC service
+ * description.
  *
- * @return {(value: any, context: ClassMethodDecoratorContext) => void}
+ * @returns a dual-mode method decorator, typed `any` so one function serves both
+ *          decorator protocols. It never replaces or wraps the decorated method:
+ *          under standard (TC39) decorators it registers a
+ *          `context.addInitializer()` hook and returns `undefined`; under legacy
+ *          decorators it registers immediately and returns the property descriptor
+ *          unchanged.
+ *
+ * @example
+ * ```typescript
+ * import { expose, IMQService } from '@imqueue/rpc';
+ *
+ * class UserService extends IMQService {
+ *     @expose()
+ *     public async count(active: boolean): Promise<number> {
+ *         return 0;
+ *     }
+ * }
+ * ```
+ *
+ * @remarks
+ * Applying this is mandatory for remote callability: a service rejects calls
+ * to any class method absent from the service description with the
+ * `IMQ_RPC_NO_ACCESS` error. Undecorated methods remain callable in-process only.
+ *
+ * Every exposed method must carry a JSDoc block with typed `@param` and `@returns`
+ * tags. Standard decorators provide no runtime type reflection, so JSDoc is the
+ * only type source: undocumented types fall back to `any` in generated clients,
+ * and the documented `@param` list is also what the service's argument-count check
+ * validates — it must match the method's real arity, or calls fail with
+ * `IMQ_RPC_INVALID_ARGS_COUNT`. Consuming projects must therefore compile with
+ * `removeComments: false`.
+ *
+ * Decorator order matters: this must be the innermost decorator (listed last,
+ * closest to the method) when combined with {@link lock}, {@link cache} or
+ * {@link logged}. Those replace the method with a `(...args)` wrapper, and if this
+ * decorator is applied after them it records the wrapper's rest parameter as the
+ * method's only argument, breaking both argument validation and generated client
+ * signatures.
+ *
+ * Registration timing differs by protocol. Under standard decorators the class is
+ * not available at decoration time, so registration is deferred to an initializer
+ * that runs on first construction of an instance — the service description
+ * stays empty until then. Under legacy decorators it happens at class-definition
+ * time.
+ *
+ * Instance (prototype) methods only. Applied to a `static` method it silently
+ * registers under the pseudo-class name `Function` and the method stays
+ * unreachable remotely. Methods inherited from a base class are registered under
+ * the class that declares them and resolved through the description's `inherits`
+ * chain, so that base class must be loaded for the subclass description to be
+ * complete.
+ *
+ * Complex argument and return types are registered separately, by
+ * {@link classType} or {@link indexed} on those classes.
  */
 export function expose(): any {
     // the factory executes at class-definition time inside the defining

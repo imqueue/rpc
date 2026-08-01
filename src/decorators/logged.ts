@@ -23,11 +23,42 @@
  */
 import { type ILogger } from '@imqueue/core';
 
+/**
+ * Names of the `ILogger` methods {@link logged} can use to record a caught
+ * error.
+ *
+ * @remarks
+ * `ILogger` is declared by `@imqueue/core` and is not re-exported here — import it
+ * from that package if you need the type. A plain `console` satisfies it.
+ */
 export type LoggedLogLevel = 'info' | 'log' | 'warn' | 'error';
 
+/**
+ * Options for the {@link logged} decorator.
+ */
 export interface LoggedDecoratorOptions {
+    /**
+     * Which `ILogger` method records the error.
+     *
+     * @defaultValue 'error'
+     *
+     * @remarks
+     * The resolved logger must implement this method, or the call throws a
+     * `TypeError` from inside the catch block.
+     */
     level?: LoggedLogLevel;
+    /**
+     * An explicit logger, taking precedence over the instance, class and console
+     * fallbacks.
+     */
     logger?: ILogger;
+    /**
+     * Set to `true` to swallow the error after logging it, in which case the method
+     * resolves to `undefined`.
+     *
+     * @remarks
+     * Inverted sense: by default the error is re-thrown.
+     */
     doNotThrow?: boolean;
 }
 
@@ -40,9 +71,9 @@ export interface LoggedDecoratorOptions {
  * returned decorator is dual-mode: it works both as a standard (TC39) and as a
  * legacy method decorator.
  *
- * @param {ILogger | LoggedDecoratorOptions} [options] - a logger to use, or the
+ * @param options - a logger to use, or the
  *  logged-decorator options
- * @return {Function} - a dual-mode method decorator
+ * @returns a dual-mode method decorator
  */
 export function logged(options?: ILogger | LoggedDecoratorOptions): any {
     const level: LoggedLogLevel =

@@ -24,8 +24,26 @@
 import { IMQLock, type AcquiredLock } from '../index.js';
 import { signature } from '../helpers/index.js';
 
+/**
+ * Options for the {@link lock} decorator.
+ */
 export interface LockOptions {
+    /**
+     * Set to `true` to turn locking off for the decorated method.
+     *
+     * @remarks
+     * Inverted sense: omitted or `false` means locking is enabled.
+     */
     disabled?: boolean;
+    /**
+     * Positional indices of arguments to exclude when computing the lock key —
+     * useful for request-context or callback arguments that must not affect
+     * similarity.
+     *
+     * @remarks
+     * Excluded arguments are still passed to the method unchanged; only the key
+     * ignores them.
+     */
     skipArgs?: number[];
 }
 
@@ -37,9 +55,9 @@ export interface LockOptions {
  * dual-mode: it works both as a standard (TC39) and as a legacy method
  * decorator.
  *
- * @param {boolean | LockOptions} enabledOrOptions - whether locking is enabled,
+ * @param enabledOrOptions - whether locking is enabled,
  *  or the lock options
- * @return {Function} - a dual-mode method decorator
+ * @returns a dual-mode method decorator
  */
 export function lock(enabledOrOptions: boolean | LockOptions = true): any {
     const enabled =
