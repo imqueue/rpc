@@ -36,19 +36,31 @@ const BUILT_IN_ADAPTERS: { [name: string]: ICacheConstructor } = {
 };
 
 /**
- * Generic cache registry
+ * Process-wide static registry of cache adapters.
+ *
+ * @remarks
+ * All state is static and shared by every consumer in the process; there is no
+ * instance form and no way to unregister or reset an adapter. Adapters are keyed by
+ * name, so a single adapter class can only be registered once — two different
+ * configurations of the same class cannot coexist.
  */
 export class IMQCache {
     private static options: { [name: string]: any } = {};
+    /**
+     * The registry of adapter instances, keyed by adapter name.
+     *
+     * @remarks
+     * Exposed for inspection. Mutating it directly bypasses the option staging that
+     * {@link IMQCache.register} and {@link IMQCache.apply} perform.
+     */
     public static adapters: { [name: string]: ICache } = {};
 
     /**
      * Registers the given cache adapter.
      *
-     * @param {ICacheAdapter | string} adapter - adapter name, class or
+     * @param adapter - adapter name, class or
      *                                            instance
-     * @param {any} [options] - adapter-specific options
-     * @returns {IMQCache}
+     * @param options - adapter-specific options
      */
     public static register(
         adapter: ICacheAdapter | string,
@@ -88,9 +100,8 @@ export class IMQCache {
     /**
      * Overrides existing adapter options with the given ones.
      *
-     * @param {ICacheAdapter | string} adapter - adapter to apply options to
-     * @param {any} options - adapter-specific options
-     * @returns {IMQCache}
+     * @param adapter - adapter to apply options to
+     * @param options - adapter-specific options
      */
     public static apply(
         adapter: ICacheAdapter | string,
@@ -114,8 +125,6 @@ export class IMQCache {
 
     /**
      * Initializes all registered cache adapters.
-     *
-     * @returns {Promise<any>}
      */
     public static async init(): Promise<any> {
         const self = IMQCache;
@@ -137,8 +146,8 @@ export class IMQCache {
     /**
      * Returns a registered cache adapter by its given name or class.
      *
-     * @param {ICacheAdapter} adapter - adapter name, class or instance
-     * @returns {ICache} - adapter instance
+     * @param adapter - adapter name, class or instance
+     * @returns adapter instance
      */
     public static get(adapter: ICacheAdapter): ICache {
         return IMQCache.adapters[

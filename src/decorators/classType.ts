@@ -24,23 +24,23 @@
 import { registerType } from './property.js';
 
 /**
- * Implements the '@classType' decorator factory.
+ * Registers a complex-type class's `@property` field definitions into the RPC
+ * type description, so the type can be exposed to service clients.
  *
- * Applied to a complex-type class, it registers the class's '@property' field
- * definitions into the RPC type description so the type can be exposed to
- * service clients. It is required on any class that uses '@property':
- * standard (TC39) field decorators cannot see the class they belong to, so a
- * class-level decorator is needed to flush the collected properties under the
- * class name.
+ * @returns a dual-mode class decorator `(value, context?) => any`, typed `any` so
+ *          one function serves both decorator protocols. Under standard (TC39)
+ *          decorators it flushes the collected fields via {@link registerType} and
+ *          returns `undefined`; under legacy decorators it is a pass-through that
+ *          returns the class unchanged.
  *
  * @example
- * ~~~typescript
+ * ```typescript
  * import { classType, property, expose, IMQService } from '@imqueue/rpc';
  *
  * @classType()
  * class Address {
  *     @property('string')
- *     country: string;
+ *     country!: string;
  *
  *     @property('string', true)
  *     zipCode?: string; // optional
@@ -49,9 +49,9 @@ import { registerType } from './property.js';
  * @classType()
  * class User {
  *     @property('string')
- *     firstName: string;
+ *     firstName!: string;
  *
- *     @property('Array<Address>', true)
+ *     @property(() => [Address], true)
  *     addresses?: Address[];
  * }
  *
@@ -61,9 +61,24 @@ import { registerType } from './property.js';
  *         // now User (and Address) are properly exposed to clients
  *     }
  * }
- * ~~~
+ * ```
  *
- * @return {(value: Function, context: ClassDecoratorContext) => void}
+ * @remarks
+ * Required on every class that uses {@link property} when compiling with
+ * standard (TC39) decorators, the protocol this package targets: standard field
+ * decorators cannot see their class, so a class-level decorator is what flushes
+ * the collected fields under the class name.
+ *
+ * Under legacy (`experimentalDecorators`) decorators `@property` registers each
+ * field directly and this decorator is a harmless no-op.
+ *
+ * Omitting it produces no error — the type is silently missing from the RPC
+ * type description, and generated clients then reference an undeclared type.
+ * Applying it to a class with no `@property` fields registers an empty type
+ * description.
+ *
+ * {@link indexed} performs the same flush in addition to recording an index
+ * signature, so a class carrying `@indexed()` does not also need `@classType()`.
  */
 export function classType(): any {
     // Dual-mode: standard (TC39) class decorators pass a context object with a

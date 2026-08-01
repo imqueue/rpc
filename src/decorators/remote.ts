@@ -28,7 +28,7 @@
  * both as a standard (TC39) and as a legacy (experimentalDecorators) method
  * decorator.
  *
- * @return {Function} - a dual-mode method decorator
+ * @returns a dual-mode method decorator
  */
 export function remote(): any {
     const wrap = (original: (...args: any[]) => any, methodName: string) =>

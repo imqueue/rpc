@@ -25,21 +25,40 @@ import { type Thunk, IMQRPCDescription } from '../index.js';
 import { registerType } from './property.js';
 
 /**
- * Implements '@indexed' decorator factory
- * This is used to specify complex service types which are need to expose
- * types containing indexed definition, for example:
+ * Exposes a complex service type that carries an index signature.
+ *
+ * @param indexTypedef - the index signature as raw source text, for example
+ *        `'[fieldName: string]: any'`, or a {@link Thunk} returning it. A falsy
+ *        value makes the decoration a silent no-op; a non-string is coerced with
+ *        `String()`.
+ * @returns a dual-mode class decorator `(value, context?) => any`. Under standard
+ *          (TC39) decorators it flushes the class's `@property` fields and
+ *          records the index signature, returning `undefined`; under legacy
+ *          decorators the fields are already registered, so it only attaches the
+ *          index signature and returns the class unchanged.
  *
  * @example
- * ~~~typescript
- * import { type } from '@imqueue/rpc';
+ * ```typescript
+ * import { indexed, property } from '@imqueue/rpc';
  *
+ * // @indexed() also flushes this class's @property fields,
+ * // so a separate @classType() is not needed
  * @indexed('[fieldName: string]: any')
  * class Schema {
- *     [fieldName: string]: any
- * }
- * ~~~
+ *     @property('string')
+ *     name!: string;
  *
- * @return {(constructor: Function) => void}
+ *     [fieldName: string]: any;
+ * }
+ * ```
+ *
+ * @remarks
+ * Under standard decorators this is a superset of {@link classType} — it performs
+ * the same `@property` flush in addition to recording the index signature.
+ *
+ * The index signature is injected verbatim into generated client interfaces and is
+ * not validated, so a malformed string produces a client that does not
+ * compile. A thunk is evaluated once, on first use.
  */
 export function indexed(indexTypedef: string | Thunk): any {
     // Dual-mode: standard (TC39) class decorators pass a context object with a

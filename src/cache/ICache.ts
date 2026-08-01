@@ -22,9 +22,22 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 /**
- * Constructor signature for cache adapter implementations.
+ * Constructor signature the registry uses to instantiate a cache adapter class.
+ *
+ * @remarks
+ * The registry always calls it with no arguments. The optional `name` argument
+ * is a legacy affordance that no built-in adapter accepts and that the registry
+ * never supplies, so implementations must be constructible with zero arguments and
+ * set their own {@link ICache.name}.
  */
 export interface ICacheConstructor {
+    /**
+     * Constructs a cache adapter instance, ready to be initialized.
+     *
+     * @param name - legacy, and never supplied by the registry
+     * @returns an uninitialized adapter — {@link ICache.init} must be called
+     *          before use
+     */
     new (name?: string): ICache;
 }
 
@@ -36,56 +49,89 @@ export interface ICache {
     /**
      * Adapter (cache) name.
      *
-     * @type {string}
+     * @remarks
+     * The name is load-bearing twice over: it is the key the adapter is registered
+     * under, and it is a segment of every physical cache key
+     * (`<prefix>:<name>:<key>` in the Redis adapter). It must therefore be stable —
+     * changing it at runtime moves the namespace and orphans existing entries.
      */
     name: string;
 
     /**
      * Whether the cache adapter is initialized and ready to use.
      *
-     * @type {boolean}
+     * @remarks
+     * For the built-in Redis adapter this flag is never reset — destroying the
+     * shared connection leaves it `true`, so a `true` value does not guarantee a
+     * live connection after an explicit destroy.
      */
     ready: boolean;
 
     /**
      * Initializes the cache adapter with the given adapter-specific options.
      *
-     * @param {any} [options] - adapter-specific options
-     * @returns {void}
+     * @param options - adapter-specific options
+     *
+     * @remarks
+     * May be asynchronous: the registry awaits whatever is returned, so an
+     * implementation that needs I/O must return a promise that settles once the
+     * adapter is ready. Implementations must set {@link ICache.ready} on success.
      */
     init(options?: any): void;
 
     /**
      * Returns the value stored in the cache under the given key.
      *
-     * @param {string} key - key to read the value for
-     * @returns {Promise<any>} - stored value, or undefined if not found
+     * @param key - key to read the value for
+     * @returns the deserialized stored value, or `undefined` when the key is absent
+     *          or expired
+     *
+     * @remarks
+     * A stored `null` is returned as `null` and is therefore distinguishable from a
+     * miss; a stored `undefined` is not. Callers that must tell "cached as
+     * empty" from "not cached" should store an explicit sentinel rather than
+     * `undefined`.
      */
     get(key: string): Promise<any>;
 
     /**
      * Stores the given value in the cache under the given key.
      *
-     * @param {string} key - key to store the value under
-     * @param {any} value - value to store
-     * @param {number} [ttl] - time-to-live in milliseconds
-     * @returns {Promise<boolean>}
+     * @param key - key to store the value under
+     * @param value - value to store
+     * @param ttl - time-to-live in milliseconds
+     * @returns a truthy value when the write happened, falsy when it did not
+     *
+     * @remarks
+     * Test the result for truthiness rather than comparing against `true` — the
+     * built-in Redis adapter resolves to the string `'OK'` or to `null`, never to a
+     * boolean.
+     *
+     * The framework additionally passes a fourth argument, an `nx` flag meaning
+     * "only create the key if it does not already exist". Adapters that cannot
+     * honour it should say so, because the {@link cache} decorator always passes it.
      */
     set(key: string, value: any, ttl?: number): Promise<boolean>;
 
     /**
      * Removes the value stored in the cache under the given key.
      *
-     * @param {string} key - key to remove
-     * @returns {Promise<boolean>}
+     * @param key - key to remove
+     * @returns true if a key was actually removed, false if it did not exist —
+     *          which is not an error
      */
     del(key: string): Promise<boolean>;
 
     /**
-     * Purges all keys from the cache matching the given wildcard mask.
+     * Deletes every key matching the given wildcard mask.
      *
-     * @param {string} keyMask - wildcard mask to match keys against
-     * @returns {Promise<boolean>}
+     * @param keyMask - wildcard mask matched against fully qualified key names
+     * @returns whether the purge ran
+     *
+     * @remarks
+     * The mask is not automatically scoped to this cache — callers must include
+     * the namespace themselves (`<prefix>:<name>:...`). A broad mask such as `'*'`
+     * will delete unrelated data, including message-queue keys.
      */
     purge(keyMask: string): Promise<boolean>;
 }

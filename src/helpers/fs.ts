@@ -26,8 +26,8 @@ import { access, mkdir as fsMkdir, writeFile as fsWriteFile } from 'node:fs';
 /**
  * Checks whether a file exists at the given path.
  *
- * @param {string} path - path to the file to check
- * @return {Promise<boolean>} - true if the file exists, false otherwise
+ * @param path - path to the file to check
+ * @returns true if the file exists, false otherwise
  */
 export function fileExists(path: string): Promise<boolean> {
     return new Promise(resolve => access(path, err => resolve(!err)));
@@ -36,8 +36,7 @@ export function fileExists(path: string): Promise<boolean> {
 /**
  * Asynchronously creates a directory at the given path.
  *
- * @param {string} path - path of the directory to create
- * @return {Promise<void>}
+ * @param path - path of the directory to create
  */
 export function mkdir(path: string): Promise<void> {
     return new Promise((resolve, reject) =>
@@ -48,9 +47,8 @@ export function mkdir(path: string): Promise<void> {
 /**
  * Asynchronously writes the given content to a file at the given path.
  *
- * @param {string} path - path of the file to write
- * @param {string} content - content to write to the file
- * @return {Promise<void>}
+ * @param path - path of the file to write
+ * @param content - content to write to the file
  */
 export function writeFile(path: string, content: string): Promise<void> {
     return new Promise((resolve, reject) =>
@@ -67,9 +65,9 @@ export function writeFile(path: string, content: string): Promise<void> {
  * Constructs a callback that settles a promise using the given resolve and
  * reject functions, rejecting when an error is provided.
  *
- * @param {(value: void | PromiseLike<void>) => void} resolve - promise resolver
- * @param {(reason?: unknown) => void} reject - promise rejecter
- * @param {Error | null} [err] - error passed by the underlying fs operation
+ * @param resolve - promise resolver
+ * @param reject - promise rejecter
+ * @param err - error passed by the underlying fs operation
  */
 function generalCallback(
     resolve: (value: void | PromiseLike<void>) => void,

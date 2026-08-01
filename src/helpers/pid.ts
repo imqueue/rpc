@@ -41,12 +41,43 @@ export const IMQ_TMP_DIR = process.env.TMPDIR || '/tmp';
 export const IMQ_PID_DIR = resolve(IMQ_TMP_DIR, '.imq-rpc');
 
 /**
+ * Identifiers this process has already allocated and given back, per pid file
+ * location. They are never handed out again while the process lives.
+ *
+ * The identifier is the only part of a client's queue name that distinguishes
+ * two clients of the same service on the same host, so re-using one re-uses the
+ * queue name. Handing a name back within the same process is not safe: the
+ * queue of the client that just released it still has a reader blocked on it,
+ * which outlives `destroy()` and consumes the first message addressed to the
+ * new owner — that reply is then lost, and its caller waits forever.
+ *
+ * Identifiers freed by another process (or left behind by one that died) are
+ * still re-used, which is what keeps names dense across restarts.
+ */
+const retiredIds = new Map<string, Set<number>>();
+
+/**
+ * Returns the key under which retired identifiers are tracked. Includes the
+ * path so that pid files kept in different directories cannot influence each
+ * other.
+ *
+ * @param name - name of the service
+ * @param path - directory the pid files are stored in
+ */
+function retiredKey(name: string, path: string): string {
+    return `${path}/${name}`;
+}
+
+/**
  * Returns an increment-based process identifier for the given service name,
  * creating the corresponding pid file under the given directory.
  *
- * @param {string} name - name of the service to create the pid file for
- * @param {string} [path] - directory to store the pid file in
- * @returns {number} - the allocated increment-based identifier
+ * Identifiers this process has released through `forgetPid()` are skipped, see
+ * `retiredIds`.
+ *
+ * @param name - name of the service to create the pid file for
+ * @param path - directory to store the pid file in
+ * @returns the allocated increment-based identifier
  */
 export function pid(name: string, path: string = IMQ_PID_DIR): number {
     const pidFile = `${path}/${name}`;
@@ -60,10 +91,17 @@ export function pid(name: string, path: string = IMQ_PID_DIR): number {
         mkdirSync(path);
     }
 
+    const retired = retiredIds.get(retiredKey(name, path));
     let id: number = 0;
     let done: boolean = false;
 
     while (!done) {
+        if (retired?.has(id)) {
+            id++;
+
+            continue;
+        }
+
         try {
             writeFileSync(`${pidFile}-${id}.pid`, process.pid + '', pidOpts);
             done = true;
@@ -80,12 +118,14 @@ export function pid(name: string, path: string = IMQ_PID_DIR): number {
 }
 
 /**
- * Removes the pid file for the given service name and identifier.
+ * Removes the pid file for the given service name and identifier, and records
+ * the identifier as retired so that `pid()` does not hand it out again for the
+ * lifetime of this process, see `retiredIds`.
  *
- * @param {string} name - name of the service whose pid file to remove
- * @param {number} id - increment-based identifier of the pid file
- * @param {ILogger} logger - logger instance
- * @param {string} [path] - directory the pid file is stored in
+ * @param name - name of the service whose pid file to remove
+ * @param id - increment-based identifier of the pid file
+ * @param logger - logger instance
+ * @param path - directory the pid file is stored in
  */
 export function forgetPid(
     name: string,
@@ -97,5 +137,14 @@ export function forgetPid(
         unlinkSync(`${path}/${name}-${id}.pid`);
     } catch {
         /* ignore */
+    }
+
+    const key = retiredKey(name, path);
+    const retired = retiredIds.get(key);
+
+    if (retired) {
+        retired.add(id);
+    } else {
+        retiredIds.set(key, new Set([id]));
     }
 }

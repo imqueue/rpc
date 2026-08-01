@@ -28,24 +28,51 @@ import { IMQService } from './IMQService.js';
 import { IMQClient } from './IMQClient.js';
 
 /**
- * Hook invoked before a service method call is dispatched.
+ * Hook invoked before a call is dispatched.
  *
- * @param {IMQRPCRequest} [req] - the incoming request
- * @param {IMQRPCResponse} [res] - the response being prepared
- * @return {Promise<void>}
+ * @remarks
+ * On a service the hook receives `(request, response)`; on a client it
+ * receives `(request)` only, and `res` is always `undefined`.
+ *
+ * Assigning `res.error` aborts the call — the method is never invoked and the
+ * error is returned to the caller. This is the supported way to reject a request
+ * from a hook. Assigning `res.data` has no effect, since it is overwritten by the
+ * method's result.
+ *
+ * Throwing does not abort anything: the error is logged as a warning
+ * (see {@link BEFORE_HOOK_ERROR}) and dispatch proceeds.
+ *
+ * The hook is invoked bound to the service or client instance, so a `function`
+ * expression can reach `this.logger` and `this.options` — but the type parameter is
+ * decorative, so `this` is not typed, and an arrow function does not receive the
+ * instance at all.
  */
 export interface IMQBeforeCall<_T> {
+    /**
+     * @param req - the incoming request
+     * @param res - the response being prepared; service side only
+     */
     (req?: IMQRPCRequest, res?: IMQRPCResponse): Promise<void>;
 }
 
 /**
- * Hook invoked after a service method call has been handled.
+ * Hook invoked after a call has been handled.
  *
- * @param {IMQRPCRequest} req - the handled request
- * @param {IMQRPCResponse} [res] - the produced response
- * @return {Promise<void>}
+ * @remarks
+ * Purely for observation — logging, metrics, tracing. On a service it runs after
+ * the response has already been sent; on a client it runs after the caller's
+ * promise has already been resolved or rejected. In both cases it is too late to
+ * change the outcome, and the caller does not wait for it.
+ *
+ * It is also invoked for failures, where `res` may be absent — for example when the
+ * request could not be sent at all. Thrown errors are logged as warnings (see
+ * {@link AFTER_HOOK_ERROR}) and swallowed; the return value is ignored.
  */
 export interface IMQAfterCall<_T> {
+    /**
+     * @param req - the handled request
+     * @param res - the produced response; may be absent on a failure
+     */
     (req: IMQRPCRequest, res?: IMQRPCResponse): Promise<void>;
 }
 
@@ -58,12 +85,30 @@ export interface IMQAfterCall<_T> {
  * context so any spans the method (and its downstream calls) create nest under
  * the request span. When unset, the method is invoked directly.
  *
- * @param {IMQRPCRequest} req - the incoming request
- * @param {IMQRPCResponse} res - the response being prepared
- * @param {() => Promise<any>} next - runs the method, resolves to its result
- * @return {Promise<any>} - the value to use as the response data
+ * @remarks
+ * Service side only — there is no client equivalent, despite the type parameter.
+ *
+ * The hook's resolved value is the response data. Calling `next()` exactly once
+ * and returning its value is the required pattern, but it is not enforced: omitting
+ * `next()` silently skips the method and returns your value instead, and calling it
+ * twice runs the method twice.
+ *
+ * Unlike {@link IMQBeforeCall} and {@link IMQAfterCall}, errors here are not
+ * swallowed — anything this hook throws, or that propagates out of `next()`, becomes
+ * the call's error response (`IMQ_RPC_CALL_ERROR`, preserving the thrown error's own
+ * `code` when it has one). So a wrapping hook can safely let failures through or
+ * rethrow enriched errors.
+ *
+ * Invoked bound to the service instance; `this` is untyped, so do not use an arrow
+ * function if you need it.
  */
 export interface IMQWrapCall<_T> {
+    /**
+     * @param req - the incoming request
+     * @param res - the response being prepared
+     * @param next - runs the method and resolves to its result
+     * @returns the value to use as the response data
+     */
     (
         req: IMQRPCRequest,
         res: IMQRPCResponse,
@@ -75,47 +120,193 @@ export interface IMQWrapCall<_T> {
  * Options for the built-in metrics server.
  */
 export interface IMQMetricsServerOptions {
+    /**
+     * Start the metrics HTTP listener when true.
+     *
+     * @defaultValue false
+     *
+     * @remarks
+     * The listener serves a single route, `GET /metrics`, is unauthenticated, and is
+     * bound to all interfaces. Every process that starts the service — including the
+     * cluster primary in `multiProcess` mode — attempts to bind the port.
+     */
     enabled?: boolean;
+    /**
+     * TCP port to bind on all interfaces.
+     *
+     * @defaultValue 9090
+     */
     port?: number;
+    /**
+     * Renders the response body from the current queue length and the metric name,
+     * which is always the literal `'queue_length'`.
+     *
+     * @remarks
+     * Defaults to a Prometheus-style rendering. A falsy return falls back to the
+     * bare number. Note that the queue length reports `0` while the queue's writer
+     * is disconnected.
+     */
     queueLengthFormatter?: (length: number, metricName: string) => string;
 }
 
 /**
  * Options accepted by an IMQ service.
+ *
+ * @remarks
+ * Extends the core queue options, so all transport settings — `host`, `port`,
+ * `prefix`, `safeDelivery`, `useGzip`, `cluster`, `logger` and the rest — are
+ * accepted and forwarded to the queue factory.
  */
 export interface IMQServiceOptions extends IMQOptions {
+    /**
+     * Fork one cluster worker per CPU core, multiplied by
+     * {@link IMQServiceOptions.childrenPerCore}.
+     *
+     * @defaultValue false
+     *
+     * @remarks
+     * The cluster primary also starts its own queue consumer and metrics listener
+     * after forking, so a service configured for N workers runs N+1 consumers.
+     * Workers are never respawned: when one dies the whole process exits with code
+     * 1, leaving supervision to the process manager.
+     */
     multiProcess: boolean;
+    /**
+     * Workers to fork per CPU core. Ignored unless
+     * {@link IMQServiceOptions.multiProcess} is true.
+     *
+     * @defaultValue 1
+     */
     childrenPerCore: number;
+    /**
+     * Built-in metrics HTTP listener settings.
+     *
+     * @remarks
+     * Merged separately over {@link DEFAULT_IMQ_METRICS_SERVER_OPTIONS}, so
+     * supplying a partial object keeps the default port and formatter.
+     */
     metricsServer?: IMQMetricsServerOptions;
+    /**
+     * Pre-dispatch hook. See {@link IMQBeforeCall}.
+     */
     beforeCall?: IMQBeforeCall<IMQService>;
+    /**
+     * Post-response hook. See {@link IMQAfterCall}.
+     */
     afterCall?: IMQAfterCall<IMQService>;
+    /**
+     * Around hook wrapping the method invocation. See {@link IMQWrapCall}.
+     */
     wrapCall?: IMQWrapCall<IMQService>;
 }
 
 /**
  * Options accepted by a generated IMQ client.
+ *
+ * @remarks
+ * Extends the core queue options, so all transport settings are accepted as well.
+ * Note that `path`, `compile`, `write` and `timeout` affect code generation
+ * only and have no effect on an already-generated client at runtime.
  */
 export interface IMQClientOptions extends IMQOptions {
+    /**
+     * Directory the generated client is written to, resolved relative to the
+     * process working directory.
+     *
+     * @defaultValue './src/clients'
+     *
+     * @remarks
+     * Created only one level deep, so the parent directories must already exist —
+     * the default fails with `ENOENT` on a project that has no `./src` yet.
+     */
     path: string;
+    /**
+     * Transpile the generated client and evaluate it in-process, returning its
+     * exports.
+     *
+     * @defaultValue true
+     *
+     * @remarks
+     * With `false`, generation only emits files and client creation resolves to
+     * `null`.
+     */
     compile: boolean;
+    /**
+     * Milliseconds the client generator waits for the target service to answer
+     * its description request before failing.
+     *
+     * @defaultValue 30000
+     *
+     * @remarks
+     * Despite the name this is not an RPC timeout and has no effect on runtime
+     * calls — use {@link IMQClientOptions.callTimeout} for those.
+     */
     timeout: number;
+    /**
+     * Persist the generated `.ts` and `.js` pair in {@link IMQClientOptions.path}.
+     *
+     * @defaultValue true
+     *
+     * @remarks
+     * Existing files are silently overwritten.
+     */
     write: boolean;
-    // Per-call timeout in milliseconds. When set to a positive number, every
-    // remote call that has not received a response within the given time (plus
-    // any requested IMQDelay) is rejected with an IMQ_RPC_CALL_TIMEOUT error
-    // and its pending resolver is released. When 0 or unset, calls wait
-    // indefinitely (a hung service keeps the caller's promise pending
-    // forever), so enabling it is recommended for production use.
+    /**
+     * Per-call timeout in milliseconds.
+     *
+     * @remarks
+     * When set to a positive number, every remote call that has not received a
+     * response within the given time — plus any requested {@link IMQDelay} — is
+     * rejected with an `IMQ_RPC_CALL_TIMEOUT` error and its pending resolver is
+     * released. The internal timer is unref'd, so a pending call does not keep the
+     * process alive.
+     *
+     * Unset by default, which means calls wait indefinitely and a hung or absent
+     * service keeps the caller's promise pending forever. Enabling it is recommended
+     * for production use.
+     */
     callTimeout?: number;
+    /**
+     * Pre-dispatch hook. See {@link IMQBeforeCall}; on a client it receives the
+     * request only.
+     */
     beforeCall?: IMQBeforeCall<IMQClient>;
+    /**
+     * Post-settle hook. See {@link IMQAfterCall}.
+     */
     afterCall?: IMQAfterCall<IMQClient>;
+    /**
+     * Share a single reply queue and transport connection across every client in the
+     * process, instead of one per client.
+     *
+     * @defaultValue false
+     *
+     * @remarks
+     * `queueName` then becomes the shared host-level name rather than a per-client
+     * one, and each client keeps a private queue only for subscriptions.
+     * Shared-queue teardown is reference-counted, so destroying one client leaves the
+     * others working — but stopping one client stops reply delivery for every
+     * client in the process.
+     *
+     * Use it to bound Redis connections when a process instantiates many clients.
+     */
     singleQueue?: boolean;
 }
 
 /**
- * Default service options
+ * Default options applied to every IMQ service: the core queue defaults, plus
+ * cleanup enabled with a `'*:client'` filter, single-process mode, and one worker
+ * per core.
  *
- * @type {IMQServiceOptions}
+ * @remarks
+ * Note the two deliberate overrides of the core defaults: `cleanup` is `true`
+ * (core defaults to `false`) and `cleanupFilter` is `'*:client'` (core `'*'`). So a
+ * starting service prunes abandoned client queue keys, and the filter
+ * deliberately excludes service queues.
+ *
+ * Metrics-server defaults are not part of this object — they live in
+ * {@link DEFAULT_IMQ_METRICS_SERVER_OPTIONS} and are merged in separately by the
+ * service constructor.
  */
 export const DEFAULT_IMQ_SERVICE_OPTIONS: IMQServiceOptions = {
     ...DEFAULT_IMQ_OPTIONS,
@@ -127,8 +318,6 @@ export const DEFAULT_IMQ_SERVICE_OPTIONS: IMQServiceOptions = {
 
 /**
  * Default metrics server options
- *
- * @type {NonNullable<IMQMetricsServerOptions>}
  */
 export const DEFAULT_IMQ_METRICS_SERVER_OPTIONS: NonNullable<IMQMetricsServerOptions> =
     {
@@ -139,9 +328,17 @@ export const DEFAULT_IMQ_METRICS_SERVER_OPTIONS: NonNullable<IMQMetricsServerOpt
     };
 
 /**
- * Default client options
+ * Default options applied to every generated IMQ client: the core queue defaults,
+ * plus cleanup enabled with a `'*:client'` filter and the code-generation settings.
  *
- * @type {IMQClientOptions}
+ * @remarks
+ * What is intentionally absent matters as much as what is present:
+ * {@link IMQClientOptions.callTimeout} is unset, so runtime calls never time out
+ * unless you set it, and {@link IMQClientOptions.singleQueue} is unset, so every
+ * client creates its own queue.
+ *
+ * As with the service defaults, `cleanup: true` and `cleanupFilter: '*:client'`
+ * override the core defaults, and `timeout` applies to the generator only.
  */
 export const DEFAULT_IMQ_CLIENT_OPTIONS: IMQClientOptions = {
     ...DEFAULT_IMQ_OPTIONS,
