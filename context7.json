@@ -35,7 +35,7 @@
     "Hooks are invoked bound to the service or client instance, so use a `function` expression if you need `this` — an arrow function never receives it.",
     "The built-in metrics server is off by default. Enabling it serves one unauthenticated route, GET /metrics, bound to all interfaces on port 9090.",
     "There is no service discovery and no load balancer to configure — the queue does the routing.",
-    "Requires Node.js 22.12+ and Redis 3.2+ (default connection localhost:6379). The package is ESM-only, so consumers must use `import`, not `require()`.",
+    "Requires Node.js 22.12+ and Redis 6.2+ (default connection localhost:6379). 6.2 is the floor because guaranteed delivery uses LMOVE/BLMOVE; 3.2+ is enough only with safeDelivery off. The package is ESM-only, so use `import`, not `require()`.",
     "index.ts re-exports @imqueue/core as well, so the queue API is available from '@imqueue/rpc' without a second import.",
     "Related packages: @imqueue/core is the message queue underneath, @imqueue/cli scaffolds services and generates clients.",
     "@imqueue/rpc is GPL-3.0-only. Commercial licensing for closed-source products: https://imqueue.com/license/.",
