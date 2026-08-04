@@ -103,9 +103,31 @@ export class UserService extends IMQService {
 }
 ```
 
-Generate the client with `@imqueue/cli` (`imq client generate UserService`) or
-at runtime with `IMQClient.create('UserService')`, then
-`const c = new UserServiceClient(); await c.start(); await c.get('42');`.
+Generate the client with `@imqueue/cli`. The name is the service's **class**
+name, because that is also its queue name:
+
+```bash
+imq client generate UserService ./src/clients
+```
+
+The generated module exports exactly one symbol: a namespace named after the
+service with a lower-case first letter, holding a client class whose trailing
+`Service` is replaced by `Client` (see `clientName`/`namespaceName` in
+[`src/IMQClient.ts`](./src/IMQClient.ts)). The class itself has no top-level
+export, so importing it by name does not resolve:
+
+```typescript
+import { userService } from './src/clients/UserService.js';
+
+// callTimeout is unset by default, which means calls wait forever.
+const client = new userService.UserClient({ callTimeout: 5000 });
+
+await client.start();
+await client.get('42');
+```
+
+`IMQClient.create('UserService')` does the same at runtime, and resolves to that
+namespace object — not to a client instance.
 
 ## License
 
