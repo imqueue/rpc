@@ -294,6 +294,30 @@ export interface IMQClientOptions extends IMQOptions {
 }
 
 /**
+ * Process-wide anchor for the mutable default-option singletons below.
+ *
+ * @remarks
+ * A module can be evaluated more than once inside one process: a loader that
+ * handles ESM and CJS through separate pipelines — `tsx`, for one — produces a
+ * distinct instance for `require('@imqueue/rpc')` and `import('@imqueue/rpc')`.
+ * Ordinary module-scope objects would then exist twice, and anything that
+ * *mutates* them to install behaviour would silently patch a copy the
+ * application never calls. `@imqueue/opentelemetry` does exactly that to attach
+ * its `beforeCall`/`afterCall`/`wrapCall` tracing hooks, and produced no spans
+ * at all under such a loader, with no error to explain it.
+ *
+ * Keying on `Symbol.for` makes these singletons per *process* rather than per
+ * module evaluation, so every instance hands out the same object and a mutation
+ * through any of them is visible to all.
+ */
+const shared = <T extends object>(key: string, create: () => T): T => {
+    const anchor = globalThis as unknown as Record<symbol, T | undefined>;
+    const symbol = Symbol.for(`@imqueue/rpc:${key}`);
+
+    return (anchor[symbol] ??= create());
+};
+
+/**
  * Default options applied to every IMQ service: the core queue defaults, plus
  * cleanup enabled with a `'*:client'` filter, single-process mode, and one worker
  * per core.
@@ -308,13 +332,16 @@ export interface IMQClientOptions extends IMQOptions {
  * {@link DEFAULT_IMQ_METRICS_SERVER_OPTIONS} and are merged in separately by the
  * service constructor.
  */
-export const DEFAULT_IMQ_SERVICE_OPTIONS: IMQServiceOptions = {
-    ...DEFAULT_IMQ_OPTIONS,
-    cleanup: true,
-    cleanupFilter: '*:client',
-    multiProcess: false,
-    childrenPerCore: 1,
-};
+export const DEFAULT_IMQ_SERVICE_OPTIONS: IMQServiceOptions = shared(
+    'DEFAULT_IMQ_SERVICE_OPTIONS',
+    () => ({
+        ...DEFAULT_IMQ_OPTIONS,
+        cleanup: true,
+        cleanupFilter: '*:client',
+        multiProcess: false,
+        childrenPerCore: 1,
+    }),
+);
 
 /**
  * Default metrics server options
@@ -340,12 +367,15 @@ export const DEFAULT_IMQ_METRICS_SERVER_OPTIONS: NonNullable<IMQMetricsServerOpt
  * As with the service defaults, `cleanup: true` and `cleanupFilter: '*:client'`
  * override the core defaults, and `timeout` applies to the generator only.
  */
-export const DEFAULT_IMQ_CLIENT_OPTIONS: IMQClientOptions = {
-    ...DEFAULT_IMQ_OPTIONS,
-    cleanup: true,
-    cleanupFilter: '*:client',
-    path: './src/clients',
-    compile: true,
-    timeout: 30000,
-    write: true,
-};
+export const DEFAULT_IMQ_CLIENT_OPTIONS: IMQClientOptions = shared(
+    'DEFAULT_IMQ_CLIENT_OPTIONS',
+    () => ({
+        ...DEFAULT_IMQ_OPTIONS,
+        cleanup: true,
+        cleanupFilter: '*:client',
+        path: './src/clients',
+        compile: true,
+        timeout: 30000,
+        write: true,
+    }),
+);
