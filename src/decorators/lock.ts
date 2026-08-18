@@ -82,6 +82,10 @@ export function lock(enabledOrOptions: boolean | LockOptions = true): any {
                 !parseInt(process.env['DISABLE_LOCKS'] + '') && enabled;
             let lock: AcquiredLock<T>;
             let sig: string = '';
+            // identifies THIS call as the holder, so a release that arrives
+            // after the deadlock timeout gave the key away cannot land on
+            // whoever holds it now
+            let token: number | undefined;
 
             if (withLocks) {
                 sig = signature(
@@ -100,6 +104,8 @@ export function lock(enabledOrOptions: boolean | LockOptions = true): any {
                 if (!IMQLock.locked(sig)) {
                     return <T>lock;
                 }
+
+                token = IMQLock.token(sig);
             }
 
             try {
@@ -116,13 +122,13 @@ export function lock(enabledOrOptions: boolean | LockOptions = true): any {
                 }
 
                 if (withLocks) {
-                    IMQLock.release(sig, result);
+                    IMQLock.release(sig, result, undefined, token);
                 }
 
                 return result;
             } catch (err) {
                 if (withLocks) {
-                    IMQLock.release(sig, null, err);
+                    IMQLock.release(sig, null, err, token);
                 }
 
                 throw err;
