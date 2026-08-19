@@ -1,3 +1,20 @@
 {
-   "signedContributors": []
+  "signedContributors": [
+    {
+      "name": "creomobile",
+      "id": 25711804,
+      "comment_id": 5346985474,
+      "created_at": "2026-08-19T19:27:27Z",
+      "repoId": 124483013,
+      "pullRequestNo": 34
+    },
+    {
+      "name": "creomobile",
+      "id": 25711804,
+      "comment_id": 5347025718,
+      "created_at": "2026-08-19T19:31:25Z",
+      "repoId": 124483013,
+      "pullRequestNo": 34
+    }
+  ]
 }
