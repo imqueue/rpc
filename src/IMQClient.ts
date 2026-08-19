@@ -48,6 +48,7 @@ import {
     fileExists,
     mkdir,
     writeFile,
+    logSafe,
     SIGNALS,
 } from './helpers/index.js';
 import { EventEmitter } from 'node:events';
@@ -162,6 +163,7 @@ export abstract class IMQClient extends EventEmitter {
     private readonly signalHandlers: Array<[string, (...args: any[]) => void]> =
         [];
     private readonly logger: ILogger;
+
     private resolvers: {
         [id: string]: [
             (data: AnyJson, res: IMQRPCResponse) => void,
@@ -388,6 +390,8 @@ export abstract class IMQClient extends EventEmitter {
                         // extends the budget accordingly
                         timer = setTimeout(() => {
                             delete this.resolvers[id];
+                            // not logged here: the caller receives the
+                            // rejection below and decides how to report it
                             doReject(
                                 IMQError(
                                     'IMQ_RPC_CALL_TIMEOUT',
@@ -468,6 +472,18 @@ export abstract class IMQClient extends EventEmitter {
             // current redis mock, BTW it was tested manually on real
             // redis run
             if (!this.resolvers[message.to]) {
+                // a response nobody is waiting for any more: either it came
+                // after the call had been given up on, or the call was made
+                // by a process which is gone. Neither the response nor its
+                // error is logged - the response echoes the request back
+                logSafe(
+                    this.logger,
+                    'warn',
+                    `${this.serviceName}: response to request ${
+                        message?.to
+                    } has no pending call, method ${message?.request?.method}`,
+                );
+
                 // when there is no resolvers it means
                 // we have message in queue which was initiated
                 // by some process which is broken. So we provide an
