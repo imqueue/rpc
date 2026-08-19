@@ -75,4 +75,82 @@ describe('IMQService reply-publish failure', () => {
             process.removeListener('unhandledRejection', unhandled as any);
         },
     );
+
+    it('should keep returning the message id of the sent response', async () => {
+        const logger: any = {
+            info: () => {},
+            warn: () => {},
+            error: () => {},
+            log: () => {},
+        };
+        const order: string[] = [];
+
+        service = new ReplyFailService({
+            logger,
+            afterCall: (async () => {
+                order.push('afterCall');
+            }) as any,
+        });
+        await service.start();
+
+        mock.method(service.imq, 'send', async () => {
+            order.push('send');
+
+            return 'the-sent-id';
+        });
+
+        const { send: sendResponse } = await import('../index.js');
+        const request: IMQRPCRequest = {
+            from: 'ReplyFailClient',
+            method: 'ping',
+            args: [],
+        };
+        const id = await sendResponse(
+            request,
+            { to: 'request-id', data: null, error: null, request },
+            service,
+        );
+
+        assert.equal(id, 'the-sent-id');
+        assert.deepEqual(order, ['send', 'afterCall']);
+    });
+
+    it('should call core send without an error handler of its own', async () => {
+        const logger: any = {
+            info: () => {},
+            warn: () => {},
+            error: () => {},
+            log: () => {},
+        };
+
+        service = new ReplyFailService({ logger });
+        await service.start();
+
+        const seen: any[] = [];
+
+        mock.method(service.imq, 'send', async (...args: any[]) => {
+            seen.push(args);
+
+            return 'sent-id';
+        });
+
+        const { send: sendResponse } = await import('../index.js');
+        const request: IMQRPCRequest = {
+            from: 'ReplyFailClient',
+            method: 'ping',
+            args: [],
+        };
+
+        await sendResponse(
+            request,
+            { to: 'request-id', data: null, error: null, request },
+            service,
+        );
+
+        // a rejected response write is core's to report: rpc passes no
+        // fourth-argument error handler, exactly as it always did
+        assert.equal(seen.length, 1);
+        assert.equal(seen[0].length, 2);
+        assert.equal(seen[0][0], 'ReplyFailClient');
+    });
 });

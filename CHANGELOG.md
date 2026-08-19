@@ -6,6 +6,40 @@ log.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **A response that arrives with no pending call left is now visible in the
+  log.** The line is written through the configured logger on every such
+  response, names the service, the method and the request id, and never the
+  arguments, the request or the response object (which echoes the whole
+  request back) or an error text. It tells a late reply apart from a service
+  that never answered, and after a restart it names the backlog the previous
+  process left behind.
+
+  A reply that could not be written to the caller's queue is reported by
+  `@imqueue/core` itself, as part of its write-failure episode reporting, so
+  this package adds no reporting of its own there. A call that got no
+  response within `callTimeout` is not logged here either: the caller
+  receives the `IMQ_RPC_CALL_TIMEOUT` rejection and decides how to report it.
+
+### Changed
+
+- **`@logged()` now names the class and the method instead of dumping the
+  error.** The line reads `Class.method() failed, code <code>`. The code is
+  never taken from the error as it is: only an allow-listed code is printed —
+  an `IMQ_`-prefixed framework code, a system `E…` code, a small integer, a
+  known redis reply code or one of a few known redis-client failure messages
+  mapped to codes of our own; everything else, the error's class name
+  included, is reported as `unknown`. The caught value itself, its message and its
+  stack are no longer printed: an application error may carry personal data,
+  and an imq error carries the call arguments in its properties. The method
+  name now also reaches the line under standard (TC39) decorators, where it was
+  previously unavailable. Everything else is unchanged, including which logger
+  is resolved, `doNotThrow`, the re-thrown value and the fact that a throwing
+  logger replaces the original error.
+
 ## [3.4.4] - 2026-07-26
 
 ### Changed

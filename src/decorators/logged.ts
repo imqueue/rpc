@@ -22,6 +22,29 @@
  * <support@imqueue.com> to get commercial licensing options.
  */
 import { type ILogger } from '@imqueue/core';
+import { errorCode } from '../helpers/index.js';
+
+/**
+ * Name of the class a decorated method was called on, or `unknown` when it
+ * cannot be told.
+ *
+ * @param self - the `this` of the decorated call
+ * @returns the class name
+ *
+ * @remarks
+ * On a static method `this` is the class itself, so its own name is the answer
+ * there — going through the constructor would report `Function`.
+ */
+function className(self: any): string {
+    try {
+        const name =
+            typeof self === 'function' ? self.name : self?.constructor?.name;
+
+        return typeof name === 'string' && name ? name : 'unknown';
+    } catch {
+        return 'unknown';
+    }
+}
 
 /**
  * Names of the `ILogger` methods {@link logged} can use to record a caught
@@ -64,12 +87,14 @@ export interface LoggedDecoratorOptions {
 
 /**
  * Creates a `@logged()` method decorator that wraps the decorated method in a
- * try/catch and logs any error it throws. The logger is resolved in this
- * order: an explicitly passed logger, then a `logger` defined on the instance
- * or on the class, and finally the global `console`. By default the error is
- * re-thrown after being logged; pass `{ doNotThrow: true }` to swallow it. The
- * returned decorator is dual-mode: it works both as a standard (TC39) and as a
- * legacy method decorator.
+ * try/catch and logs any error it throws. The logged line names the class, the
+ * method and an allow-listed failure code — never the error object itself,
+ * whose message, stack and properties may carry application data. The logger
+ * is resolved in this order: an explicitly passed logger, then a `logger`
+ * defined on the instance or on the class, and finally the global `console`.
+ * By default the error is re-thrown after being logged; pass
+ * `{ doNotThrow: true }` to swallow it. The returned decorator is dual-mode:
+ * it works both as a standard (TC39) and as a legacy method decorator.
  *
  * @param options - a logger to use, or the
  *  logged-decorator options
@@ -82,7 +107,7 @@ export function logged(options?: ILogger | LoggedDecoratorOptions): any {
             : 'error';
     const doThrow = !options || !(options as LoggedDecoratorOptions).doNotThrow;
 
-    const wrap = (original: (...args: any[]) => any) =>
+    const wrap = (original: (...args: any[]) => any, method?: string) =>
         async function <T>(this: any, ...args: any[]): Promise<T | void> {
             try {
                 if (original) {
@@ -103,7 +128,25 @@ export function logged(options?: ILogger | LoggedDecoratorOptions): any {
                               ? ((this.constructor as any).logger as ILogger)
                               : console;
 
-                (logger as any)[level](err);
+                // the caught value itself is never printed: an application
+                // error may carry personal data, and an imq error carries the
+                // call arguments in its own properties. Only the class, the
+                // method and the failure code go out
+                let where = 'unknown.unknown()';
+                let code = 'unknown';
+
+                try {
+                    where = `${className(this)}.${method || 'unknown'}()`;
+                    code = errorCode(err);
+                } catch {
+                    // extraction must never replace the original error, so
+                    // the fallbacks above stand
+                }
+
+                // deliberately not contained: a throwing logger replaces the
+                // original error today, and changing that would be a change
+                // of behaviour rather than of logging
+                (logger as any)[level](`${where} failed, code ${code}`);
 
                 if (doThrow) {
                     throw err;
@@ -117,10 +160,10 @@ export function logged(options?: ILogger | LoggedDecoratorOptions): any {
     // (target, propertyKey, descriptor).
     return function (target: any, context: any, descriptor?: any): any {
         if (context && typeof context === 'object' && 'kind' in context) {
-            return wrap(target);
+            return wrap(target, context.name && String(context.name));
         }
 
-        descriptor.value = wrap(descriptor.value);
+        descriptor.value = wrap(descriptor.value, context && String(context));
 
         return descriptor;
     };
