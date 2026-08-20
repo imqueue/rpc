@@ -4,9 +4,13 @@ Notable changes to `@imqueue/rpc`. Entries start at 3.3.1 — the first release
 whose behavior changes needed a written record; earlier history is in the git
 log.
 
+A released version absent from this file changed no behavior — it was a
+documentation or CI-only release. Dependency bumps do get an entry, because a
+raised `@imqueue/core` floor is how most fixes in the transport reach a service.
+
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.7.0] - 2026-08-20
 
 ### Added
 
@@ -39,6 +43,107 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   previously unavailable. Everything else is unchanged, including which logger
   is resolved, `doNotThrow`, the re-thrown value and the fact that a throwing
   logger replaces the original error.
+
+- Raised the `@imqueue/core` dependency to `^3.4.0`, which reports the
+  transport's previously silent failures through the configured logger — among
+  them a reply that could not be written back to the caller's queue, which is
+  why this package adds no reporting of its own there.
+
+## [3.6.1] - 2026-08-18
+
+### Changed
+
+- Raised the `@imqueue/core` dependency to `^3.3.3`, which stops a starting
+  queue overwriting the server-global `notify-keyspace-events` configuration.
+
+## [3.6.0] - 2026-08-18
+
+### Fixed
+
+- **A `@lock()`'d call could resolve waiters with another call's result, and one
+  waiter's timeout rejected all of them.** `IMQLock.deadlockTimeout` rejected
+  through `release()`, which does two things a timeout has no business doing: it
+  deleted the holder's lock while the holder was still running, and it drained
+  the whole queue.
+
+  The first let a later call acquire the freed key and run alongside the original
+  holder — and when that holder finally finished, its release landed on the *new*
+  holder's lock, resolving waiters with a result computed for a call they had
+  nothing to do with and freeing a lock still in use, letting a third call in
+  behind it. Silently wrong values, under exactly the overlapping load that
+  coalescing `@lock()` exists to collapse. The second meant a call that arrived
+  a moment ago died for an older call's patience.
+
+  Locks now carry a token. `release()` takes it as an optional fourth argument
+  and is ignored when a different call owns the key; an unowned key is not a
+  conflict, so a straggler can still satisfy waiters nobody else will. `lock()`
+  reads the token and passes it, so every decorator user is covered with no code
+  change, and a release without a token behaves exactly as before. The timer now
+  splices out its own task and rejects only that waiter, while still freeing the
+  key — a holder that never releases would otherwise poison it for the life of
+  the process.
+
+## [3.5.4] - 2026-08-09
+
+### Fixed
+
+- **Tracing hooks installed on the default options could patch a copy nothing
+  ever called.** `DEFAULT_IMQ_SERVICE_OPTIONS` and `DEFAULT_IMQ_CLIENT_OPTIONS`
+  were plain module-scope objects, so a process that evaluated this module twice
+  held two copies — which is what a loader handling ESM and CJS through separate
+  pipelines does: under `tsx`, `require('@imqueue/rpc')` and
+  `import('@imqueue/rpc')` return distinct instances.
+
+  Anything that installs behavior by mutating those objects then patched a copy
+  the application never calls. `@imqueue/opentelemetry` attaches its
+  `beforeCall`/`afterCall`/`wrapCall` hooks that way, and produced no spans at
+  all under such a loader — with no error, since the patch itself succeeded.
+
+  Both are now keyed on `Symbol.for`, making them singletons per process rather
+  than per module evaluation, so a mutation through any instance is visible to
+  all. This also removes the "duplicate installs at different tree depths"
+  caveat the instrumentation documents.
+
+## [3.5.3] - 2026-08-04
+
+### Changed
+
+- Raised the `@imqueue/core` dependency to `^3.3.2`.
+
+## [3.5.2] - 2026-08-01
+
+### Changed
+
+- Raised the `@imqueue/core` dependency to `^3.3.0`, which keeps safe-delivery
+  lease recovery and the cleanup sweep alive after a transient sweep failure,
+  and drops the unresolvable `./debug` export subpath.
+
+## [3.5.0] - 2026-07-28
+
+### Fixed
+
+- **A concrete service subclass that exposed nothing of its own answered
+  nothing.** `getClassMethods()` looked its class up in the description registry
+  by name and dereferenced `classInfo.inherits` with no guard, but `@expose()`
+  registers only the class that *declares* a method — so such a subclass had no
+  registry entry at all and `describe()` threw a `TypeError` on it.
+
+  The failure was silent and total: `processRequest()` calls `describe()` on
+  every request and the constructor's `.catch` sends the rejection to the logger,
+  so the service returned no error response and no rejection. Callers hung until
+  their own `callTimeout`, which is unset by default.
+
+  Guarding the lookup alone would have traded the hang for a different wrong
+  answer — the walk follows the registry's `inherits` links, so it would have
+  stopped at the gap and lost every ancestor's exposed methods, denying all calls
+  with `IMQ_RPC_NO_ACCESS`. The function now walks the runtime prototype chain,
+  which has no gaps, applying each link root-first so a subclass method still
+  overrides a same-named parent one. `getClassMethods` is module-private, so the
+  signature change is not an API change.
+
+- **The metrics endpoint advertised `plain/text`**, which is not a valid MIME
+  type, so scrapers keying on content type saw an unknown one. It is now
+  `text/plain`.
 
 ## [3.4.4] - 2026-07-26
 
