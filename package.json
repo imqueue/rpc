@@ -51,7 +51,7 @@
   "author": "imqueue.com <support@imqueue.com> (https://imqueue.com)",
   "license": "GPL-3.0-only",
   "dependencies": {
-    "@imqueue/core": "^3.4.0",
+    "@imqueue/core": "^3.4.2",
     "acorn": "^8.17.0",
     "typescript": "^7.0.2"
   },
