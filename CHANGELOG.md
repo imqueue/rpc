@@ -10,6 +10,27 @@ raised `@imqueue/core` floor is how most fixes in the transport reach a service.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.1] - 2026-08-22
+
+### Changed
+
+- Raised the `@imqueue/core` dependency to `^3.4.2`. Recorded because this file's
+  rule is that dependency bumps get an entry — but unlike the previous floor
+  raise, this one carries nothing from the transport: `3.4.1` and `3.4.2` were a
+  documentation and packaging pair, a licence badge that linked through the
+  long-dead `rawgit.com` and a `repository.url` that used `git://`, which stopped
+  resolving when GitHub retired its git daemon. A reader comparing floors should
+  know this one moves no behavior.
+
+### Fixed
+
+- `repository.url` read `git@github.com/imqueue/rpc.git` — no colon after the
+  host, so it was not a valid SSH URL or a valid URL of any other kind. npm
+  normalised it on publish to `git+ssh://git@github.com/imqueue/rpc.git`, which
+  resolves only for someone holding a key on the account, while npm renders this
+  field as the package's Repository link for anonymous readers. It is now
+  `git+https://github.com/imqueue/rpc.git`.
+
 ## [3.7.0] - 2026-08-20
 
 ### Added
