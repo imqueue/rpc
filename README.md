@@ -1,6 +1,8 @@
 # I Message Queue RPC (@imqueue/rpc)
 
-[![License](https://img.shields.io/badge/license-GPL-blue.svg)](https://rawgit.com/imqueue/rpc/master/LICENSE)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/imqueue/rpc/build.yml)](https://github.com/imqueue/rpc/actions/workflows/build.yml)
+[![npm version](https://img.shields.io/npm/v/@imqueue/rpc)](https://www.npmjs.com/package/@imqueue/rpc)
+[![License](https://img.shields.io/badge/license-GPL-blue.svg)](https://github.com/imqueue/rpc/blob/master/LICENSE)
 
 RPC-like client-service implementation over messaging queue. This module
 provides base set of abstract classes and decorators to build services and 
@@ -14,7 +16,9 @@ on) and [@imqueue/cli](https://github.com/imqueue/cli) (scaffolding & client
 generation).
 
 **Using an AI assistant?** Point it at [imqueue.org/llms.txt](https://imqueue.org/llms.txt)
-for a machine-readable index of the docs, or see [AGENTS.md](./AGENTS.md).
+for a machine-readable index of the docs, or see [AGENTS.md](./AGENTS.md). Current
+version, licence and Node floor for every package:
+[imqueue.org/status.json](https://imqueue.org/status.json).
 
 ## Why?
 
