@@ -10,6 +10,57 @@ raised `@imqueue/core` floor is how most fixes in the transport reach a service.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Opt-in graceful shutdown draining.** With `IMQ_DRAIN_ENABLE=1` — or the new
+  `drain` service option — `SIGTERM` and `SIGINT` now stop consuming, wait for
+  the requests already being handled, publish their replies, tear the transport
+  down and exit `0`, in that order. The order is the feature: `stop()` drops the
+  reader connection only, so the writer that in-flight replies need stays up
+  until `destroy()` runs *after* the wait. Previously the signal handler started
+  `destroy()` without awaiting it and force-exited on a fixed timer, so a
+  handler still running was abandoned, no reply was ever published, and its
+  caller was left holding a promise that never settled — silently, with exit
+  code 0.
+- **`IMQ_DRAIN_TIMEOUT` / the `drainTimeout` option**, the drain budget in
+  milliseconds, default `4000`. The wait is always bounded: whatever has not
+  finished by then is abandoned and logged, and the process exits `0` anyway.
+  The default is set by the `imq stop` CLI, which signals the process group,
+  polls for about five seconds, then sends `SIGKILL` — a budget above that would
+  make the local CLI harsher than a Kubernetes deployment, whose
+  `terminationGracePeriodSeconds` defaults to 30 s.
+
+  Both variables are read numerically, consistent with the rest of the `IMQ_*`
+  family, but a non-numeric value throws at construction instead of falling back
+  to the default — `IMQ_DRAIN_ENABLE=true` coerces to `NaN` under that
+  convention, and a feature flag that quietly reads as *off* is the failure mode
+  worth being loud about.
+
+### Changed
+
+- With draining enabled, requests are tracked at the single point where an
+  incoming message is dispatched, so every `@expose()`d method is covered
+  automatically — no per-method wrapper to add and none to forget. Bookkeeping
+  attaches to a *derived* promise, leaving a handler's rejection its caller's to
+  handle and never producing an unhandled rejection of its own.
+- With draining enabled, a service forces `handleSignals: false` on its queue
+  and its drain takes over the signal handlers this package registered —
+  `IMQService`'s own, and any `IMQClient`'s in the same process — each by the
+  exact function reference that was registered, so handlers belonging to
+  unrelated libraries are left in place. A second signal during a drain forces
+  an immediate exit.
+- **Nothing changes with `IMQ_DRAIN_ENABLE` unset or `0`**, which is the
+  default: the signal handlers, the timing and the dispatch path are what they
+  were, down to the tracking set that is never allocated. Covered by a
+  regression test that signals a real process mid-handler and asserts the
+  handler is still abandoned.
+
+  Delivery remains at-least-once in every mode. A drain narrows the window in
+  which in-flight work is lost, it does not close it: `SIGKILL`, an OOM kill or
+  a lost node still take it, and handlers still need to be idempotent.
+
 ## [3.7.1] - 2026-08-22
 
 ### Changed

@@ -261,6 +261,48 @@ Because standard decorators provide no runtime type reflection (there is no
 and `removeComments` must remain `false` so those comments survive compilation.
 Undocumented parameters fall back to `any` in generated clients.
 
+## Graceful shutdown
+
+By default a service signalled mid-request abandons it: the signal handler
+starts `destroy()` without awaiting it and force-exits after
+`IMQ_SHUTDOWN_TIMEOUT`, so the handler never finishes, no reply is published,
+and the caller waits on a promise that never settles.
+
+Opt into draining and `SIGTERM`/`SIGINT` instead stop consuming, wait for the
+requests already in flight, then tear down and exit `0`:
+
+~~~bash
+IMQ_DRAIN_ENABLE=1
+~~~
+
+| variable | option | default | meaning |
+|---|---|---|---|
+| `IMQ_DRAIN_ENABLE` | `drain` | `0` | run a drain on `SIGTERM`/`SIGINT` |
+| `IMQ_DRAIN_TIMEOUT` | `drainTimeout` | `4000` | drain budget, milliseconds |
+
+~~~typescript
+const service = new UserService({ drain: true, drainTimeout: 4000 });
+~~~
+
+Both are read numerically, like the rest of the `IMQ_*` family — and a
+non-numeric value throws at construction rather than silently reading as *off*.
+Every `@expose()`d method is tracked automatically; there is nothing to wrap.
+
+The 4000 ms default sits inside the `imq stop` CLI's five-second
+`SIGTERM`-to-`SIGKILL` window, which is tighter than Kubernetes'
+30-second `terminationGracePeriodSeconds` — raise it for a cluster deployment if
+your handlers need longer.
+
+Two things to know. Enabling the drain forces `handleSignals: false` on the
+service's queue, because the queue layer's own handler exits without waiting;
+and the drain takes over the signal handlers this framework registered — by
+exact function reference, so handlers installed by other libraries are
+untouched. A second signal during a drain exits immediately.
+
+Delivery remains **at-least-once** either way. A drain narrows the window in
+which in-flight work is lost; `SIGKILL`, an OOM kill or a lost node still take
+it, so handlers must stay idempotent.
+
 ## Notes
 
 For image containers builds assign machine UUID in `/etc/machine-id` and 

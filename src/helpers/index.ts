@@ -25,3 +25,4 @@ export * from './os-uuid.js';
 export * from './pid.js';
 export * from './fs.js';
 export * from './logging.js';
+export * from './drain.js';

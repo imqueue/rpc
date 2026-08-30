@@ -50,6 +50,9 @@ import {
     writeFile,
     logSafe,
     SIGNALS,
+    addTrackedSignalHandler,
+    removeTrackedSignalHandler,
+    isProcessDrainEnabled,
 } from './helpers/index.js';
 import { EventEmitter } from 'node:events';
 import { Script } from 'node:vm';
@@ -214,6 +217,16 @@ export abstract class IMQClient extends EventEmitter {
         }
 
         this.options = { ...DEFAULT_IMQ_CLIENT_OPTIONS, ...options };
+
+        if (isProcessDrainEnabled()) {
+            // a client's queue would otherwise install the queue layer's own
+            // signal handlers, which exit the process without waiting — enough
+            // to cut short a drain running in the same process. Suppressing
+            // them uses the existing option and only ever happens when
+            // draining was explicitly opted into.
+            this.options.handleSignals = false;
+        }
+
         this.id = pid(baseName);
         this.logger = this.options.logger || /* istanbul ignore next */ console;
         this.hostName =
@@ -237,9 +250,12 @@ export abstract class IMQClient extends EventEmitter {
                 setTimeout(() => process.exit(0), IMQ_SHUTDOWN_TIMEOUT);
             };
 
-            // tracked so destroy() can unregister them (see below)
+            // tracked so destroy() can unregister them (see below), and so a
+            // service draining in this process can take over from them: this
+            // handler exits on a fixed timer and would otherwise cut a drain
+            // short from the side
             this.signalHandlers.push([signal, handler]);
-            process.on(signal, handler);
+            addTrackedSignalHandler(signal, handler);
         });
     }
 
@@ -529,7 +545,7 @@ export abstract class IMQClient extends EventEmitter {
         // unregister this instance's process signal handlers so destroyed
         // clients do not leak process-level listeners
         for (const [signal, handler] of this.signalHandlers) {
-            process.removeListener(signal, handler);
+            removeTrackedSignalHandler(signal, handler);
         }
         this.signalHandlers.length = 0;
 

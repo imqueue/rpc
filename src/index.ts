@@ -33,3 +33,5 @@ export * from './IMQService.js';
 export * from './IMQClient.js';
 export * from './IMQMetadata.js';
 export * from './IMQRequestContext.js';
+// graceful-drain configuration surface; the remaining helpers stay internal
+export { DEFAULT_IMQ_DRAIN_TIMEOUT, DRAIN_SIGNALS } from './helpers/drain.js';

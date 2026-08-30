@@ -44,7 +44,17 @@ import {
     BEFORE_HOOK_ERROR,
     DEFAULT_IMQ_METRICS_SERVER_OPTIONS,
 } from './index.js';
-import { SIGNALS } from './helpers/index.js';
+import {
+    SIGNALS,
+    DRAIN_SIGNALS,
+    type SignalHandler,
+    addTrackedSignalHandler,
+    removeTrackedSignalHandler,
+    removeTrackedSignalHandlers,
+    drainEnabledFromEnv,
+    drainTimeoutFromEnv,
+    setProcessDrainEnabled,
+} from './helpers/index.js';
 import { cpus } from 'node:os';
 import cluster, { type Worker } from 'node:cluster';
 import { type ArgDescription } from './IMQRPCDescription.js';
@@ -92,6 +102,13 @@ export class Description {
      * a generated interface in every client.
      */
     types!: TypesDescription;
+}
+
+/**
+ * No-op used to derive a never-rejecting promise from a tracked request.
+ */
+function ignore(): void {
+    /* deliberately empty */
 }
 
 const serviceDescriptions: Map<string, Description> = new Map<
@@ -189,8 +206,33 @@ export abstract class IMQService {
      * open listener keeps the process alive.
      */
     protected metricsServer?: Server<any, any>;
-    private readonly signalHandlers: Array<[string, (...args: any[]) => void]> =
-        [];
+    private readonly signalHandlers: Array<[string, SignalHandler]> = [];
+    /**
+     * Whether this service drains in-flight requests before shutting down.
+     * Resolved once, at construction, from `options.drain` falling back to the
+     * `IMQ_DRAIN_ENABLE` environment variable.
+     */
+    private readonly drainEnabled: boolean;
+    /**
+     * Milliseconds a drain waits for in-flight requests. Resolved once, at
+     * construction, from `options.drainTimeout` falling back to the
+     * `IMQ_DRAIN_TIMEOUT` environment variable.
+     */
+    private readonly drainTimeout: number;
+    /**
+     * Requests currently being handled, as promises that never reject.
+     *
+     * @remarks
+     * Allocated only while {@link IMQService.drainEnabled} is on — with
+     * draining off there is nothing to track and nothing to allocate, so the
+     * dispatch path is byte-for-byte what it always was.
+     */
+    private readonly inFlight?: Set<Promise<void>>;
+    /**
+     * Set once a drain has begun, so a second signal can be told apart from
+     * the first and force an immediate exit.
+     */
+    private draining = false;
 
     /**
      * This service's name, which is also its queue name and the key its description
@@ -223,6 +265,16 @@ export abstract class IMQService {
      * `IMQ_SHUTDOWN_TIMEOUT` — a fixed timer, not a drain: requests still being
      * processed are not awaited.
      *
+     * With {@link IMQServiceOptions.drain} on — or `IMQ_DRAIN_ENABLE=1` —
+     * `SIGTERM` and `SIGINT` instead start a graceful drain: stop consuming,
+     * await the requests already in flight for at most
+     * {@link IMQServiceOptions.drainTimeout}, then tear down and exit `0`. That
+     * drain takes over from every signal handler this package registered,
+     * including this service's own for `SIGHUP`/`SIGQUIT` and any client's in
+     * the same process, and forces `handleSignals: false` on the queue so the
+     * queue layer does not exit mid-drain. Handlers registered by anything
+     * other than this package are never touched.
+     *
      * The merged options are passed straight to the queue factory, so `vendor` and
      * `cluster`/`clusterManagers` select the transport implementation.
      */
@@ -245,11 +297,44 @@ export abstract class IMQService {
             },
         };
         this.logger = this.options.logger || /* istanbul ignore next */ console;
+        this.drainEnabled = this.options.drain ?? drainEnabledFromEnv();
+        this.drainTimeout = this.options.drainTimeout ?? drainTimeoutFromEnv();
+
+        if (this.drainEnabled) {
+            this.inFlight = new Set<Promise<void>>();
+            // the queue layer installs its own SIGTERM/SIGINT handlers, which
+            // exit the process without waiting for in-flight work and would
+            // therefore cut a drain short. Suppressing them is what the
+            // existing `handleSignals` option is for, so no queue-side change
+            // is needed — but it does mean the drain now owns shutdown.
+            this.options.handleSignals = false;
+            setProcessDrainEnabled(true);
+        }
+
         this.imq = IMQ.create(this.name, this.options);
 
         this.handleRequest = this.handleRequest.bind(this);
 
         SIGNALS.forEach((signal: string) => {
+            if (this.drainEnabled && DRAIN_SIGNALS.includes(signal)) {
+                const handler = (): void => {
+                    // a drain that throws must not leave the process hanging
+                    // on an unhandled rejection with no handlers left
+                    this.runDrain(signal).catch(err => {
+                        this.logger.error(`${this.name}: drain failed:`, err);
+                        process.exit(1);
+                    });
+                };
+
+                // deliberately NOT put in the shared registry: a drain removes
+                // everything registered there, and this handler has to outlive
+                // that so a second signal can still force an immediate exit
+                this.signalHandlers.push([signal, handler]);
+                process.on(signal, handler);
+
+                return;
+            }
+
             const handler = (): void => {
                 this.destroy().catch(this.logger.error);
 
@@ -260,24 +345,166 @@ export abstract class IMQService {
                 setTimeout(() => process.exit(0), IMQ_SHUTDOWN_TIMEOUT);
             };
 
-            // tracked so destroy() can unregister them (see below)
+            // tracked so destroy() can unregister them (see below), and so a
+            // drain elsewhere in this process can take over from them
             this.signalHandlers.push([signal, handler]);
-            process.on(signal, handler);
+            addTrackedSignalHandler(signal, handler);
         });
 
         // guard the async handler: a failure while processing or publishing
         // the response (e.g. the broker went away mid-reply) must be logged,
         // not surface as an unhandled rejection and crash the process
-        this.imq.on(
-            'message',
-            ((request: IMQRPCRequest, id: string): Promise<string | void> =>
-                this.handleRequest(request, id).catch(err =>
-                    this.logger.error(
-                        `${this.name}: error handling request:`,
-                        err,
-                    ),
-                )) as any,
+        this.imq.on('message', ((
+            request: IMQRPCRequest,
+            id: string,
+        ): Promise<string | void> => {
+            const handled = this.handleRequest(request, id).catch(err =>
+                this.logger.error(`${this.name}: error handling request:`, err),
+            );
+
+            // fast path with draining off: no set, no tracking, no
+            // allocation beyond what this dispatch already did
+            return this.inFlight ? this.track(handled) : handled;
+        }) as any);
+    }
+
+    /**
+     * Records a dispatched request as in-flight until it settles, and hands the
+     * original promise straight back.
+     *
+     * @param handled - the dispatch promise for one incoming message
+     * @returns `handled`, unchanged
+     *
+     * @remarks
+     * Bookkeeping observes a *derived* promise, never `handled` itself: a
+     * rejection therefore stays the original caller's to handle, and the
+     * tracking cannot manufacture an unhandled rejection of its own. The
+     * derived promise is what the drain waits on, so it is settled — not
+     * fulfilled — that matters.
+     */
+    private track(handled: Promise<any>): Promise<any> {
+        const inFlight = this.inFlight as Set<Promise<void>>;
+        const settled: Promise<void> = handled.then(ignore, ignore);
+
+        inFlight.add(settled);
+        void settled.then(() => {
+            inFlight.delete(settled);
+        });
+
+        return handled;
+    }
+
+    /**
+     * Drains in-flight requests and shuts the service down, in the one order
+     * that works.
+     *
+     * @param signal - the signal that started the drain
+     *
+     * @remarks
+     * `stop()` before the wait, `destroy()` after it. `stop()` drops the reader
+     * connection only, so the writer stays up and handlers still running can
+     * publish their replies; `destroy()` closes that writer, so calling it
+     * before the wait would strand exactly the replies the drain exists to
+     * deliver.
+     *
+     * The wait is bounded by {@link IMQService.drainTimeout} — never
+     * open-ended — and the process exits `0` either way.
+     *
+     * A second signal arriving mid-drain exits immediately, the familiar
+     * double-interrupt convention.
+     */
+    private async runDrain(signal: string): Promise<void> {
+        if (this.draining) {
+            this.logger.warn(
+                '%s: %s received during drain, exiting immediately',
+                this.name,
+                signal,
+            );
+            process.exit(0);
+        }
+
+        this.draining = true;
+
+        // take over from the framework's fixed-timer handlers — this service's
+        // own for the other signals, any other service's, and any client's in
+        // this process — every one of which exits without awaiting in-flight
+        // work. Only references this package registered are removed, so
+        // handlers belonging to unrelated libraries are left alone.
+        removeTrackedSignalHandlers();
+
+        const inFlight = this.inFlight as Set<Promise<void>>;
+
+        this.logger.info(
+            '%s: draining on %s, %s request(s) in flight, budget %sms',
+            this.name,
+            signal,
+            inFlight.size,
+            this.drainTimeout,
         );
+
+        await this.drainStep('stop', () => this.stop());
+
+        if (this.metricsServer) {
+            this.metricsServer.close();
+        }
+
+        await this.awaitInFlight(inFlight);
+
+        await this.drainStep('destroy', () => this.destroy());
+
+        process.exit(0);
+    }
+
+    /**
+     * Awaits every tracked request, bounded by {@link IMQService.drainTimeout}.
+     *
+     * @param inFlight - the tracked requests
+     */
+    private async awaitInFlight(inFlight: Set<Promise<void>>): Promise<void> {
+        if (!inFlight.size) {
+            return;
+        }
+
+        let timer: NodeJS.Timeout | undefined;
+        const expired = new Promise<void>(resolve => {
+            timer = setTimeout(resolve, this.drainTimeout);
+        });
+
+        // every tracked promise is derived and never rejects, so this race
+        // settles on completion or on the budget running out, never on an error
+        // Promise.all drains the iterable synchronously, so the deletions the
+        // tracked promises perform as they settle cannot disturb it
+        await Promise.race([Promise.all(inFlight), expired]);
+
+        clearTimeout(timer);
+
+        if (inFlight.size) {
+            this.logger.warn(
+                '%s: drain budget of %sms expired, abandoning %s in-flight ' +
+                    'request(s)',
+                this.name,
+                this.drainTimeout,
+                inFlight.size,
+            );
+        }
+    }
+
+    /**
+     * Runs one teardown step of a drain, logging rather than propagating a
+     * failure — a broken step must not leave the process hanging half-drained.
+     *
+     * @param name - step name, for the log message
+     * @param step - the step to run
+     */
+    private async drainStep(
+        name: string,
+        step: () => Promise<void>,
+    ): Promise<void> {
+        try {
+            await step();
+        } catch (err) {
+            this.logger.error(`${this.name}: drain ${name}() failed:`, err);
+        }
     }
 
     /**
@@ -494,6 +721,10 @@ export abstract class IMQService {
      * Connections, signal handlers and the metrics server are all left in place —
      * use {@link IMQService.destroy} for full teardown. Calling this first is not a
      * prerequisite for `destroy()`.
+     *
+     * Only the reader connection is dropped; the writer stays up, which is what
+     * lets a drain publish the replies of requests that were already running
+     * when the shutdown signal arrived.
      */
     @profile()
     public async stop(): Promise<void> {
@@ -508,14 +739,16 @@ export abstract class IMQService {
      * It does not close the metrics server — if
      * {@link IMQMetricsServerOptions.enabled} was set, close
      * `service.metricsServer` yourself, otherwise the open listener keeps the
-     * process alive. In-flight requests are not awaited.
+     * process alive. In-flight requests are not awaited — a graceful drain
+     * awaits them *before* reaching here, see
+     * {@link IMQServiceOptions.drain}.
      */
     @profile()
     public async destroy(): Promise<void> {
         // unregister this instance's process signal handlers so destroyed
         // services do not leak process-level listeners
         for (const [signal, handler] of this.signalHandlers) {
-            process.removeListener(signal, handler);
+            removeTrackedSignalHandler(signal, handler);
         }
         this.signalHandlers.length = 0;
 

@@ -70,6 +70,7 @@ specs.
 | `src/decorators/cache.ts`, `lock.ts`, `logged.ts`, `metadata.ts` | Cross-cutting method decorators. |
 | `src/cache/` (`ICache`, `RedisCache`) | Caching layer for RPC results. |
 | `src/helpers/signature.ts` | JSDoc/source signature extraction (acorn). |
+| `src/helpers/drain.ts` | Graceful-drain config (`IMQ_DRAIN_ENABLE`, `IMQ_DRAIN_TIMEOUT`) and the registry of signal handlers this package installed. |
 | `src/IMQRPCDescription.ts`, `IMQRPCRequest.ts`, `IMQRPCResponse.ts`, `IMQRPCError.ts`, `IMQDelay.ts`, `IMQLock.ts`, `IMQMetadata.ts`, `IMQRequestContext.ts` | RPC wire types & context. |
 
 ## Authoring rules (behavioural invariants that generated clients depend on)
@@ -84,6 +85,13 @@ specs.
   `@property` fields too.
 - **JSDoc is load-bearing**, not documentation-only (see toolchain note). Keep
   `@param`/`@returns` types accurate.
+- **Graceful draining is opt-in and must stay that way.** `IMQ_DRAIN_ENABLE`
+  (or the `drain` option) defaults to off, and with it off the dispatch path,
+  the signal handlers and the shutdown timing must be exactly what they were —
+  there is a regression test that signals a real child process mid-handler to
+  hold that line. When on, `IMQService` drains: `stop()`, bounded wait,
+  `destroy()`, `exit(0)`, in that order, because `destroy()` closes the writer
+  the in-flight replies still need.
 
 ## Using this package correctly (for consumer-facing code an agent writes)
 

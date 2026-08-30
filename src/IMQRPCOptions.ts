@@ -198,6 +198,48 @@ export interface IMQServiceOptions extends IMQOptions {
      * Around hook wrapping the method invocation. See {@link IMQWrapCall}.
      */
     wrapCall?: IMQWrapCall<IMQService>;
+    /**
+     * Drain in-flight requests before shutting down on `SIGTERM`/`SIGINT`
+     * instead of exiting on a fixed timer.
+     *
+     * @defaultValue the `IMQ_DRAIN_ENABLE` environment variable, itself
+     *               defaulting to `false`
+     *
+     * @remarks
+     * Opt-in. Left off, a service behaves exactly as it always has: the signal
+     * handler starts `destroy()` without awaiting it and force-exits after
+     * `IMQ_SHUTDOWN_TIMEOUT`, so a handler still running is abandoned and its
+     * caller never receives a reply.
+     *
+     * Turned on, the service stops consuming, waits up to
+     * {@link IMQServiceOptions.drainTimeout} for the handlers already running
+     * to finish and publish their replies, then tears the transport down and
+     * exits `0`. Because the queue layer's own signal handlers would exit the
+     * process mid-drain, enabling this also forces
+     * {@link IMQOptions.handleSignals} to `false` on the service's queue.
+     *
+     * Delivery stays at-least-once either way — a drain narrows the window in
+     * which work is lost, it does not close it.
+     *
+     * Each process drains its own in-flight work, so under
+     * {@link IMQServiceOptions.multiProcess} every forked worker drains
+     * separately — and the cluster primary, which runs a consumer of its own,
+     * drains only what that consumer was handling.
+     */
+    drain?: boolean;
+    /**
+     * Milliseconds a drain waits for in-flight requests before giving up on
+     * them and exiting anyway. Ignored unless
+     * {@link IMQServiceOptions.drain} is on.
+     *
+     * @defaultValue the `IMQ_DRAIN_TIMEOUT` environment variable, itself
+     *               defaulting to {@link DEFAULT_IMQ_DRAIN_TIMEOUT} (4000)
+     *
+     * @remarks
+     * The wait is always bounded: whatever has not finished by then is
+     * abandoned, logged, and the process exits `0` regardless.
+     */
+    drainTimeout?: number;
 }
 
 /**
