@@ -46,7 +46,8 @@ describes itself and its client is generated from that description.
 ```bash
 npm install
 npm run build          # build ../core (if present) + clean + tsc
-npm test               # build + node:test over every test/**/*.spec.js
+npm test               # build + node:test over test/**/*.spec.js, minus test/integration
+npm run test-integration  # build + test/integration/**/*.spec.js (real redis)
 npm run lint           # oxlint
 npm run format         # oxfmt (write)  |  npm run format:check (verify)
 npm run test-coverage  # tests + experimental coverage
@@ -56,6 +57,24 @@ Tests use the native `node:test` runner with
 `--experimental-test-module-mocks` and preload `./test/warmup.mjs`; timeout is
 15s. A local Redis on `localhost:6379` is expected for the integration-style
 specs.
+
+**`test/integration/` is different, and must stay outside `npm test`.** Those
+specs run *unmocked* — the preload replaces `ioredis` wholesale, which is fine
+for every option except `tls`, whose whole point is a handshake a mock does not
+perform. `test/integration/tlsBroker.ts` issues a throwaway CA and certificates
+with `openssl`, then starts `redis-server` on a port picked at run time with
+`--port 0 --tls-port <n>`: with no plaintext listener at all, a connection that
+reaches it has demonstrably gone over TLS.
+
+**They skip, never fail, when the machine cannot host a broker.**
+`startTlsBroker()` returns a reason string instead of throwing when
+`redis-server` or `openssl` is missing, or when redis will not start with TLS,
+and that reason becomes the suite's `skip`. CI has no redis and must stay
+green, so keep that contract: report a skip reason, do not throw, keep the
+`npm test` glob excluding `test/integration`, and do not add these specs to a
+runner CI invokes. The harness is a copy of the one in `@imqueue/core` — a
+package's `test/` is not published, so there is nothing to import; keep the two
+in step.
 
 ## Layout
 

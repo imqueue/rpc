@@ -46,9 +46,16 @@ export class RedisClientMock extends EventEmitter {
     public static __constructed: number = 0;
     public connected: boolean = true;
     public status = 'ready';
+    /**
+     * The options the client was constructed with, as the real client exposes
+     * them. `RedisCache` reads `options.tls` off a connection it is handed, so
+     * the mock has to carry them.
+     */
+    public options: any;
 
     constructor(options: any = {}) {
         super();
+        this.options = options;
         RedisClientMock.__constructed++;
         setTimeout(() => {
             this.emit('ready', this);

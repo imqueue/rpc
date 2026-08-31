@@ -14,6 +14,28 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- **TLS on the cache connection.** `RedisCache.init()` now honours `tls`, which
+  it inherited from the queue option shape and silently ignored. `true`
+  connects with Node's defaults, an object is handed to `tls.connect()` as
+  given, so a private CA and mutual TLS both work — and with it unset the
+  `IMQ_REDIS_TLS*` environment variables are consulted, so one setting encrypts
+  a service's queues and its method cache together. Requires `@imqueue/core`
+  3.5.0, which is where the option became real.
+
+  Covered by integration specs in `test/integration/`, run by
+  `npm run test-integration`, which stand up a throwaway TLS-only redis and
+  assert what a mocked `ioredis` cannot: that the handshake completes and is
+  verified, that a cached value survives a round trip over it, and that
+  plaintext, an unverifiable certificate and a wrong server name are refused
+  rather than downgraded. They skip themselves, with a reason, wherever
+  `redis-server` and `openssl` are not both available, so a checkout without
+  redis still passes; `npm test` excludes them and is unchanged in what it runs.
+
+  The shared connection is still opened once per process and the first
+  initialization still decides its transport. What is new is that a later one
+  asking for a different transport is told so, rather than silently handed an
+  encrypted connection when it asked for plaintext or, worse, the reverse.
+
 - **Opt-in graceful shutdown draining.** With `IMQ_DRAIN_ENABLE=1` — or the new
   `drain` service option — `SIGTERM` and `SIGINT` now stop consuming, wait for
   the requests already being handled, publish their replies, tear the transport

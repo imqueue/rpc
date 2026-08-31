@@ -261,6 +261,33 @@ Because standard decorators provide no runtime type reflection (there is no
 and `removeComments` must remain `false` so those comments survive compilation.
 Undocumented parameters fall back to `any` in generated clients.
 
+## Encrypting the method cache
+
+`RedisCache` opens its own connection to Redis, separate from the queue's, and
+it takes the same `tls` option:
+
+```typescript
+import { IMQCache, RedisCache } from '@imqueue/rpc';
+import { readFileSync } from 'node:fs';
+
+IMQCache.register(RedisCache, {
+    prefix: 'my-service',
+    tls: { ca: readFileSync('/etc/redis-tls/ca.crt') },
+});
+```
+
+With `tls` unset the `IMQ_REDIS_TLS*` environment variables are consulted — the
+same ones `@imqueue/core` reads — so one setting encrypts a service's queues
+and its method cache together. Pass `false` to decline that fallback.
+
+Two things to know about the connection itself. It is opened **once per
+process** and shared by every `RedisCache` instance, so the first
+initialization decides its transport; a later one asking for something
+different is warned rather than silently given what already exists. And `conn`
+still lets a service hand the cache a connection it already has — a running
+queue's writer, for example — in which case the cache inherits whatever
+transport that connection was opened with.
+
 ## Graceful shutdown
 
 By default a service signalled mid-request abandons it: the signal handler

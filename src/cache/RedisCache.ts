@@ -24,9 +24,11 @@
 import {
     type ILogger,
     DEFAULT_IMQ_OPTIONS,
+    envTls,
     type IRedisClient,
     type IMQOptions,
     Redis,
+    tlsFingerprint,
 } from '@imqueue/core';
 import { hostname } from 'node:os';
 import { type ICache } from './index.js';
@@ -36,8 +38,14 @@ import { type ICache } from './index.js';
  *
  * @remarks
  * This inherits the queue option shape, but the adapter only honours `host`,
- * `port`, `username`, `password`, `prefix`, `logger` and `conn`. All other
- * inherited queue options are accepted by the type and silently ignored.
+ * `port`, `username`, `password`, `tls`, `prefix`, `logger` and `conn`. All
+ * other inherited queue options are accepted by the type and silently ignored.
+ *
+ * `tls` encrypts the cache connection exactly as it encrypts a queue's: `true`
+ * for Node's defaults, an object handed to `tls.connect()` as given, and when
+ * omitted the `IMQ_REDIS_TLS*` environment variables are consulted, so a
+ * deployment can encrypt its caches and its queues with one setting. Pass
+ * `false` to decline that fallback.
  */
 export interface IRedisCacheOptions extends Partial<IMQOptions> {
     /**
@@ -75,6 +83,11 @@ export const REDIS_CLIENT_INIT_ERROR = 'Redis client is not initialized!';
  */
 export class RedisCache implements ICache {
     private static redis?: IRedisClient;
+    // fingerprint of the TLS configuration the shared connection was opened
+    // with, so a later init() asking for a different one can be told that it
+    // is getting the existing connection rather than the transport it asked
+    // for. Absent when the shared connection is plaintext.
+    private static tlsPrint?: string;
     // pending shared connection attempt; concurrent init() calls await this
     // single promise instead of opening one connection each
     private static initPromise?: Promise<void>;
@@ -118,7 +131,53 @@ export class RedisCache implements ICache {
 
         this.logger = this.options.logger || console;
 
+        if (this.options.tls === undefined) {
+            // an unreadable CA or client key throws out of here rather than
+            // yielding a cache that would quietly talk to redis in the clear
+            const fromEnv = envTls();
+
+            if (fromEnv !== undefined) {
+                // assigned only when the environment actually asks for TLS, so
+                // that a cache nobody configured for it carries no `tls` key at
+                // all and `options` keeps exactly the shape it always had
+                this.options.tls = fromEnv;
+            }
+        }
+
+        const tlsPrint = this.options.tls
+            ? tlsFingerprint(this.options.tls)
+            : undefined;
+
+        if (
+            this.options.tls &&
+            this.options.tls !== true &&
+            this.options.tls.rejectUnauthorized === false
+        ) {
+            this.logger.warn(
+                '%s: TLS certificate verification is disabled for the cache' +
+                    ' connection to %s:%s — it is encrypted but the server is' +
+                    ' not authenticated, so it is open to interception',
+                this.name,
+                this.options.host,
+                this.options.port,
+            );
+        }
+
         if (RedisCache.redis && !RedisCache.initPromise) {
+            // the connection is process-wide and the first caller's transport
+            // is what every later one gets. Silently handing a caller that
+            // asked for TLS a plaintext connection - or the reverse - is the
+            // one case where that is worth saying out loud
+            if (tlsPrint !== RedisCache.tlsPrint) {
+                this.logger.warn(
+                    '%s: re-using the existing %s cache connection, which is' +
+                        ' not the transport these options asked for — the' +
+                        ' first initialization in a process decides it',
+                    this.name,
+                    RedisCache.tlsPrint ? 'encrypted' : 'plaintext',
+                );
+            }
+
             this.ready = true;
 
             return this;
@@ -127,6 +186,15 @@ export class RedisCache implements ICache {
         if (this.options.conn && !RedisCache.initPromise) {
             this.logger.info('Re-using given connection for cache.');
 
+            // the caller's own connection brings its transport with it, so
+            // read the fingerprint off the client rather than off the options
+            // this adapter was handed - otherwise a reused TLS connection
+            // would be reported as plaintext to whoever initializes next. It
+            // comes from outside this package and need not be a full client,
+            // so read through it rather than assume the option bag is there.
+            const given = this.options.conn.options?.tls;
+
+            RedisCache.tlsPrint = given ? tlsFingerprint(given) : undefined;
             RedisCache.redis = this.options.conn;
             this.ready = true;
 
@@ -139,11 +207,20 @@ export class RedisCache implements ICache {
                     this.name
                 }:pid:${process.pid}:host:${hostname()}`;
 
+                RedisCache.tlsPrint = tlsPrint;
                 RedisCache.redis = new Redis({
                     port: Number(this.options.port),
                     host: String(this.options.host),
                     username: this.options.username,
                     password: this.options.password,
+                    ...(this.options.tls
+                        ? {
+                              tls:
+                                  this.options.tls === true
+                                      ? {}
+                                      : this.options.tls,
+                          }
+                        : {}),
                     connectionName,
                 });
 
@@ -300,6 +377,7 @@ export class RedisCache implements ICache {
      */
     public static async destroy(): Promise<void> {
         RedisCache.initPromise = undefined;
+        RedisCache.tlsPrint = undefined;
 
         try {
             if (RedisCache.redis) {
