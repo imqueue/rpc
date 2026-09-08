@@ -21,7 +21,9 @@
  */
 /**
  * Type-safe RPC over a message queue — services, clients and the decorators that
- * describe them, built on `@imqueue/core`.
+ * describe them, built on `@imqueue/core`. An exposed method's JSDoc is the
+ * runtime type source, so consuming projects must compile with
+ * `removeComments: false`.
  *
  * Write a service by extending `IMQService` and marking each remotely callable
  * method with `@expose()`. Complex argument and return types need a class-level
