@@ -67,4 +67,27 @@ export interface IMQRPCResponse extends JsonObject {
      * this round-trips every argument value back to the caller.
      */
     request: IMQRPCRequest;
+    /**
+     * When the service took the request off the queue, started the method and
+     * finished it, in milliseconds since the epoch by the service's clock.
+     *
+     * @remarks
+     * Absent on a response from a service older than this field. Only the
+     * differences between its own values mean anything to a caller, because
+     * the two clocks are not the same clock; {@link callTiming} combines them
+     * with the caller's own round trip without comparing one with the other.
+     */
+    timing?: IMQRPCTiming;
+}
+
+/**
+ * Where a service spent a call, by its own clock.
+ */
+export interface IMQRPCTiming extends JsonObject {
+    /** When the message was taken off the queue. */
+    received: number;
+    /** When the method was entered, after the service's `beforeCall` ran. */
+    started: number;
+    /** When the method returned or threw. */
+    finished: number;
 }

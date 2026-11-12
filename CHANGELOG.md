@@ -14,6 +14,22 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- **Where a call spent its time.** A service now stamps every response with
+  `timing` — when it took the request off the queue, entered the method and
+  left it, by its own clock — and a client stamps every request with `sentAt`
+  just before sending it. `callTiming(request, response)` turns the pair into
+  `total`, `handled`, `waited` (in the service, before the method ran) and
+  `transit` (both trips through the queue and the caller's own wait to read
+  the answer). Each figure is a difference of two readings of one clock, so
+  hosts whose clocks disagree move none of them. Call it from an `afterCall`
+  hook. Both fields are optional on the wire: an older client ignores
+  `timing`, an older service ignores `sentAt`, and `callTiming` answers `null`
+  where either half is missing.
+
+  Measured on a production-like fleet, a call's round trip minus its handler
+  was 4 ms typical, 33 ms at p95 and 152 ms at p99, and nothing said which part
+  of the trip it was.
+
 - **TLS on the cache connection.** `RedisCache.init()` now honours `tls`, which
   it inherited from the queue option shape and silently ignored. `true`
   connects with Node's defaults, an object is handed to `tls.connect()` as

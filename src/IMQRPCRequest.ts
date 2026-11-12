@@ -70,4 +70,14 @@ export interface IMQRPCRequest extends JsonObject {
      * caller's bag, so it is a plain object, not an {@link IMQMetadata} instance.
      */
     metadata?: IMQMetadata;
+    /**
+     * When the client handed the call to the queue, in milliseconds since the
+     * epoch by the caller's clock.
+     *
+     * @remarks
+     * Set by the client immediately before sending, after `beforeCall` ran.
+     * Read back on the client only, so the service's clock never meets it;
+     * see {@link callTiming}.
+     */
+    sentAt?: number;
 }
