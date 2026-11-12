@@ -358,8 +358,12 @@ export abstract class IMQService {
             request: IMQRPCRequest,
             id: string,
         ): Promise<string | void> => {
-            const handled = this.handleRequest(request, id).catch(err =>
-                this.logger.error(`${this.name}: error handling request:`, err),
+            const handled = this.handleRequest(request, id, Date.now()).catch(
+                err =>
+                    this.logger.error(
+                        `${this.name}: error handling request:`,
+                        err,
+                    ),
             );
 
             // fast path with draining off: no set, no tracking, no
@@ -512,17 +516,22 @@ export abstract class IMQService {
      *
      * @param request - request message
      * @param id - message unique identifier
+     * @param received - when the message was taken off the queue
      */
     private async handleRequest(
         request: IMQRPCRequest,
         id: string,
+        received: number = Date.now(),
     ): Promise<string> {
-        return runWithRequest(request, () => this.processRequest(request, id));
+        return runWithRequest(request, () =>
+            this.processRequest(request, id, received),
+        );
     }
 
     private async processRequest(
         request: IMQRPCRequest,
         id: string,
+        received: number,
     ): Promise<string> {
         const logger = this.options.logger || console;
         const method = request.method;
@@ -592,9 +601,14 @@ export abstract class IMQService {
 
         if (response.error) {
             this.logger.warn(response.error);
+            const now = Date.now();
+
+            response.timing = { received, started: now, finished: now };
 
             return await send(request, response, this);
         }
+
+        const started = Date.now();
 
         try {
             // Run the method through the optional `wrapCall` around-hook so a
@@ -625,6 +639,8 @@ export abstract class IMQService {
                 err,
             );
         }
+
+        response.timing = { received, started, finished: Date.now() };
 
         return await send(request, response, this);
     }

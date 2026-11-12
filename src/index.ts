@@ -28,6 +28,7 @@ export * from './IMQRPCDescription.js';
 export * from './IMQRPCError.js';
 export * from './IMQRPCRequest.js';
 export * from './IMQRPCResponse.js';
+export * from './IMQCallTiming.js';
 export * from './IMQLock.js';
 export * from './IMQService.js';
 export * from './IMQClient.js';

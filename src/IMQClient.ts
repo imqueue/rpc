@@ -388,6 +388,8 @@ export abstract class IMQClient extends EventEmitter {
 
             void (async () => {
                 try {
+                    request.sentAt = Date.now();
+
                     const id = await this.imq.send(
                         to,
                         request,
