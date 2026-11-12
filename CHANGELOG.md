@@ -10,6 +10,19 @@ raised `@imqueue/core` floor is how most fixes in the transport reach a service.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **A service served in process.** `local: true` on a service registers it,
+  once started, with every client in its own process, and those clients call
+  it directly — the same checks, hooks and method, with no trip through the
+  queue. The request and the answer are each copied through JSON, as the queue
+  copies them, so values arrive exactly as they would have. The queue is still
+  served, so other processes, delayed calls and `publish()` are unaffected. A
+  client's `local: false` keeps it on the queue. `localService()`,
+  `localServiceNames()` and `wireCopy()` are exported for a host.
+
 ## [3.10.0] - 2026-11-12
 
 ### Added

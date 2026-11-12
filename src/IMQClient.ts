@@ -54,6 +54,7 @@ import {
     removeTrackedSignalHandler,
     isProcessDrainEnabled,
 } from './helpers/index.js';
+import { type IMQLocalService, localService, wireCopy } from './IMQLocal.js';
 import { EventEmitter } from 'node:events';
 import { Script } from 'node:vm';
 import { spawnSync } from 'node:child_process';
@@ -368,6 +369,14 @@ export abstract class IMQClient extends EventEmitter {
         }
 
         const callTimeout = this.options.callTimeout;
+        const local =
+            !delayed && this.options.local !== false
+                ? localService(to)
+                : undefined;
+
+        if (local) {
+            return this.localCall<T>(local, request, callTimeout);
+        }
 
         return new Promise<T>((resolve, reject) => {
             let timer: NodeJS.Timeout | null = null;
@@ -429,6 +438,127 @@ export abstract class IMQClient extends EventEmitter {
                 }
             })();
         }) as Promise<T>;
+    }
+
+    /**
+     * Calls a service this process serves itself, as {@link remoteCall} would
+     * through the queue.
+     *
+     * @param local - the service's in-process endpoint
+     * @param request - the request, after `beforeCall` ran
+     * @param callTimeout - as {@link IMQClientOptions.callTimeout}
+     *
+     * @remarks
+     * The request and the answer are each copied through JSON, as the queue
+     * copies them, so neither side holds an object of the other's and the
+     * values arrive as they would have. Where the queue would have failed
+     * silently and left the call to time out — an answer that cannot be
+     * written as JSON — this rejects at once with `IMQ_RPC_CALL_ERROR`.
+     */
+    private localCall<T>(
+        local: IMQLocalService,
+        request: IMQRPCRequest,
+        callTimeout?: number,
+    ): Promise<T> {
+        const { method, args } = request;
+        const to = this.serviceName;
+
+        return new Promise<T>((resolve, reject) => {
+            let timer: NodeJS.Timeout | null = null;
+            let settled = false;
+            const settle =
+                <V>(done: (value: V) => void) =>
+                (value: V): void => {
+                    settled = true;
+
+                    if (timer) {
+                        clearTimeout(timer);
+                        timer = null;
+                    }
+
+                    done(value);
+                };
+            const doResolve = settle(resolve);
+            const doReject = settle(reject);
+
+            if (callTimeout && callTimeout > 0) {
+                timer = setTimeout(() => {
+                    doReject(
+                        IMQError(
+                            'IMQ_RPC_CALL_TIMEOUT',
+                            `Call to ${to}.${method}() timed out after ${
+                                callTimeout
+                            } ms.`,
+                            new Error().stack,
+                            method,
+                            args,
+                        ),
+                    );
+                }, callTimeout);
+                timer.unref?.();
+            }
+
+            void (async () => {
+                try {
+                    request.sentAt = Date.now();
+
+                    const answered = await local.call(wireCopy(request));
+                    let response: IMQRPCResponse;
+
+                    try {
+                        response = {
+                            ...answered,
+                            ...wireCopy({
+                                data: answered.data,
+                                error: answered.error,
+                            }),
+                        };
+                    } catch (err: any) {
+                        response = {
+                            ...answered,
+                            data: null,
+                            error: IMQError(
+                                'IMQ_RPC_CALL_ERROR',
+                                `${to}.${method}() answered with a value ` +
+                                    `that cannot be sent: ${err?.message}`,
+                                err?.stack,
+                                method,
+                                args,
+                            ),
+                        };
+                    }
+
+                    if (settled) {
+                        logSafe(
+                            this.logger,
+                            'warn',
+                            `${to}: in-process answer to ${method}() came ` +
+                                'after the call had timed out',
+                        );
+
+                        return;
+                    }
+
+                    if (response.error) {
+                        return imqCallRejector(
+                            doReject,
+                            request,
+                            this,
+                        )(response.error, response);
+                    }
+
+                    imqCallResolver(
+                        doResolve,
+                        request,
+                        this,
+                    )(response.data, response);
+                } catch (err) {
+                    if (!settled) {
+                        imqCallRejector(doReject, request, this)(err);
+                    }
+                }
+            })();
+        });
     }
 
     /**

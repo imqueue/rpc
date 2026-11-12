@@ -330,6 +330,58 @@ Delivery remains **at-least-once** either way. A drain narrows the window in
 which in-flight work is lost; `SIGKILL`, an OOM kill or a lost node still take
 it, so handlers must stay idempotent.
 
+## Serving a service in process
+
+A service may also run inside the process of its caller. Start it with
+`local: true` and every client in that process calls it directly, through the
+same `@expose()`d methods and the same generated client, with no trip through
+the queue:
+
+~~~typescript
+const service = new UserService({ local: true });
+
+await service.start();
+
+const client = new userService.UserClient();
+
+await client.start();
+await client.get('42'); // answered in this process
+~~~
+
+Which services share a process is a deployment choice: nothing in the service
+or the client changes, and the same service runs standalone where `local` is
+off.
+
+What stays the same:
+
+- **The queue is still served.** A client in another process, a call made with
+  an `IMQDelay` (the queue holds it until it is due) and `publish()` work as
+  before.
+- **Values travel as the queue carries them.** The request and the answer are
+  each copied through JSON, so a `Date` arrives as its ISO string, a class
+  instance as a plain object, `undefined` properties are dropped and
+  `undefined` array items become `null`, and neither side can change an object
+  the other holds.
+- **Errors are the same plain `{ code, message, … }` objects**, hooks run as
+  they do (`beforeCall`, `wrapCall` and `afterCall` on both sides), `callTimeout`
+  applies, and `callTiming()` splits the call, its `transit` now being the two
+  copies and the wait for the event loop.
+
+What differs:
+
+- An answer that cannot be written as JSON (a `BigInt`, a cycle) rejects at once
+  with `IMQ_RPC_CALL_ERROR`, where through the queue the service failed to send
+  it and the call timed out.
+- A service served in process belongs to its host: it installs no signal
+  handlers, does not drain, starts no metrics server and cannot fork workers
+  (`multiProcess`). Destroy it from the host's own shutdown.
+- A client with `local: false` sends every call through the queue regardless.
+
+The service and the client need not share one copy of this package — a host
+that loads a service from its own directory loads that service's own
+`@imqueue/rpc` beside its own — so long as both are 3.11 or later.
+`localServiceNames()` lists what a process serves itself.
+
 ## Notes
 
 For image containers builds assign machine UUID in `/etc/machine-id` and 
