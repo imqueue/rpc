@@ -10,7 +10,7 @@ raised `@imqueue/core` floor is how most fixes in the transport reach a service.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.10.0] - 2026-11-12
 
 ### Added
 
