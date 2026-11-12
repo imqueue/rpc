@@ -64,7 +64,13 @@ import {
     type IMQWrapCall,
 } from './IMQRPCOptions.js';
 import { runWithRequest } from './IMQRequestContext.js';
+import {
+    type IMQLocalService,
+    registerLocalService,
+    unregisterLocalService,
+} from './IMQLocal.js';
 import { createServer, type Server } from 'node:http';
+import { randomUUID } from 'node:crypto';
 
 /**
  * The self-description a service serves to its clients, and the input to client
@@ -233,6 +239,11 @@ export abstract class IMQService {
      * the first and force an immediate exit.
      */
     private draining = false;
+    /**
+     * How a client in this process reaches this service, present only with
+     * {@link IMQServiceOptions.local} on, and registered while it serves.
+     */
+    private readonly localEndpoint?: IMQLocalService;
 
     /**
      * This service's name, which is also its queue name and the key its description
@@ -297,6 +308,25 @@ export abstract class IMQService {
             },
         };
         this.logger = this.options.logger || /* istanbul ignore next */ console;
+
+        if (this.options.local) {
+            if (this.options.multiProcess) {
+                throw new TypeError(
+                    `${this.name}: a service served in process cannot ` +
+                        'also fork workers (local with multiProcess)',
+                );
+            }
+
+            // the host owns this process's shutdown, so neither this service
+            // nor its queue may exit it from a signal of their own
+            this.options.handleSignals = false;
+            this.options.drain = false;
+            this.localEndpoint = {
+                name: this.name,
+                call: request => this.answerLocally(request),
+            };
+        }
+
         this.drainEnabled = this.options.drain ?? drainEnabledFromEnv();
         this.drainTimeout = this.options.drainTimeout ?? drainTimeoutFromEnv();
 
@@ -315,7 +345,7 @@ export abstract class IMQService {
 
         this.handleRequest = this.handleRequest.bind(this);
 
-        SIGNALS.forEach((signal: string) => {
+        (this.localEndpoint ? [] : SIGNALS).forEach((signal: string) => {
             if (this.drainEnabled && DRAIN_SIGNALS.includes(signal)) {
                 const handler = (): void => {
                     // a drain that throws must not leave the process hanging
@@ -533,6 +563,36 @@ export abstract class IMQService {
         id: string,
         received: number,
     ): Promise<string> {
+        const response = await this.respond(request, id, received);
+
+        return await send(request, response, this);
+    }
+
+    /**
+     * Answers a request a client in this process made, with no trip through
+     * the queue: the same checks, hooks and method as a queued request, and
+     * the response handed back rather than sent.
+     *
+     * @param request - the request, already copied the way the queue copies it
+     */
+    private async answerLocally(
+        request: IMQRPCRequest,
+    ): Promise<IMQRPCResponse> {
+        const received = Date.now();
+        const response = await runWithRequest(request, () =>
+            this.respond(request, randomUUID(), received),
+        );
+
+        await afterCall(request, response, this);
+
+        return response;
+    }
+
+    private async respond(
+        request: IMQRPCRequest,
+        id: string,
+        received: number,
+    ): Promise<IMQRPCResponse> {
         const logger = this.options.logger || console;
         const method = request.method;
         const description = await this.describe();
@@ -605,7 +665,7 @@ export abstract class IMQService {
 
             response.timing = { received, started: now, finished: now };
 
-            return await send(request, response, this);
+            return response;
         }
 
         const started = Date.now();
@@ -642,7 +702,7 @@ export abstract class IMQService {
 
         response.timing = { received, started, finished: Date.now() };
 
-        return await send(request, response, this);
+        return response;
     }
 
     /**
@@ -674,7 +734,19 @@ export abstract class IMQService {
 
             this.describe();
 
-            return this.startWithMetricsServer();
+            if (!this.localEndpoint) {
+                return this.startWithMetricsServer();
+            }
+
+            // in process the metrics port is the host's, and a second listener
+            // on it would fail; the queue still starts first, so a method can
+            // publish from the first in-process call
+            const started = await this.imq.start();
+
+            registerLocalService(this.localEndpoint);
+            this.logger.info('%s: serving in process too', this.name);
+
+            return started;
         }
 
         if (cluster.isMaster) {
@@ -761,6 +833,10 @@ export abstract class IMQService {
      */
     @profile()
     public async destroy(): Promise<void> {
+        if (this.localEndpoint) {
+            unregisterLocalService(this.localEndpoint);
+        }
+
         // unregister this instance's process signal handlers so destroyed
         // services do not leak process-level listeners
         for (const [signal, handler] of this.signalHandlers) {
@@ -865,20 +941,38 @@ export async function send(
     response: IMQRPCResponse,
     service: IMQService,
 ): Promise<string> {
-    const logger = service.options.logger || console;
     const id = await (service as any).imq.send(request.from, response);
 
-    if (typeof service.options.afterCall === 'function') {
-        const afterCall: IMQAfterCall<IMQService> = (
-            service.options.afterCall as IMQAfterCall<IMQService>
-        ).bind(service);
-
-        try {
-            await afterCall(request, response);
-        } catch (err: any) {
-            logger.warn(AFTER_HOOK_ERROR, err);
-        }
-    }
+    await afterCall(request, response, service);
 
     return id;
+}
+
+/**
+ * Runs the service's optional after-call hook on an answered request, logging
+ * rather than propagating its failure.
+ *
+ * @param request - the request answered
+ * @param response - the response it was answered with
+ * @param service - imq service to bind
+ */
+async function afterCall(
+    request: IMQRPCRequest,
+    response: IMQRPCResponse,
+    service: IMQService,
+): Promise<void> {
+    if (typeof service.options.afterCall !== 'function') {
+        return;
+    }
+
+    const logger = service.options.logger || console;
+    const hook: IMQAfterCall<IMQService> = (
+        service.options.afterCall as IMQAfterCall<IMQService>
+    ).bind(service);
+
+    try {
+        await hook(request, response);
+    } catch (err: any) {
+        logger.warn(AFTER_HOOK_ERROR, err);
+    }
 }

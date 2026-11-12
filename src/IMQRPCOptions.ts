@@ -240,6 +240,26 @@ export interface IMQServiceOptions extends IMQOptions {
      * abandoned, logged, and the process exits `0` regardless.
      */
     drainTimeout?: number;
+    /**
+     * Serve this service in process as well: a client in the same process
+     * calls it directly, with no trip through the queue.
+     *
+     * @defaultValue false
+     *
+     * @remarks
+     * The queue is still served, so a client in another process, a delayed
+     * call and `publish()` work as before, and turning this off again changes
+     * nothing a caller sees. An in-process call copies its request and its
+     * answer through JSON exactly as the queue does, so dates, class instances
+     * and `undefined` arrive as they would have; see {@link wireCopy}.
+     *
+     * A service served in process belongs to the process that hosts it: it
+     * installs no signal handlers and does not drain (the host's shutdown
+     * decides when it is destroyed), its queue installs none either, and it
+     * starts no metrics server. It cannot be combined with
+     * {@link IMQServiceOptions.multiProcess}.
+     */
+    local?: boolean;
 }
 
 /**
@@ -333,6 +353,20 @@ export interface IMQClientOptions extends IMQOptions {
      * Use it to bound Redis connections when a process instantiates many clients.
      */
     singleQueue?: boolean;
+    /**
+     * Call a service this process serves itself directly, rather than through
+     * the queue.
+     *
+     * @defaultValue true
+     *
+     * @remarks
+     * It matters only where a service in the same process was started with
+     * {@link IMQServiceOptions.local}; otherwise every call goes through the
+     * queue regardless. `false` sends every call through the queue. A call
+     * made with an {@link IMQDelay} always goes through the queue, which is
+     * what holds it until it is due.
+     */
+    local?: boolean;
 }
 
 /**
