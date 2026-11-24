@@ -10,6 +10,37 @@ raised `@imqueue/core` floor is how most fixes in the transport reach a service.
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **A client honours `handleSignals: false`.** `IMQClient` installed its own
+  `SIGTERM`/`SIGINT`/`SIGHUP`/`SIGQUIT` handlers regardless of the option, and
+  those destroy the client — abandoning the calls still pending — and exit the
+  process after `IMQ_SHUTDOWN_TIMEOUT`. The option only reached the queue
+  layer, so a process that owns its shutdown, such as an HTTP gateway holding
+  clients, could not finish one: measured on a gateway under 50 req/s of
+  300 ms calls, a `SIGTERM` cut 15 requests mid-flight with the gateway's own
+  close-then-destroy handler installed and `handleSignals: false` set. Now
+  `handleSignals: false` means neither the client nor its queue installs a
+  handler, and the same gateway stops with none cut. The default is unchanged.
+- **A service honours it the same way.** `IMQService` with
+  `handleSignals: false` no longer installs its fixed-timer signal handlers
+  either. A drain is an opt-in of its own, so with draining on `SIGTERM` and
+  `SIGINT` still start it; `drain: false` hands those to the host too.
+
+### Changed
+
+- A service or client that passed `handleSignals: false` and relied on this
+  package's handlers to exit the process on a signal no longer gets them. With
+  no handler of the host's own, Node's default applies to `SIGTERM`, `SIGINT`
+  and `SIGHUP` — the process ends at once, without `destroy()`; install a
+  handler that calls `destroy()` and exits, or leave the option at its
+  default.
+- With draining enabled in the process, a client still installs its own
+  handlers for the drain to take over, as before — unless the host passed
+  `handleSignals: false` itself, in which case it installs none.
+
 ## [3.11.0] - 2026-11-12
 
 ### Added

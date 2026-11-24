@@ -241,6 +241,27 @@ export interface IMQServiceOptions extends IMQOptions {
      */
     drainTimeout?: number;
     /**
+     * Let this package handle `SIGTERM`, `SIGINT`, `SIGHUP` and `SIGQUIT` for
+     * the process. Set it to `false` when the host owns shutdown.
+     *
+     * @defaultValue true
+     *
+     * @remarks
+     * Left on, the service installs handlers that tear it down and exit the
+     * process after `IMQ_SHUTDOWN_TIMEOUT`, and its queue installs its own
+     * (see the core `IMQOptions.handleSignals`).
+     *
+     * `false` stops both: the service installs no such handler and its queue
+     * none either, so the host's own handler decides when to call
+     * `destroy()`. With {@link IMQServiceOptions.drain} on, `SIGTERM` and
+     * `SIGINT` still start the drain — that is an opt-in of its own — so a
+     * host that owns those signals too leaves the drain off.
+     *
+     * Handlers are process-wide: any other service or client in the process
+     * that leaves this on still exits the process on a signal.
+     */
+    handleSignals?: boolean;
+    /**
      * Serve this service in process as well: a client in the same process
      * calls it directly, with no trip through the queue.
      *
@@ -353,6 +374,32 @@ export interface IMQClientOptions extends IMQOptions {
      * Use it to bound Redis connections when a process instantiates many clients.
      */
     singleQueue?: boolean;
+    /**
+     * Let this package handle `SIGTERM`, `SIGINT`, `SIGHUP` and `SIGQUIT` for
+     * the process. Set it to `false` when the host owns shutdown — an HTTP
+     * gateway holding clients, for one.
+     *
+     * @defaultValue true
+     *
+     * @remarks
+     * Left on, the client installs handlers that destroy it — abandoning the
+     * calls still waiting for an answer — and exit the process after
+     * `IMQ_SHUTDOWN_TIMEOUT`, and its queue installs its own (see the core
+     * `IMQOptions.handleSignals`). A host's own shutdown handler cannot finish
+     * its work before that exit.
+     *
+     * `false` stops both, so the host decides: stop taking new work, let the
+     * calls already made settle, then call `destroy()`.
+     *
+     * With draining enabled in the process (`IMQ_DRAIN_ENABLE=1`, or a service
+     * constructed with `drain`), the queue's handlers are suppressed anyway and
+     * the client's own are left for the drain to take over — unless this is
+     * `false`, in which case the client installs none.
+     *
+     * Handlers are process-wide: any other client or service in the process
+     * that leaves this on still exits the process on a signal.
+     */
+    handleSignals?: boolean;
     /**
      * Call a service this process serves itself directly, rather than through
      * the queue.

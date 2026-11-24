@@ -330,6 +330,74 @@ Delivery remains **at-least-once** either way. A drain narrows the window in
 which in-flight work is lost; `SIGKILL`, an OOM kill or a lost node still take
 it, so handlers must stay idempotent.
 
+### A host that owns shutdown
+
+A client installs signal handlers too: on `SIGTERM`, `SIGINT`, `SIGHUP` or
+`SIGQUIT` it destroys itself — abandoning the calls still waiting for an
+answer — and exits the process after `IMQ_SHUTDOWN_TIMEOUT`. In a process whose
+job is something else, such as an HTTP gateway holding clients, that exit cuts
+the host's own shutdown short. Pass `handleSignals: false` and neither the
+client nor its queue installs a handler; the host stops taking work, lets what
+it accepted finish, and only then destroys the client:
+
+~~~typescript
+import express from 'express';
+import { userService } from './clients/UserService.js';
+
+const client = new userService.UserClient({
+    handleSignals: false, // this process's shutdown is the gateway's
+    callTimeout: 5000,
+});
+
+await client.start();
+
+let stopping = false;
+const app = express();
+
+app.use((_req, res, next) => {
+    // once stopping, every answer closes its connection, so keep-alive
+    // callers reconnect to another instance instead of holding this one open
+    if (stopping) {
+        res.set('Connection', 'close');
+    }
+
+    next();
+});
+app.get('/ready', (_req, res) => res.status(stopping ? 503 : 200).end());
+app.get('/users/:id', async (req, res) => {
+    res.json(await client.get(req.params.id));
+});
+
+const server = app.listen(8080);
+
+async function shutdown(): Promise<void> {
+    stopping = true;
+
+    // accept no new connection; resolves once the last open one has ended
+    const closed = new Promise<void>(resolve => server.close(() => resolve()));
+
+    server.closeIdleConnections();
+
+    // stay inside the orchestrator's grace period whatever the callers do
+    const deadline = setTimeout(() => server.closeAllConnections(), 10_000);
+
+    await closed; // every request already accepted has been answered
+    clearTimeout(deadline);
+    await client.destroy(); // so no call is left in flight
+    process.exit(0);
+}
+
+// `once`: a second signal finds no handler and ends the process at once
+process.once('SIGTERM', shutdown);
+process.once('SIGINT', shutdown);
+~~~
+
+`handleSignals: false` has to be on every client and service in the process:
+the handlers are process-wide, so any one that leaves the default in place
+still exits the process on a signal. On a service the option stops the
+fixed-timer handlers the same way, except that a drain, when enabled, still
+handles `SIGTERM`/`SIGINT` — add `drain: false` to own those as well.
+
 ## Serving a service in process
 
 A service may also run inside the process of its caller. Start it with
@@ -374,7 +442,10 @@ What differs:
   it and the call timed out.
 - A service served in process belongs to its host: it installs no signal
   handlers, does not drain, starts no metrics server and cannot fork workers
-  (`multiProcess`). Destroy it from the host's own shutdown.
+  (`multiProcess`). Destroy it from the host's own shutdown — and give the
+  host's clients `handleSignals: false` too (see
+  [A host that owns shutdown](#a-host-that-owns-shutdown)), or theirs still
+  exit the process first.
 - A client with `local: false` sends every call through the queue regardless.
 
 The service and the client need not share one copy of this package — a host

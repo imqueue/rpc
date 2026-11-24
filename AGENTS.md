@@ -111,6 +111,13 @@ in step.
   hold that line. When on, `IMQService` drains: `stop()`, bounded wait,
   `destroy()`, `exit(0)`, in that order, because `destroy()` closes the writer
   the in-flight replies still need.
+- **`handleSignals: false` means the host owns shutdown**, on a client and on
+  a service alike: this package installs no signal handler and neither does
+  the queue. Read the option *before* anything rewrites it — `local` and the
+  drain both force it to `false` for the queue, and must not be mistaken for
+  the host's choice: a drain still keeps the client's handlers (it takes them
+  over) and its own `SIGTERM`/`SIGINT` ones. Left unset, the handlers are
+  exactly what they always were.
 
 ## Using this package correctly (for consumer-facing code an agent writes)
 

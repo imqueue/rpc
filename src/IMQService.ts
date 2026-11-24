@@ -286,6 +286,14 @@ export abstract class IMQService {
      * queue layer does not exit mid-drain. Handlers registered by anything
      * other than this package are never touched.
      *
+     * Pass `handleSignals: false` when the host owns the process's shutdown:
+     * then neither the service nor its queue installs a handler for the
+     * fixed-timer shutdown above, and the host calls
+     * {@link IMQService.destroy} when it is ready. A drain is the exception —
+     * an explicit opt-in to this package handling shutdown gracefully — so with
+     * draining on, `SIGTERM` and `SIGINT` still start it; pass `drain: false`
+     * as well to own those too.
+     *
      * The merged options are passed straight to the queue factory, so `vendor` and
      * `cluster`/`clusterManagers` select the transport implementation.
      */
@@ -308,6 +316,10 @@ export abstract class IMQService {
             },
         };
         this.logger = this.options.logger || /* istanbul ignore next */ console;
+
+        // read before `local` and the drain below rewrite the option: only the
+        // host's own `false` means it owns shutdown
+        const ownSignalHandlers = this.options.handleSignals !== false;
 
         if (this.options.local) {
             if (this.options.multiProcess) {
@@ -362,6 +374,10 @@ export abstract class IMQService {
                 this.signalHandlers.push([signal, handler]);
                 process.on(signal, handler);
 
+                return;
+            }
+
+            if (!ownSignalHandlers) {
                 return;
             }
 
